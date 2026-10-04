@@ -1,0 +1,83 @@
+﻿/* ============================================================
+   ANKU — Styles globaux (Tailwind v4 + Design System)
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* ------------------------------------------------------------
+   Design System ANKU
+   ------------------------------------------------------------ */
+:root {
+  --anku-green: #6aa84f;
+  --anku-green-dark: #4a7a35;
+  --anku-green-light: #8bc34a;
+  --anku-cream: #f5f9f0;
+
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #ffffff;
+  --border: #e5e4e7;
+  --accent: #6aa84f;
+  --social-bg: rgba(244, 243, 236, 0.5);
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 16px/145% var(--sans);
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ------------------------------------------------------------
+   Reset de base
+   ------------------------------------------------------------ */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------
+   ⚠️ IMPORTANT : on ne met PAS de color sur h1-h6, p, label
+   (sinon ça écrase les text-white de Tailwind sur les pages auth)
+   ------------------------------------------------------------ */
+
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ------------------------------------------------------------
+   Mode sombre (pages hors auth)
+   ------------------------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+  }
+
+  code {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
