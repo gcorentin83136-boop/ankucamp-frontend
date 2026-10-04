@@ -48,6 +48,29 @@ export interface GetStatsResponse {
 }
 
 // ------------------------------------------------------------
+// Types : Become Pro
+// ------------------------------------------------------------
+export interface BecomeProPayload {
+  type: 'agriculteur' | 'artisan' | 'createur' | 'autre'
+  siret: string
+  documents: string[]
+}
+
+export interface BecomeProResponse {
+  success: boolean
+  message: string
+  kyc: {
+    id: number
+    user_id: number
+    status: string
+    type: string
+    siret: string
+  }
+  token: string
+  newRole: 'professionnel'
+}
+
+// ------------------------------------------------------------
 // API Users
 // ------------------------------------------------------------
 export const usersApi = {
@@ -105,7 +128,7 @@ export const usersApi = {
   },
 
   /**
-   * GET /users/
+   * GET /users
    * Liste paginée + recherche.
    */
   list: async (params?: {
@@ -129,35 +152,12 @@ export const usersApi = {
     )
     return data
   },
-}
 
-export default usersApi
-
-// ============================================================
-// TYPES : Become Pro
-// ============================================================
-export interface BecomeProPayload {
-  type: 'agriculteur' | 'artisan' | 'createur' | 'autre'
-  siret: string
-  documents: string[]
-}
-
-export interface BecomeProResponse {
-  success: boolean
-  message: string
-  kyc: {
-    id: number
-    user_id: number
-    status: string
-    type: string
-    siret: string
-  }
-  token: string
-  newRole: 'professionnel'
-}
-
-// Ajout à l'objet usersApi via augmentation
-Object.assign(usersApi, {
+  /**
+   * POST /users/me/become-pro
+   * Convertit un particulier en pro + crée une demande KYC.
+   * Retourne un nouveau JWT avec role: "professionnel".
+   */
   becomePro: async (payload: BecomeProPayload): Promise<BecomeProResponse> => {
     const { data } = await httpClient.post<BecomeProResponse>(
       '/users/me/become-pro',
@@ -165,5 +165,6 @@ Object.assign(usersApi, {
     )
     return data
   },
-})
+}
 
+export default usersApi

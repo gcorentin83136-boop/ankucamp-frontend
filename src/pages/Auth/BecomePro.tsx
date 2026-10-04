@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Devenir Pro
 // Convertit un particulier en professionnel
 // (particulièrement utile après OAuth Google)
@@ -21,7 +21,7 @@ import { KYC_TYPES } from '../../types/user'
 
 const schema = z.object({
   type: z.enum(KYC_TYPES, {
-    errorMap: () => ({ message: "Type d'activité requis" }),
+    message: "Type d'activité requis",
   }),
   siret: z
     .string()

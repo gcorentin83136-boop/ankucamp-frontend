@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Page KYC (avec redirection auto après submit)
 // ============================================================
 
@@ -22,7 +22,7 @@ import { KYC_TYPES, type KycRequest } from '../../types/user'
 // ------------------------------------------------------------
 const kycSchema = z.object({
   type: z.enum(KYC_TYPES, {
-    errorMap: () => ({ message: "Type d'activité requis" }),
+    message: "Type d'activité requis",
   }),
   siret: z
     .string()

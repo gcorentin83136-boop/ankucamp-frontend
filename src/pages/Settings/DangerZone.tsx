@@ -1,5 +1,4 @@
-﻿import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   Download,
@@ -30,7 +29,6 @@ function formatDate(iso: string) {
 }
 
 export default function DangerZone() {
-  const navigate = useNavigate()
   const [exportReq, setExportReq] = useState<DataExportRequest | null>(null)
   const [deletionReq, setDeletionReq] = useState<AccountDeletionRequest | null>(
     null

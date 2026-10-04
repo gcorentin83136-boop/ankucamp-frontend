@@ -1,8 +1,9 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — FileUploader
 // ============================================================
 
-import { useState, useRef, DragEvent, ChangeEvent } from 'react'
+import { useState, useRef } from 'react'
+import type { DragEvent, ChangeEvent } from 'react'
 import { Upload, X, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react'
 
 export interface UploadedFile {
