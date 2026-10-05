@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,7 +15,10 @@ const loginSchema = z.object({
 })
 
 const twoFASchema = z.object({
-  code: z.string().min(6, 'Code à 6 chiffres').max(6, 'Code à 6 chiffres'),
+  code: z
+    .string()
+    .min(6, 'Code à 6 chiffres ou code de secours à 10 caractères')
+    .max(10, 'Code à 6 chiffres ou code de secours à 10 caractères'),
 })
 
 type LoginForm = z.infer<typeof loginSchema>
@@ -98,10 +101,10 @@ export default function Login() {
 
           <Input
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={6}
-            placeholder="Code à 6 chiffres"
+            inputMode="text"
+            autoComplete="one-time-code"
+            maxLength={10}
+            placeholder="Code TOTP (6 chiffres) ou code de secours"
             autoFocus
             {...register2FA('code')}
             error={errors2FA.code?.message}
