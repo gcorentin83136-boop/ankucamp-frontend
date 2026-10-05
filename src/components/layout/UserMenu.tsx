@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — UserMenu (version qui fonctionnait + fix mobile)
 // ============================================================
 
@@ -164,6 +164,7 @@ export default function UserMenu() {
   if (!user) return null
 
   const isPro = user.role === 'professionnel'
+  const isAdmin = user.role === 'admin'
   const isVerified = user.verification_status === 'verified'
   const isPending = user.verification_status === 'pending'
   const isRejected = user.verification_status === 'rejected'
@@ -246,6 +247,21 @@ export default function UserMenu() {
           to: '/kyc',
           badge: isVerified ? '✓' : isPending ? '⏳' : isRejected ? '❌' : undefined,
           highlight: !isVerified,
+        },
+      ],
+    })
+  }
+
+  // Section Admin (visible uniquement pour les admins)
+  if (isAdmin) {
+    sections.push({
+      title: 'Administration',
+      items: [
+        {
+          icon: Shield,
+          label: 'Dashboard Admin',
+          to: '/admin',
+          highlight: true,
         },
       ],
     })

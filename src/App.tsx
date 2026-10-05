@@ -24,6 +24,19 @@ import PrivacySettings from './pages/Settings/PrivacySettings'
 import NotificationsSettings from './pages/Settings/NotificationsSettings'
 import DangerZone from './pages/Settings/DangerZone'
 
+// Admin
+import AdminGuard from './components/admin/AdminGuard'
+import AdminLayout from './components/admin/AdminLayout'
+import AdminDashboard from './pages/Admin/Dashboard'
+import AdminKyc from './pages/Admin/Kyc'
+import AdminModeration from './pages/Admin/Moderation'
+import AdminRefunds from './pages/Admin/Refunds'
+import AdminUsers from './pages/Admin/Users'
+import AdminCategories from './pages/Admin/Categories'
+import AdminPromo from './pages/Admin/Promo'
+import AdminAudit from './pages/Admin/Audit'
+import AdminBackup from './pages/Admin/Backup'
+
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -78,6 +91,26 @@ function App() {
         <Route path="privacy" element={<PrivacySettings />} />
         <Route path="notifications" element={<NotificationsSettings />} />
         <Route path="danger" element={<DangerZone />} />
+      </Route>
+
+      {/* Admin */}
+      <Route
+        path="/admin"
+        element={
+          <AdminGuard>
+            <AdminLayout />
+          </AdminGuard>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="kyc" element={<AdminKyc />} />
+        <Route path="moderation" element={<AdminModeration />} />
+        <Route path="refunds" element={<AdminRefunds />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="categories" element={<AdminCategories />} />
+        <Route path="promo" element={<AdminPromo />} />
+        <Route path="audit" element={<AdminAudit />} />
+        <Route path="backup" element={<AdminBackup />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
