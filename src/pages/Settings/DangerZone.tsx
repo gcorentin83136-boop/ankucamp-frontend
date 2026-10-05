@@ -74,10 +74,13 @@ export default function DangerZone() {
     }
   }
 
-  const handleDeleteConfirm = async (_password: string) => {
+  const handleDeleteConfirm = async (password: string) => {
     setDeleteLoading(true)
     try {
-      const res = await gdprApi.requestDeletion(deleteReason || undefined)
+      const res = await gdprApi.requestDeletion(
+        password,
+        deleteReason || undefined
+      )
       setDeletionReq(res.request)
       toast.success('Suppression programmée')
       setDeleteConfirmOpen(false)

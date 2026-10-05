@@ -1,4 +1,4 @@
-﻿import httpClient from '../httpClient'
+import httpClient from '../httpClient'
 import type {
   DataExportRequest,
   AccountDeletionRequest,
@@ -56,10 +56,13 @@ export const gdprApi = {
   },
 
   // --- Suppression ---
-  requestDeletion: async (reason?: string): Promise<DeletionResponse> => {
+  requestDeletion: async (
+    password: string,
+    reason?: string
+  ): Promise<DeletionResponse> => {
     const { data } = await httpClient.post<DeletionResponse>(
       '/settings/gdpr/delete',
-      { reason: reason ?? null }
+      { password, reason: reason ?? null }
     )
     return data
   },
