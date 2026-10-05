@@ -1,10 +1,40 @@
 ﻿import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Mail, Bell } from 'lucide-react'
+import { Mail, Bell, CheckCircle2 } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsToggle from '../../components/settings/SettingsToggle'
 import notificationsApi from '../../service/api/settings/notifications.api'
 import type { NotificationSettings } from '../../types/settings'
+
+// ============================================================
+// Helper : toast unifié
+// ============================================================
+function toastOk(detail?: string) {
+  toast.success(
+    <div className="flex items-start gap-2">
+      <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+      <div>
+        <p className="font-bold text-sm">Modifications prises en compte ✅</p>
+        {detail && <p className="text-xs text-gray-600 mt-0.5">{detail}</p>}
+      </div>
+    </div>,
+    { duration: 3000 }
+  )
+}
+
+// Labels humains pour les toasts
+const EMAIL_LABELS: Record<string, string> = {
+  order_updates: 'Mises à jour de commandes (email)',
+  new_messages: 'Nouveaux messages (email)',
+  social_activity: 'Activité sociale (email)',
+  marketing: 'Emails marketing',
+}
+
+const PUSH_LABELS: Record<string, string> = {
+  order_updates: 'Mises à jour de commandes (push)',
+  new_messages: 'Nouveaux messages (push)',
+  social_activity: 'Activité sociale (push)',
+}
 
 export default function NotificationsSettings() {
   const [loading, setLoading] = useState(true)
@@ -33,6 +63,10 @@ export default function NotificationsSettings() {
         [`email_${key}`]: next.email[key],
       } as any)
       setSettings(res.notifications)
+
+      toastOk(
+        `${EMAIL_LABELS[key] ?? key} : ${next.email[key] ? 'activé' : 'désactivé'}`
+      )
     } catch (err: any) {
       setSettings(previous)
       toast.error(err?.response?.data?.message || 'Erreur')
@@ -55,6 +89,10 @@ export default function NotificationsSettings() {
         [`push_${key}`]: next.push[key],
       } as any)
       setSettings(res.notifications)
+
+      toastOk(
+        `${PUSH_LABELS[key] ?? key} : ${next.push[key] ? 'activé' : 'désactivé'}`
+      )
     } catch (err: any) {
       setSettings(previous)
       toast.error(err?.response?.data?.message || 'Erreur')
