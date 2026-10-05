@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Shield, ShieldCheck, ShieldOff, KeyRound } from 'lucide-react'
+import { Shield, ShieldCheck, ShieldOff, KeyRound, AlertTriangle, Smartphone } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsModal from '../../components/settings/SettingsModal'
 import TwoFactorSetup from '../../components/settings/TwoFactorSetup'
@@ -53,7 +53,7 @@ export default function SecuritySettings() {
   return (
     <div className="space-y-4">
       <SettingsSection
-        title="Double authentification (2FA)"
+        title="Authentification à deux facteurs"
         description="Ajoute une couche de sécurité supplémentaire à ton compte"
         icon={<Shield size={18} />}
       >
@@ -110,15 +110,56 @@ export default function SecuritySettings() {
         )}
       </SettingsSection>
 
+      {/* Encart "Avant d'activer" */}
       <SettingsSection
-        title="Bon à savoir"
-        description="Quelques conseils de sécurité"
-        icon={<KeyRound size={18} />}
+        title="Bon à savoir avant d'activer"
+        description="Prépare ce dont tu auras besoin"
+        icon={<AlertTriangle size={18} />}
       >
-        <ul className="space-y-2 text-sm text-gray-600">
-          <li>• Utilise une application comme Google Authenticator ou Authy</li>
-          <li>• Conserve tes codes de secours dans un endroit sûr</li>
-          <li>• Ne partage jamais tes codes avec personne</li>
+        <div
+          className="p-3 rounded-xl flex gap-2"
+          style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+          }}
+        >
+          <Smartphone size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-800 space-y-1">
+            <p className="font-semibold">
+              Une application d’authentification est nécessaire
+            </p>
+            <p className="text-xs">
+              Installe Google Authenticator, Authy ou 1Password sur ton
+              téléphone. Tu en auras besoin à chaque connexion.
+            </p>
+          </div>
+        </div>
+
+        <div
+          className="p-3 rounded-xl flex gap-2"
+          style={{
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+          }}
+        >
+          <KeyRound size={18} className="text-blue-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-800 space-y-1">
+            <p className="font-semibold">
+              Tu devras saisir ton mot de passe et un code à 6 chiffres
+            </p>
+            <p className="text-xs">
+              À chaque connexion, tu seras invité à saisir le code à 6 chiffres
+              généré par ton application. <strong>Tu auras aussi 10 codes de secours à
+              conserver précieusement</strong> — ils te permettront de te connecter
+              si tu perds l’accès à ton téléphone.
+            </p>
+          </div>
+        </div>
+
+        <ul className="space-y-2 text-sm text-gray-600 list-disc pl-5">
+          <li>Conserve tes 10 codes de secours dans un endroit sûr (gestionnaire de mots de passe, papier…)</li>
+          <li>Ne partage jamais tes codes avec personne, même quelqu’un qui prétend être ANKU</li>
+          <li>Si tu perds ton téléphone, utilise un code de secours pour te connecter</li>
         </ul>
       </SettingsSection>
 
@@ -133,7 +174,7 @@ export default function SecuritySettings() {
       <SettingsModal
         open={disableOpen}
         title="Désactiver la 2FA"
-        description="Saisis ton mot de passe et un code 2FA valide."
+        description="Saisis ton mot de passe et un code 2FA valide (ou un code de secours)."
         onClose={() => setDisableOpen(false)}
         size="sm"
         footer={
@@ -167,11 +208,10 @@ export default function SecuritySettings() {
           <input
             type="text"
             value={disableCode}
-            onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, ''))}
-            placeholder="Code 2FA à 6 chiffres"
-            inputMode="numeric"
-            maxLength={6}
-            className={inputCls + ' text-center tracking-widest'}
+            onChange={(e) => setDisableCode(e.target.value.replace(/\s/g, '').toUpperCase())}
+            placeholder="Code 2FA (6 chiffres) ou code de secours"
+            maxLength={10}
+            className={inputCls + ' tracking-widest'}
           />
         </form>
       </SettingsModal>

@@ -1,4 +1,4 @@
-﻿import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   Settings as SettingsIcon,
   User as UserIcon,
@@ -23,7 +23,7 @@ const links = [
   { to: '/settings/sessions', label: 'Sessions', icon: Monitor },
   { to: '/settings/privacy', label: 'Confidentialité', icon: Eye },
   { to: '/settings/notifications', label: 'Notifications', icon: Bell },
-  { to: '/settings/danger', label: 'Zone dangereuse', icon: AlertTriangle },
+  { to: '/settings/danger', label: 'Gérer mon compte', icon: AlertTriangle },
 ]
 
 export default function SettingsLayout() {
