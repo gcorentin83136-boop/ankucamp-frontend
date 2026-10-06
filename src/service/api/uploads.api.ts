@@ -1,27 +1,16 @@
 ﻿// ============================================================
 // ANKU — API Uploads
-// Upload de fichiers vers Cloudinary (via backend)
 // ============================================================
 
 import httpClient from './httpClient'
 
-// ------------------------------------------------------------
-// Types
-// ------------------------------------------------------------
 export interface UploadResponse {
   success: boolean
   message: string
   url: string
 }
 
-// ------------------------------------------------------------
-// API Uploads
-// ------------------------------------------------------------
 export const uploadsApi = {
-  /**
-   * POST /uploads/avatar
-   * Upload l'avatar de l'utilisateur connecté (image, 5 MB max).
-   */
   uploadAvatar: async (file: File): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
@@ -33,9 +22,6 @@ export const uploadsApi = {
     return data
   },
 
-  /**
-   * POST /uploads/cover
-   */
   uploadCover: async (file: File): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
@@ -47,16 +33,61 @@ export const uploadsApi = {
     return data
   },
 
-  /**
-   * POST /uploads/kyc-document
-   * Upload un document KYC (PDF ou image, 10 MB max).
-   * Retourne l'URL Cloudinary.
-   */
   uploadKycDocument: async (file: File): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append('file', file)
     const { data } = await httpClient.post<UploadResponse>(
       '/uploads/kyc-document',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return data
+  },
+
+  // ----------------------------------------------------------
+  // SHOP LOGO
+  // ----------------------------------------------------------
+  uploadShopLogo: async (
+    shopId: number,
+    file: File
+  ): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('shop_id', String(shopId))
+    const { data } = await httpClient.post<UploadResponse>(
+      '/uploads/shop-logo',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return data
+  },
+
+  // ----------------------------------------------------------
+  // PRODUCT IMAGE
+  // ----------------------------------------------------------
+  uploadProductImage: async (
+    productId: number,
+    file: File
+  ): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('product_id', String(productId))
+    const { data } = await httpClient.post<UploadResponse>(
+      '/uploads/product',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return data
+  },
+
+  // ----------------------------------------------------------
+  // POST MEDIA
+  // ----------------------------------------------------------
+  uploadPostMedia: async (file: File): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await httpClient.post<UploadResponse>(
+      '/uploads/post-media',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     )

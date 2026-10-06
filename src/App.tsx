@@ -24,7 +24,6 @@ import PrivacySettings from './pages/Settings/PrivacySettings'
 import NotificationsSettings from './pages/Settings/NotificationsSettings'
 import DangerZone from './pages/Settings/DangerZone'
 
-// Admin
 import AdminGuard from './components/admin/AdminGuard'
 import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/Admin/Dashboard'
@@ -39,12 +38,34 @@ import AdminBackup from './pages/Admin/Backup'
 
 import ProtectedRoute from './components/ProtectedRoute'
 
+import Profile from './pages/Profile'
+import Feed from './pages/Feed'
+import Messages from './pages/Messages'
+import Follows from './pages/Follows'
+import Cart from './pages/Cart'
+import Orders from './pages/Orders'
+import Wishlist from './pages/Wishlist'
+import Events from './pages/Events'
+import Articles from './pages/Articles'
+import ShopsList from './pages/Shops/List'
+import ShopDetail from './pages/Shops/Detail'
+import ProductDetail from './pages/Products/Detail'
+
+import SellerLayout from './components/seller/SellerLayout'
+import SellerDashboard from './pages/Seller/Dashboard'
+import SellerSettings from './pages/Seller/Settings'
+import SellerProducts from './pages/Seller/Products'
+import SellerOrders from './pages/Seller/Orders'
+import SellerPromo from './pages/Seller/Promo'
+import SellerEvents from './pages/Seller/Events'
+import SellerArticles from './pages/Seller/Articles'
+import SellerReviews from './pages/Seller/Reviews'
+
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
 
-      {/* Auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/auth/forgot-password" element={<ForgotPassword />} />
@@ -52,12 +73,10 @@ function App() {
       <Route path="/auth/activate" element={<ActivateAccount />} />
       <Route path="/auth/callback" element={<OAuthCallback />} />
 
-      {/* Legal */}
       <Route path="/legal/cgu" element={<CGU />} />
       <Route path="/legal/cookies" element={<Cookies />} />
       <Route path="/contact" element={<Contact />} />
 
-      {/* Protégées */}
       <Route
         path="/kyc"
         element={
@@ -75,7 +94,6 @@ function App() {
         }
       />
 
-      {/* Paramètres */}
       <Route
         path="/settings"
         element={
@@ -93,7 +111,38 @@ function App() {
         <Route path="danger" element={<DangerZone />} />
       </Route>
 
-      {/* Admin */}
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+      <Route path="/follows" element={<ProtectedRoute><Follows /></ProtectedRoute>} />
+      <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+      <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+
+      <Route path="/events" element={<Events />} />
+      <Route path="/articles/me" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
+      <Route path="/shops" element={<ShopsList />} />
+      <Route path="/shops/:id" element={<ShopDetail />} />
+      <Route path="/products/:id" element={<ProductDetail />} />
+
+      <Route
+        path="/dashboard/shop"
+        element={
+          <ProtectedRoute requiresPro>
+            <SellerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<SellerDashboard />} />
+        <Route path="settings" element={<SellerSettings />} />
+        <Route path="products" element={<SellerProducts />} />
+        <Route path="orders" element={<SellerOrders />} />
+        <Route path="promo" element={<SellerPromo />} />
+        <Route path="events" element={<SellerEvents />} />
+        <Route path="articles" element={<SellerArticles />} />
+        <Route path="reviews" element={<SellerReviews />} />
+      </Route>
+
       <Route
         path="/admin"
         element={

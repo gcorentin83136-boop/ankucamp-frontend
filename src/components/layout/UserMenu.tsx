@@ -1,5 +1,5 @@
-// ============================================================
-// ANKU — UserMenu (version qui fonctionnait + fix mobile)
+﻿// ============================================================
+// ANKU — UserMenu
 // ============================================================
 
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
@@ -9,9 +9,10 @@ import {
   User, MessageSquare, ShoppingBag, ShoppingCart, Heart,
   Store, Calendar, Settings, Shield, FileCheck,
   Sparkles, LogOut, ChevronDown, Home as HomeIcon,
-  FileText, MapPin,
+  FileText, MapPin, LayoutDashboard, Award, Ticket,
 } from 'lucide-react'
 import { useAuthStore } from '../../context/AuthContext'
+import { useCartStore } from '../../context/CartContext'
 
 const ANKU = {
   green: '#6aa84f',
@@ -21,8 +22,7 @@ const ANKU = {
   greenPale2: '#f0f9e8',
 }
 
-// Style injecté (nom unique pour forcer la mise à jour)
-const STYLE_ID = 'anku-menu-scrollbar-v6'
+const STYLE_ID = 'anku-menu-scrollbar-v7'
 if (typeof document !== 'undefined') {
   const existing = document.getElementById(STYLE_ID)
   if (existing) existing.remove()
@@ -35,9 +35,6 @@ if (typeof document !== 'undefined') {
       max-height: min(85vh, 720px);
       scrollbar-width: none;
       -ms-overflow-style: none;
-      scrollbar-gutter: stable;
-      padding-right: 0;
-      will-change: scroll-position;
     }
     .anku-menu-scroll::-webkit-scrollbar {
       display: none;
@@ -63,16 +60,21 @@ function computeMenuPosition(button: HTMLButtonElement | null) {
     if (left + width > vw - 12) left = vw - width - 12
   }
 
-  return {
-    top: rect.bottom + 10,
-    left,
-    width,
-  }
+  return { top: rect.bottom + 10, left, width }
+}
+
+interface MenuItem {
+  icon: typeof User
+  label: string
+  to: string
+  badge?: string
+  highlight?: boolean
 }
 
 export default function UserMenu() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const cartCount = useCartStore((s) => s.itemsCount)
   const [open, setOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState({ top: 0, left: 12, width: 330 })
   const [thumb, setThumb] = useState({ height: 0, top: 0, visible: false })
@@ -80,21 +82,16 @@ export default function UserMenu() {
   const menuRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Position initiale à l'ouverture
   useLayoutEffect(() => {
     if (open && buttonRef.current) {
       setMenuStyle(computeMenuPosition(buttonRef.current))
     }
   }, [open])
 
-  // Recalcul au resize/scroll
   useEffect(() => {
     if (!open) return
     const updatePosition = (e?: Event) => {
-      // Ignorer les scrolls internes au menu
-      if (e && e.target && menuRef.current?.contains(e.target as Node)) {
-        return
-      }
+      if (e && e.target && menuRef.current?.contains(e.target as Node)) return
       setMenuStyle(computeMenuPosition(buttonRef.current))
     }
     window.addEventListener('resize', updatePosition)
@@ -105,16 +102,13 @@ export default function UserMenu() {
     }
   }, [open])
 
-  // Fermer au clic extérieur
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as Node
       if (
         buttonRef.current?.contains(target) ||
         menuRef.current?.contains(target)
-      ) {
-        return
-      }
+      ) return
       setOpen(false)
     }
     if (open) {
@@ -123,7 +117,6 @@ export default function UserMenu() {
     }
   }, [open])
 
-  // Fermer sur Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -134,7 +127,6 @@ export default function UserMenu() {
     }
   }, [open])
 
-  // Calculer la position/taille du thumb à chaque scroll
   const updateThumb = () => {
     const el = scrollRef.current
     if (!el) return
@@ -147,11 +139,7 @@ export default function UserMenu() {
     const thumbHeight = 40
     const maxTop = clientHeight - thumbHeight
     const scrollRatio = scrollTop / (scrollHeight - clientHeight)
-    setThumb({
-      height: thumbHeight,
-      top: scrollRatio * maxTop,
-      visible: true,
-    })
+    setThumb({ height: thumbHeight, top: scrollRatio * maxTop, visible: true })
   }
 
   useEffect(() => {
@@ -163,7 +151,7 @@ export default function UserMenu() {
 
   if (!user) return null
 
-  const isPro = user.role === 'professionnel'
+  const isPro = user.role === 'professionnel' || user.role === 'admin'
   const isAdmin = user.role === 'admin'
   const isVerified = user.verification_status === 'verified'
   const isPending = user.verification_status === 'pending'
@@ -175,16 +163,7 @@ export default function UserMenu() {
     navigate('/')
   }
 
-  const sections: {
-    title: string
-    items: {
-      icon: typeof User
-      label: string
-      to: string
-      badge?: string
-      highlight?: boolean
-    }[]
-  }[] = [
+  const sections: { title: string; items: MenuItem[] }[] = [
     {
       title: 'Mon espace',
       items: [
@@ -196,7 +175,12 @@ export default function UserMenu() {
     {
       title: 'Mes activités',
       items: [
-        { icon: ShoppingCart, label: 'Mon panier', to: '/cart' },
+        {
+          icon: ShoppingCart,
+          label: 'Mon panier',
+          to: '/cart',
+          badge: cartCount > 0 ? String(cartCount) : undefined,
+        },
         { icon: ShoppingBag, label: 'Mes commandes', to: '/orders' },
         { icon: Heart, label: 'Ma wishlist', to: '/wishlist' },
         { icon: Calendar, label: 'Mes événements', to: '/events' },
@@ -206,17 +190,23 @@ export default function UserMenu() {
     },
   ]
 
+  // ESPACE PRO (pro ou admin)
   if (isPro) {
     sections.push({
-      title: 'Espace Pro',
+      title: 'Ma boutique',
       items: [
-        { icon: Store, label: 'Ma boutique', to: '/shops/me' },
-        { icon: ShoppingBag, label: 'Commandes', to: '/orders/seller' },
-        { icon: Calendar, label: 'Mes événements créés', to: '/events/me' },
+        { icon: LayoutDashboard, label: 'Tableau de bord', to: '/dashboard/shop' },
+        { icon: Store, label: 'Ma boutique', to: '/dashboard/shop/settings' },
+        { icon: ShoppingBag, label: 'Commandes reçues', to: '/dashboard/shop/orders' },
+        { icon: Ticket, label: 'Codes promo', to: '/dashboard/shop/promo' },
+        { icon: Calendar, label: 'Événements créés', to: '/dashboard/shop/events' },
+        { icon: FileText, label: 'Mes articles publiés', to: '/dashboard/shop/articles' },
+        { icon: Award, label: 'Avis reçus', to: '/dashboard/shop/reviews' },
       ],
     })
   }
 
+  // Devenir pro (particulier)
   if (!isPro) {
     sections.push({
       title: 'Professionnel',
@@ -231,7 +221,8 @@ export default function UserMenu() {
     })
   }
 
-  if (isPro) {
+  // Vérification KYC (pro)
+  if (isPro && !isAdmin) {
     sections.push({
       title: 'Vérification',
       items: [
@@ -252,7 +243,7 @@ export default function UserMenu() {
     })
   }
 
-  // Section Admin (visible uniquement pour les admins)
+  // ADMIN
   if (isAdmin) {
     sections.push({
       title: 'Administration',
@@ -278,20 +269,14 @@ export default function UserMenu() {
         zIndex: 999999,
         background: '#ffffff',
         borderRadius: '20px',
-        boxShadow:
-          '0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(106,168,79,0.15)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(106,168,79,0.15)',
         border: `1px solid ${ANKU.green}33`,
         padding: '8px',
         overflow: 'hidden',
       }}
     >
-      {/* Zone scrollable */}
-      <div
-        ref={scrollRef}
-        className="anku-menu-scroll"
-        onScroll={updateThumb}
-      >
-        {/* Header compact */}
+      <div ref={scrollRef} className="anku-menu-scroll" onScroll={updateThumb}>
+        {/* Header */}
         <div
           style={{
             padding: '12px 14px',
@@ -306,17 +291,13 @@ export default function UserMenu() {
                 src={user.avatar_url}
                 alt={user.first_name}
                 className="w-12 h-12 rounded-full object-cover"
-                style={{
-                  border: `2px solid ${ANKU.green}`,
-                  boxShadow: `0 3px 8px ${ANKU.green}44`,
-                }}
+                style={{ border: `2px solid ${ANKU.green}` }}
               />
             ) : (
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white"
                 style={{
                   background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
-                  boxShadow: `0 3px 8px ${ANKU.green}55`,
                 }}
               >
                 {user.first_name?.[0]?.toUpperCase()}
@@ -324,10 +305,7 @@ export default function UserMenu() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p
-                className="text-sm font-bold truncate"
-                style={{ color: '#0f1a0f' }}
-              >
+              <p className="text-sm font-bold truncate" style={{ color: '#0f1a0f' }}>
                 {user.first_name} {user.last_name}
               </p>
               <p className="text-xs truncate" style={{ color: '#6b7280' }}>
@@ -336,12 +314,9 @@ export default function UserMenu() {
               <div className="flex flex-wrap gap-1.5 mt-1">
                 <span
                   className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{
-                    background: isPro ? ANKU.green : '#3b82f6',
-                    color: '#ffffff',
-                  }}
+                  style={{ background: isPro ? ANKU.green : '#3b82f6', color: '#ffffff' }}
                 >
-                  {isPro ? '🏢 Pro' : '👤 Particulier'}
+                  {isAdmin ? '👑 Admin' : isPro ? '🏢 Pro' : '👤 Particulier'}
                 </span>
                 {isVerified && (
                   <span
@@ -398,13 +373,19 @@ export default function UserMenu() {
                   <Icon
                     size={16}
                     className="shrink-0 transition-transform group-hover:scale-110"
-                    style={{
-                      color: item.highlight ? '#ffffff' : ANKU.green,
-                    }}
+                    style={{ color: item.highlight ? '#ffffff' : ANKU.green }}
                   />
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (
-                    <span className="text-sm font-bold">{item.badge}</span>
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: item.highlight ? 'rgba(255,255,255,0.25)' : ANKU.greenPale,
+                        color: item.highlight ? '#ffffff' : ANKU.greenDark,
+                      }}
+                    >
+                      {item.badge}
+                    </span>
                   )}
                 </Link>
               )
@@ -428,54 +409,19 @@ export default function UserMenu() {
               e.currentTarget.style.color = '#374151'
             }}
           >
-            <Settings
-              size={16}
-              className="shrink-0 transition-transform group-hover:rotate-90"
-              style={{ color: ANKU.green }}
-            />
-            <span>Paramètres</span>
-          </Link>
-          <Link
-            to="/settings/security"
-            onClick={() => setOpen(false)}
-            className="group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all mx-1.5"
-            style={{ color: '#374151', fontWeight: 500 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = ANKU.greenPale2
-              e.currentTarget.style.color = ANKU.greenDark
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = '#374151'
-            }}
-          >
-            <Shield
-              size={16}
-              className="shrink-0 transition-transform group-hover:scale-110"
-              style={{ color: ANKU.green }}
-            />
-            <span>Sécurité (2FA)</span>
+            <Settings size={16} className="shrink-0" style={{ color: ANKU.green }} />
+            <span>Paramètres du compte</span>
           </Link>
 
-          <div
-            style={{
-              height: '1px',
-              margin: '6px 12px',
-              background: '#e5e7eb',
-            }}
-          />
+          <div style={{ height: '1px', margin: '6px 12px', background: '#e5e7eb' }} />
 
           <button
             type="button"
             onClick={handleLogout}
             className="group w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all mx-1.5 mb-1"
             style={{ color: '#dc2626', fontWeight: 500 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fee2e2'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           >
             <LogOut size={16} className="shrink-0" />
             <span>Déconnexion</span>
@@ -483,7 +429,6 @@ export default function UserMenu() {
         </div>
       </div>
 
-      {/* Indicator custom (petite barre verte) */}
       {thumb.visible && (
         <div
           style={{
@@ -515,7 +460,6 @@ export default function UserMenu() {
             ? `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`
             : 'rgba(255,255,255,0.12)',
           border: `1px solid ${open ? ANKU.greenLight : 'rgba(255,255,255,0.25)'}`,
-          boxShadow: open ? `0 0 20px ${ANKU.green}88` : 'none',
           position: 'relative',
           zIndex: 999998,
         }}
@@ -536,10 +480,7 @@ export default function UserMenu() {
             {user.last_name?.[0]?.toUpperCase()}
           </div>
         )}
-        <span
-          className="text-sm font-semibold hidden sm:inline"
-          style={{ color: '#ffffff' }}
-        >
+        <span className="text-sm font-semibold hidden sm:inline" style={{ color: '#ffffff' }}>
           {user.first_name}
         </span>
         <ChevronDown
@@ -552,8 +493,7 @@ export default function UserMenu() {
         />
       </button>
 
-      {typeof window !== 'undefined' &&
-        createPortal(menuContent, document.body)}
+      {typeof window !== 'undefined' && createPortal(menuContent, document.body)}
     </>
   )
 }
