@@ -12,6 +12,23 @@ export type OrderStatus =
 
 export type DeliveryMethod = 'pickup' | 'delivery' | 'shipping'
 
+export interface OrderSeller {
+  id: number
+  first_name: string
+  last_name: string
+  username: string
+  avatar_url: string | null
+  verification_status: string
+}
+
+export interface OrderShop {
+  id: number
+  name: string
+  slug?: string
+  logo_url: string | null
+  owner_id: number
+}
+
 export interface OrderBuyer {
   id: number
   first_name: string
@@ -49,6 +66,8 @@ export interface Order {
   created_at: string
   items?: OrderItem[]
   buyer?: OrderBuyer | null
+  seller?: OrderSeller | null
+  shop?: OrderShop | null
 }
 
 export interface CreateOrderPayload {

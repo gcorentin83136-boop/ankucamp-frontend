@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — UserMenu
 // ============================================================
 
@@ -6,10 +6,10 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  User, MessageSquare, ShoppingBag, ShoppingCart, Heart,
+  User, MessageSquare, ShoppingBag, ShoppingCart,
   Store, Calendar, Settings, Shield, FileCheck,
   Sparkles, LogOut, ChevronDown, Home as HomeIcon,
-  FileText, MapPin, LayoutDashboard, Award, Ticket,
+  FileText, LayoutDashboard, Award, Ticket,
 } from 'lucide-react'
 import { useAuthStore } from '../../context/AuthContext'
 import { useCartStore } from '../../context/CartContext'
@@ -167,13 +167,19 @@ export default function UserMenu() {
     {
       title: 'Mon espace',
       items: [
+        {
+          icon: LayoutDashboard,
+          label: 'Mon tableau de bord',
+          to: '/dashboard/user',
+          highlight: false,
+        },
         { icon: User, label: 'Mon profil ANKU', to: '/profile' },
         { icon: HomeIcon, label: "Mon fil d'actualité", to: '/feed' },
         { icon: MessageSquare, label: 'Messagerie', to: '/messages' },
       ],
     },
     {
-      title: 'Mes activités',
+      title: 'Mes achats',
       items: [
         {
           icon: ShoppingCart,
@@ -181,11 +187,11 @@ export default function UserMenu() {
           to: '/cart',
           badge: cartCount > 0 ? String(cartCount) : undefined,
         },
-        { icon: ShoppingBag, label: 'Mes commandes', to: '/orders' },
-        { icon: Heart, label: 'Ma wishlist', to: '/wishlist' },
-        { icon: Calendar, label: 'Mes événements', to: '/events' },
-        { icon: FileText, label: 'Mes articles', to: '/articles/me' },
-        { icon: MapPin, label: 'Mes boutiques suivies', to: '/follows' },
+        {
+          icon: ShoppingBag,
+          label: 'Mes commandes',
+          to: '/dashboard/user/orders',
+        },
       ],
     },
   ]

@@ -35,6 +35,15 @@ import AdminCategories from './pages/Admin/Categories'
 import AdminPromo from './pages/Admin/Promo'
 import AdminAudit from './pages/Admin/Audit'
 import AdminBackup from './pages/Admin/Backup'
+import BuyerLayout from './components/buyer/BuyerLayout'
+import BuyerDashboard from './pages/Buyer/Dashboard'
+import BuyerOrders from './pages/Buyer/Orders'
+import BuyerWishlist from './pages/Buyer/Wishlist'
+import BuyerReviews from './pages/Buyer/Reviews'
+import BuyerEvents from './pages/Buyer/Events'
+import BuyerArticles from './pages/Buyer/Articles'
+import BuyerRefunds from './pages/Buyer/Refunds'
+import BuyerFollows from './pages/Buyer/Follows'
 
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -142,6 +151,25 @@ function App() {
         <Route path="articles" element={<SellerArticles />} />
         <Route path="reviews" element={<SellerReviews />} />
         <Route path="invoices" element={<SellerInvoices />} />
+      </Route>
+
+      {/* Dashboard Buyer */}
+      <Route
+        path="/dashboard/user"
+        element={
+          <ProtectedRoute>
+            <BuyerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<BuyerDashboard />} />
+        <Route path="orders" element={<BuyerOrders />} />
+        <Route path="wishlist" element={<BuyerWishlist />} />
+        <Route path="reviews" element={<BuyerReviews />} />
+        <Route path="events" element={<BuyerEvents />} />
+        <Route path="articles" element={<BuyerArticles />} />
+        <Route path="refunds" element={<BuyerRefunds />} />
+        <Route path="follows" element={<BuyerFollows />} />
       </Route>
 
       <Route
