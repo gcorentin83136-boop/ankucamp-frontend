@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Types Articles
 // ============================================================
 
@@ -14,6 +14,12 @@ export interface ArticleAuthor {
   badges: string[]
 }
 
+export type ArticleVisibility =
+  | 'public'
+  | 'friends'
+  | 'followers'
+  | 'private'
+
 export interface Article {
   id: number
   author_id: number
@@ -25,6 +31,7 @@ export interface Article {
   tags: string | null
   category: string
   status: ArticleStatus
+  visibility: ArticleVisibility
   published_at: string | null
   views_count: number
   likes_count: number
@@ -39,16 +46,20 @@ export interface CreateArticlePayload {
   content: string
   excerpt?: string | null
   cover_url?: string | null
-  tags?: string | null
+  tags?: string[] | null
   category: string
-  status?: ArticleStatus
+  status?: 'draft' | 'published'
+  visibility?: ArticleVisibility
 }
 
 export type UpdateArticlePayload = Partial<CreateArticlePayload>
 
 export interface ListArticlesParams {
+  q?: string
   category?: string
   tag?: string
+  author_id?: number
+  sort?: 'recent' | 'popular' | 'views'
   status?: ArticleStatus | 'all'
   limit?: number
   offset?: number

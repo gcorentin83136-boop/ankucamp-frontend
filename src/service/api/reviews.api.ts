@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — API Reviews
 // ============================================================
 
@@ -57,6 +57,25 @@ export const reviewsApi = {
     const { data } = await httpClient.get<ReviewsListResponse>(
       '/reviews/seller/me',
       { params }
+    )
+    return data
+  },
+
+  reply: async (id: number, replyText: string): Promise<ReviewResponse> => {
+    const { data } = await httpClient.post<ReviewResponse>(
+      `/reviews/${id}/reply`,
+      { reply_text: replyText }
+    )
+    return data
+  },
+
+  update: async (
+    id: number,
+    payload: { rating?: number; comment?: string | null }
+  ): Promise<ReviewResponse> => {
+    const { data } = await httpClient.put<ReviewResponse>(
+      `/reviews/${id}`,
+      payload
     )
     return data
   },

@@ -1,4 +1,4 @@
-﻿import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 
 import Home from './pages/Home'
@@ -46,7 +46,6 @@ import Cart from './pages/Cart'
 import Orders from './pages/Orders'
 import Wishlist from './pages/Wishlist'
 import Events from './pages/Events'
-import Articles from './pages/Articles'
 import ShopsList from './pages/Shops/List'
 import ShopDetail from './pages/Shops/Detail'
 import ProductDetail from './pages/Products/Detail'
@@ -120,7 +119,7 @@ function App() {
       <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
 
       <Route path="/events" element={<Events />} />
-      <Route path="/articles/me" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
+
       <Route path="/shops" element={<ShopsList />} />
       <Route path="/shops/:id" element={<ShopDetail />} />
       <Route path="/products/:id" element={<ProductDetail />} />
