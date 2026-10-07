@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — ProtectedRoute
 // Redirige vers /login si l'utilisateur n'est pas connecté
 // ============================================================
@@ -31,8 +31,12 @@ export default function ProtectedRoute({
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
-  // Route pro : redirige si pas professionnel
-  if (requiresPro && user?.role !== 'professionnel') {
+  // Route pro : redirige si pas professionnel (sauf admin)
+  if (
+    requiresPro &&
+    user?.role !== 'professionnel' &&
+    user?.role !== 'admin'
+  ) {
     return <Navigate to="/" replace />
   }
 
