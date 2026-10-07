@@ -183,6 +183,15 @@ export interface Category {
 // ------------------------------------------------------------
 export type PromoType = 'percent' | 'fixed'
 
+export interface AdminPromoSeller {
+  id: number
+  first_name: string
+  last_name: string
+  username: string
+  email: string
+  avatar_url: string | null
+}
+
 export interface PromoCode {
   id: number
   code: string
@@ -198,6 +207,7 @@ export interface PromoCode {
   is_active: number
   seller_id: number | null
   created_at: string
+  seller?: AdminPromoSeller | null
 }
 
 // ------------------------------------------------------------

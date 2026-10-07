@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
@@ -117,6 +117,7 @@ function OrderDetailModal({
 }) {
   const [loading, setLoading] = useState(false)
   const [resendingInvoice, setResendingInvoice] = useState(false)
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false)
   const [trackingNumber, setTrackingNumber] = useState('')
   const [showShipForm, setShowShipForm] = useState(false)
 
@@ -167,6 +168,20 @@ function OrderDetailModal({
       toast.error(err?.response?.data?.message || 'Erreur')
     } finally {
       setResendingInvoice(false)
+    }
+  }
+
+  const handleDownloadInvoice = async () => {
+    setDownloadingInvoice(true)
+    try {
+      await ordersApi.downloadInvoice(order.id)
+      toast.success('Facture téléchargée ✅')
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Erreur de téléchargement'
+      )
+    } finally {
+      setDownloadingInvoice(false)
     }
   }
 
@@ -341,7 +356,7 @@ function OrderDetailModal({
             </section>
           )}
 
-          {/* Facture */}
+          {/* Facture (uniquement pour livrée) */}
           {order.status === 'delivered' && (
             <section className="rounded-xl border border-gray-200 p-4">
               <h4 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
@@ -351,21 +366,16 @@ function OrderDetailModal({
               <div className="flex gap-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      await ordersApi.downloadInvoice(order.id)
-                      toast.success('Facture téléchargée ✅')
-                    } catch (err: any) {
-                      toast.error(
-                        err?.response?.data?.message ||
-                          'Erreur de téléchargement'
-                      )
-                    }
-                  }}
-                  className="rounded-full px-4 py-2 text-sm font-bold text-white transition flex items-center gap-2"
+                  onClick={handleDownloadInvoice}
+                  disabled={downloadingInvoice}
+                  className="rounded-full px-4 py-2 text-sm font-bold text-white transition disabled:opacity-50 flex items-center gap-2"
                   style={{ background: ANKU.green }}
                 >
-                  <Download size={14} />
+                  {downloadingInvoice ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )}
                   Télécharger
                 </button>
                 <button
@@ -458,7 +468,7 @@ function OrderDetailModal({
                     </a>
                   </div>
 
-                  {/* Étape 2 — Numéro de suivi */}
+                  {/* Étape 2 — Numéro de suivi (obligatoire) */}
                   <div className="rounded-xl bg-white border border-purple-200 p-3 space-y-2">
                     <p className="text-xs font-bold text-purple-900">
                       2. Colle le numéro de suivi{' '}
@@ -718,7 +728,6 @@ export default function SellerOrders() {
                 onClick={() => setSelected(order)}
                 className="w-full text-left flex items-center gap-3 p-4 hover:bg-gray-50 transition"
               >
-                {/* Avatar acheteur */}
                 {order.buyer?.avatar_url ? (
                   <img
                     src={order.buyer.avatar_url}

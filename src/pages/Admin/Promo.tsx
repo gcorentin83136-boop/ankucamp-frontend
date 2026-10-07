@@ -10,6 +10,8 @@ import {
   Power,
   Percent,
   Euro,
+  User as UserIcon,
+  Store,
 } from 'lucide-react'
 import { promoAdminApi } from '../../service/api/admin.api'
 import type { PromoCode } from '../../types/admin'
@@ -358,6 +360,7 @@ export default function AdminPromo() {
   const [loading, setLoading] = useState(true)
   const [promos, setPromos] = useState<PromoCode[]>([])
   const [activeOnly, setActiveOnly] = useState(false)
+  const [scope, setScope] = useState<'all' | 'platform' | 'sellers'>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<PromoCode | null>(null)
 
@@ -404,6 +407,15 @@ export default function AdminPromo() {
     return new Date(p.valid_until).getTime() < Date.now()
   }
 
+  const platformCount = promos.filter((p) => !p.seller_id).length
+  const sellersCount = promos.filter((p) => !!p.seller_id).length
+
+  const visiblePromos = promos.filter((p) => {
+    if (scope === 'platform') return !p.seller_id
+    if (scope === 'sellers') return !!p.seller_id
+    return true
+  })
+
   return (
     <div className="space-y-4">
       <div
@@ -436,8 +448,100 @@ export default function AdminPromo() {
         </button>
       </div>
 
-      <div className="rounded-2xl p-4 border border-gray-200 bg-white">
-        <label className="flex items-center gap-2 cursor-pointer">
+      {/* Stats rapides */}
+      <div className="grid grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => setScope('all')}
+          className={`rounded-2xl p-4 border text-left transition ${
+            scope === 'all'
+              ? 'border-emerald-400 bg-emerald-50'
+              : 'border-gray-200 bg-white hover:bg-gray-50'
+          }`}
+        >
+          <p className="text-xs font-semibold uppercase text-gray-500">
+            Total
+          </p>
+          <p className="text-2xl font-extrabold text-gray-900 mt-1">
+            {promos.length}
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setScope('platform')}
+          className={`rounded-2xl p-4 border text-left transition ${
+            scope === 'platform'
+              ? 'border-emerald-400 bg-emerald-50'
+              : 'border-gray-200 bg-white hover:bg-gray-50'
+          }`}
+        >
+          <p className="text-xs font-semibold uppercase text-gray-500">
+            Plateforme
+          </p>
+          <p className="text-2xl font-extrabold text-gray-900 mt-1">
+            {platformCount}
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setScope('sellers')}
+          className={`rounded-2xl p-4 border text-left transition ${
+            scope === 'sellers'
+              ? 'border-emerald-400 bg-emerald-50'
+              : 'border-gray-200 bg-white hover:bg-gray-50'
+          }`}
+        >
+          <p className="text-xs font-semibold uppercase text-gray-500">
+            Vendeurs
+          </p>
+          <p className="text-2xl font-extrabold text-gray-900 mt-1">
+            {sellersCount}
+          </p>
+        </button>
+      </div>
+
+      <div className="rounded-2xl p-4 border border-gray-200 bg-white flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setScope('all')}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full transition ${
+              scope === 'all' ? 'text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            style={{ background: scope === 'all' ? ANKU.green : '#f3f4f6' }}
+          >
+            Tous
+          </button>
+          <button
+            type="button"
+            onClick={() => setScope('platform')}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full transition ${
+              scope === 'platform'
+                ? 'text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            style={{
+              background: scope === 'platform' ? ANKU.green : '#f3f4f6',
+            }}
+          >
+            Plateforme
+          </button>
+          <button
+            type="button"
+            onClick={() => setScope('sellers')}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full transition ${
+              scope === 'sellers'
+                ? 'text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            style={{
+              background: scope === 'sellers' ? ANKU.green : '#f3f4f6',
+            }}
+          >
+            Vendeurs
+          </button>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer shrink-0">
           <input
             type="checkbox"
             checked={activeOnly}
@@ -445,7 +549,7 @@ export default function AdminPromo() {
             className="w-4 h-4 accent-emerald-500"
           />
           <span className="text-sm font-semibold text-gray-700">
-            Afficher uniquement les codes actifs
+            Actifs uniquement
           </span>
         </label>
       </div>
@@ -460,8 +564,9 @@ export default function AdminPromo() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {promos.map((p) => {
+            {visiblePromos.map((p) => {
               const expired = isExpired(p)
+              const isSellerPromo = !!p.seller_id && !!p.seller
               return (
                 <div
                   key={p.id}
@@ -491,6 +596,17 @@ export default function AdminPromo() {
                           inactif
                         </span>
                       )}
+                      {isSellerPromo ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+                          <Store size={9} />
+                          Vendeur
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 flex items-center gap-1">
+                          <Ticket size={9} />
+                          Plateforme
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-600 truncate mt-0.5">
                       {p.type === 'percent'
@@ -500,6 +616,30 @@ export default function AdminPromo() {
                       {p.max_uses && ` · ${p.uses_count}/${p.max_uses} utilisés`}
                       {p.valid_until && ` · jusqu'au ${formatDate(p.valid_until)}`}
                     </p>
+                    {isSellerPromo && p.seller && (
+                      <div className="flex items-center gap-2 mt-1">
+                        {p.seller.avatar_url ? (
+                          <img
+                            src={p.seller.avatar_url}
+                            alt=""
+                            className="w-5 h-5 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-gray-200 text-gray-500">
+                            <UserIcon size={10} />
+                          </div>
+                        )}
+                        <span className="text-[11px] text-gray-600">
+                          {p.seller.first_name} {p.seller.last_name}
+                          {p.seller.username && (
+                            <span className="text-gray-400">
+                              {' '}
+                              @{p.seller.username}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
