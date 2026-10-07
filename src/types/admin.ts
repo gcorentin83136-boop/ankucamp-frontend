@@ -110,6 +110,33 @@ export interface ReportsStats {
   total: number
 }
 
+export interface FlaggedReview {
+  // Signalement
+  report_id: number
+  report_reason: string
+  report_status: 'pending' | 'resolved' | 'dismissed'
+  report_created_at: string
+  admin_note: string | null
+  resolved_at: string | null
+  reporter_id: number
+
+  // Avis (peut être null si supprimé)
+  review_id: number | null
+  product_id: number | null
+  product_name: string | null
+  rating: number | null
+  comment: string | null
+  author_id: number | null
+  author_first_name: string | null
+  author_last_name: string | null
+  author_username: string | null
+  author_avatar_url: string | null
+  seller_id: number | null
+  is_flagged: number | null
+  flag_reason: string | null
+  review_created_at: string | null
+}
+
 // ------------------------------------------------------------
 // REFUNDS
 // ------------------------------------------------------------

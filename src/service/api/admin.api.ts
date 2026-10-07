@@ -9,6 +9,7 @@ import type {
   KycStats,
   ContentReport,
   ReportsStats,
+  FlaggedReview,
   RefundRequest,
   AdminUser,
   BadgeType,
@@ -100,6 +101,40 @@ export const moderationAdminApi = {
   stats: async (): Promise<ReportsStats> => {
     const { data } = await httpClient.get<ReportsStats>(
       '/admin/moderation/reports/stats'
+    )
+    return data
+  },
+}
+
+// ------------------------------------------------------------
+// AVIS SIGNALÉS (modération)
+// ------------------------------------------------------------
+export const reviewsAdminApi = {
+  listFlagged: async (
+    status: 'pending' | 'resolved' | 'dismissed' | 'all' = 'pending'
+  ): Promise<{
+    count: number
+    reviews: FlaggedReview[]
+  }> => {
+    const { data } = await httpClient.get<{
+      count: number
+      reviews: FlaggedReview[]
+    }>('/admin/moderation/reviews', { params: { status } })
+    return data
+  },
+
+  resolve: async (id: number, delete_content = false) => {
+    const { data } = await httpClient.put(
+      `/admin/moderation/reviews/${id}/resolve`,
+      { delete_content }
+    )
+    return data
+  },
+
+  dismiss: async (id: number) => {
+    const { data } = await httpClient.put(
+      `/admin/moderation/reviews/${id}/dismiss`,
+      {}
     )
     return data
   },
