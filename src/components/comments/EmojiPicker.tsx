@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Smile } from 'lucide-react'
 
 const EMOJIS = [
@@ -9,9 +9,11 @@ const EMOJIS = [
 export default function EmojiPicker({
   onPick,
   compact = false,
+  align = 'left',
 }: {
   onPick: (emoji: string) => void
   compact?: boolean
+  align?: 'left' | 'right'
 }) {
   const [open, setOpen] = useState(false)
 
@@ -36,7 +38,11 @@ export default function EmojiPicker({
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute bottom-full mb-2 left-0 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-2 grid grid-cols-6 gap-1 w-[220px]">
+          <div
+            className={`absolute bottom-full mb-2 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-2 grid grid-cols-6 gap-1 w-[220px] ${
+              align === 'right' ? 'right-0' : 'left-0'
+            }`}
+          >
             {EMOJIS.map((e) => (
               <button
                 key={e}

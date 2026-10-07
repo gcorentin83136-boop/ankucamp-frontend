@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
   Star,
+  CheckCircle2,
   MessageSquare,
   Flag,
   Send,
@@ -18,6 +19,7 @@ import {
 import reviewsApi from '../../service/api/reviews.api'
 import type { Review } from '../../types/review'
 import StatCard from '../../components/seller/StatCard'
+import EmojiPicker from '../../components/comments/EmojiPicker'
 
 const ANKU = {
   green: '#6aa84f',
@@ -66,15 +68,31 @@ function StarRating({
   size?: number
   onChange?: (v: number) => void
 }) {
+  // Mode lecture seule → <span> (évite <button> imbriqué)
+  if (!onChange) {
+    return (
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star
+            key={n}
+            size={size}
+            fill={n <= value ? '#f59e0b' : 'none'}
+            className={n <= value ? 'text-amber-500' : 'text-gray-300'}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Mode interactif → <button>
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
           type="button"
-          onClick={onChange ? () => onChange(n) : undefined}
-          className={onChange ? 'cursor-pointer' : 'cursor-default'}
-          disabled={!onChange}
+          onClick={() => onChange(n)}
+          className="cursor-pointer"
         >
           <Star
             size={size}
@@ -166,14 +184,19 @@ function ReplyModal({
           <label className="block text-xs font-semibold text-gray-700">
             Ta réponse publique
           </label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={4}
-            placeholder="Merci pour ton retour…"
-            className={inputCls + ' resize-none'}
-            maxLength={2000}
-          />
+          <div className="relative">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={4}
+              placeholder="Merci pour ton retour…"
+              className={inputCls + ' resize-none pr-12'}
+              maxLength={2000}
+            />
+            <div className="absolute bottom-2 right-2">
+              <EmojiPicker align="right" onPick={(e) => setText((t) => t + e)} />
+            </div>
+          </div>
           <p className="text-[11px] text-gray-400 text-right">
             {text.length}/2000
           </p>
@@ -282,14 +305,19 @@ function ReportModal({
           <label className="block text-xs font-semibold text-gray-700">
             Raison du signalement *
           </label>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={4}
-            placeholder="Ex : propos injurieux, spam, hors-sujet…"
-            className={inputCls + ' resize-none'}
-            maxLength={500}
-          />
+          <div className="relative">
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              placeholder="Ex : propos injurieux, spam, hors-sujet…"
+              className={inputCls + ' resize-none pr-12'}
+              maxLength={500}
+            />
+            <div className="absolute bottom-2 right-2">
+              <EmojiPicker align="right" onPick={(e) => setReason((r) => r + e)} />
+            </div>
+          </div>
         </div>
 
         <footer className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50">
@@ -637,22 +665,90 @@ export default function SellerReviews() {
                   </p>
                 )}
 
-                {/* Réponse vendeur */}
+                {/* Réponse vendeur (avis au-dessus, réponse en dessous) */}
                 {r.reply_text && (
-                  <div
-                    className="rounded-xl p-3 border-l-4"
-                    style={{
-                      borderColor: ANKU.green,
-                      background: ANKU.greenPale,
-                    }}
-                  >
-                    <p className="text-[10px] uppercase text-gray-500 font-bold mb-1 flex items-center gap-1">
-                      <Reply size={10} /> Ta réponse
-                      {r.replied_at && ` · ${formatDate(r.replied_at)}`}
-                    </p>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                      {r.reply_text}
-                    </p>
+                  <div className="mt-2 space-y-2">
+                    {/* Flèche visuelle */}
+                    <div className="flex items-center gap-2 pl-3 text-[10px] text-gray-400">
+                      <svg width="16" height="10" viewBox="0 0 16 10" fill="none">
+                        <path
+                          d="M1 1 L8 8 L15 1"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span>Réponse du vendeur</span>
+                    </div>
+
+                    <div
+                      className="rounded-2xl p-3 border"
+                      style={{
+                        background: '#ffffff',
+                        borderColor: `${ANKU.green}55`,
+                        boxShadow: `0 0 0 1px ${ANKU.green}22`,
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Avatar du vendeur */}
+                        {r.shop?.logo_url ? (
+                          <img
+                            src={r.shop.logo_url}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover shrink-0"
+                            style={{ border: `2px solid ${ANKU.green}` }}
+                          />
+                        ) : r.seller?.avatar_url ? (
+                          <img
+                            src={r.seller.avatar_url}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover shrink-0"
+                            style={{ border: `2px solid ${ANKU.green}` }}
+                          />
+                        ) : (
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-sm text-white"
+                            style={{ background: ANKU.green }}
+                          >
+                            {r.shop?.name?.charAt(0).toUpperCase() ??
+                              r.seller?.first_name?.charAt(0)?.toUpperCase() ??
+                              'V'}
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          {/* Nom boutique + vendeur */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-bold text-gray-900">
+                              {r.shop?.name ??
+                                (r.seller
+                                  ? `${r.seller.first_name} ${r.seller.last_name}`
+                                  : 'Vendeur')}
+                            </p>
+                            {r.shop?.name && r.seller && (
+                              <span className="text-[10px] text-gray-400">
+                                · {r.seller.first_name} {r.seller.last_name}
+                              </span>
+                            )}
+                            {r.seller?.verification_status === 'verified' && (
+                              <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5">
+                                <CheckCircle2 size={10} /> vérifié
+                              </span>
+                            )}
+                            {r.replied_at && (
+                              <span className="text-[10px] text-gray-400">
+                                · {timeAgo(r.replied_at)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Texte de la réponse */}
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap mt-1">
+                            {r.reply_text}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

@@ -37,6 +37,26 @@ export interface Review {
   // Objets (buyer views)
   author?: ReviewAuthor | null
   product?: { id: number; name: string; image_url: string | null } | null
+
+  // Infos vendeur (pour la réponse)
+  seller?: ReviewSeller | null
+  shop?: ReviewShop | null
+}
+
+export interface ReviewSeller {
+  id: number
+  first_name: string
+  last_name: string
+  username: string
+  avatar_url: string | null
+  verification_status: string
+}
+
+export interface ReviewShop {
+  id: number
+  name: string
+  logo_url: string | null
+  slug?: string
 }
 
 export interface ProductRatingStats {
