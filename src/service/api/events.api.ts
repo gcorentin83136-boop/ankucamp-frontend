@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — API Events
 // ============================================================
 
@@ -36,6 +36,11 @@ export const eventsApi = {
 
   listMine: async (): Promise<EventsListResponse> => {
     const { data } = await httpClient.get<EventsListResponse>('/events/me')
+    return data
+  },
+
+  feed: async (): Promise<EventsListResponse> => {
+    const { data } = await httpClient.get<EventsListResponse>('/events/feed')
     return data
   },
 
@@ -91,6 +96,20 @@ export const eventsApi = {
       `/posts/share-event/${eventId}`,
       payload
     )
+    return data
+  },
+
+  uploadCover: async (
+    file: File
+  ): Promise<{ success: boolean; url: string }> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await httpClient.post<{
+      success: boolean
+      url: string
+    }>('/uploads/event-cover', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
     return data
   },
 
