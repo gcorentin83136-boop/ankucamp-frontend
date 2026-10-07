@@ -59,6 +59,7 @@ import SellerPromo from './pages/Seller/Promo'
 import SellerEvents from './pages/Seller/Events'
 import SellerArticles from './pages/Seller/Articles'
 import SellerReviews from './pages/Seller/Reviews'
+import SellerInvoices from './pages/Seller/Invoices'
 
 function App() {
   return (
@@ -140,6 +141,7 @@ function App() {
         <Route path="events" element={<SellerEvents />} />
         <Route path="articles" element={<SellerArticles />} />
         <Route path="reviews" element={<SellerReviews />} />
+        <Route path="invoices" element={<SellerInvoices />} />
       </Route>
 
       <Route

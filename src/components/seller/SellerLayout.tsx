@@ -1,4 +1,4 @@
-﻿import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   LayoutDashboard,
   Store,
@@ -8,6 +8,7 @@ import {
   Calendar,
   FileText,
   Star,
+  Receipt,
   ArrowLeft,
 } from 'lucide-react'
 
@@ -26,6 +27,7 @@ const links = [
   { to: '/dashboard/shop/events', label: 'Evenements', icon: Calendar },
   { to: '/dashboard/shop/articles', label: 'Articles', icon: FileText },
   { to: '/dashboard/shop/reviews', label: 'Avis recus', icon: Star },
+  { to: '/dashboard/shop/invoices', label: 'Mes factures ANKU', icon: Receipt },
 ]
 
 export default function SellerLayout() {
