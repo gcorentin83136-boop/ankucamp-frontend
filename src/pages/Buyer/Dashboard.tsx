@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -7,17 +7,13 @@ import {
   Heart,
   Star,
   Calendar,
-  FileText,
   RotateCcw,
-  MapPin,
   Clock,
   CheckCircle2,
   Truck,
   XCircle,
   Loader,
   ArrowRight,
-  Package,
-  Store,
 } from 'lucide-react'
 import ordersApi from '../../service/api/orders.api'
 import wishlistApi from '../../service/api/wishlist.api'
@@ -25,6 +21,7 @@ import reviewsApi from '../../service/api/reviews.api'
 import eventsApi from '../../service/api/events.api'
 import refundsApi from '../../service/api/refunds.api'
 import { useAuthStore } from '../../context/AuthContext'
+import BuyerShortcuts from '../../components/buyer/BuyerShortcuts'
 import type { Order, OrderStatus } from '../../types/order'
 
 const ANKU = {
@@ -333,45 +330,8 @@ export default function BuyerDashboard() {
         </div>
       )}
 
-      {/* Actions rapides */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-        <h3 className="text-sm font-bold text-gray-900 mb-3">
-          Accès rapides
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { icon: Heart, label: 'Wishlist', to: '/dashboard/user/wishlist' },
-            { icon: Star, label: 'Mes avis', to: '/dashboard/user/reviews' },
-            { icon: Calendar, label: 'Événements', to: '/dashboard/user/events' },
-            { icon: FileText, label: 'Articles', to: '/dashboard/user/articles' },
-            { icon: RotateCcw, label: 'Retours', to: '/dashboard/user/refunds' },
-            { icon: MapPin, label: 'Boutiques', to: '/dashboard/user/follows' },
-            { icon: Package, label: 'Panier', to: '/cart' },
-            { icon: Store, label: 'Explorer', to: '/' },
-          ].map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.label}
-                to={item.to}
-                className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 hover:text-white transition"
-                style={{ background: ANKU.greenPale }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = ANKU.green
-                  e.currentTarget.style.color = '#fff'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = ANKU.greenPale
-                  e.currentTarget.style.color = ''
-                }}
-              >
-                <Icon size={16} style={{ color: 'currentColor' }} />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            )
-          })}
-        </div>
-      </div>
+      {/* Raccourcis */}
+      <BuyerShortcuts context="dashboard" />
     </div>
   )
 }
