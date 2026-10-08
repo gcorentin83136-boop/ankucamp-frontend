@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { RotateCcw, Loader, Clock, CheckCircle2, XCircle, Package } from 'lucide-react'
 import refundsApi from '../../service/api/refunds.api'
@@ -22,6 +22,7 @@ function formatEuro(v: string | null): string {
 const STATUS_CONFIG: Record<RefundStatus, { label: string; color: string; bg: string; icon: any }> = {
   pending: { label: 'En attente', color: '#d97706', bg: '#fef3c7', icon: Clock },
   approved: { label: 'Approuvé', color: '#059669', bg: '#d1fae5', icon: CheckCircle2 },
+  refunded: { label: 'Remboursé', color: '#0ea5e9', bg: '#e0f2fe', icon: CheckCircle2 },
   rejected: { label: 'Rejeté', color: '#dc2626', bg: '#fee2e2', icon: XCircle },
 }
 
@@ -66,7 +67,7 @@ export default function BuyerRefunds() {
       ) : (
         <div className="space-y-3">
           {refunds.map((r) => {
-            const config = STATUS_CONFIG[r.status]
+            const config = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending ?? STATUS_CONFIG.pending
             const StatusIcon = config.icon
             return (
               <div key={r.id} className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">

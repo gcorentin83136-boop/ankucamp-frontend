@@ -1,8 +1,8 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Types Refund (demande de remboursement)
 // ============================================================
 
-export type RefundStatus = 'pending' | 'approved' | 'rejected'
+export type RefundStatus = 'pending' | 'approved' | 'refunded' | 'rejected'
 
 export interface RefundRequest {
   id: number

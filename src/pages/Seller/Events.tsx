@@ -145,7 +145,7 @@ function isEditable(e: Event): boolean {
 }
 
 function EventTypeBadge({ type }: { type: EventType }) {
-  const c = TYPE_COLORS[type]
+  const c = TYPE_COLORS[type] ?? { bg: '#e5e7eb', color: '#374151' }
   return (
     <span
       className="text-[10px] font-bold px-2 py-0.5 rounded-full"
