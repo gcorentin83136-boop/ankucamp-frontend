@@ -9,6 +9,7 @@ import {
   Eye,
 } from 'lucide-react'
 import wishlistApi from '../../service/api/wishlist.api'
+import BuyerShortcuts from '../../components/buyer/BuyerShortcuts'
 
 const ANKU = {
   green: '#6aa84f',
@@ -25,15 +26,13 @@ function formatEuro(v: string | number | null | undefined): string {
 
 interface WishlistItem {
   id: number
-  product_id: number
-  product?: {
-    id: number
-    name: string
-    image_url: string | null
-    price: string
-    stock: number | null
-    has_unlimited_stock: number
-  } | null
+  name: string
+  image_url: string | null
+  price: string
+  stock: number | null
+  has_unlimited_stock: number
+  wishlist_id: number
+  added_at: string
 }
 
 export default function BuyerWishlist() {
@@ -66,7 +65,7 @@ export default function BuyerWishlist() {
     if (!confirm('Retirer ce produit de ta wishlist ?')) return
     try {
       await wishlistApi.toggle(productId)
-      setItems((prev) => prev.filter((i) => i.product_id !== productId))
+      setItems((prev) => prev.filter((i) => i.id !== productId))
       toast.success('Retiré de la wishlist')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
@@ -118,16 +117,16 @@ export default function BuyerWishlist() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {items.map((item) => {
-            const p = item.product
+            
             return (
               <div
                 key={item.id}
                 className="rounded-2xl border border-gray-200 bg-white overflow-hidden"
               >
-                <Link to={`/products/${item.product_id}`}>
-                  {p?.image_url ? (
+                <Link to={`/products/${item.id}`}>
+                  {item.image_url ? (
                     <img
-                      src={p.image_url}
+                      src={item.image_url}
                       alt=""
                       className="w-full h-40 object-cover"
                     />
@@ -145,20 +144,20 @@ export default function BuyerWishlist() {
                 </Link>
                 <div className="p-3 space-y-2">
                   <Link
-                    to={`/products/${item.product_id}`}
+                    to={`/products/${item.id}`}
                     className="block text-sm font-bold text-gray-900 hover:underline line-clamp-2"
                   >
-                    {p?.name ?? 'Produit #' + item.product_id}
+                    {item.name}
                   </Link>
                   <p
                     className="text-lg font-extrabold"
                     style={{ color: ANKU.greenDark }}
                   >
-                    {formatEuro(p?.price)}
+                    {formatEuro(item.price)}
                   </p>
                   <div className="flex gap-2 pt-1">
                     <Link
-                      to={`/products/${item.product_id}`}
+                      to={`/products/${item.id}`}
                       className="flex-1 rounded-full px-3 py-1.5 text-xs font-bold text-white text-center flex items-center justify-center gap-1"
                       style={{ background: ANKU.green }}
                     >
@@ -166,7 +165,7 @@ export default function BuyerWishlist() {
                     </Link>
                     <button
                       type="button"
-                      onClick={() => handleRemove(item.product_id)}
+                      onClick={() => handleRemove(item.id)}
                       className="w-8 h-8 rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition"
                       title="Retirer"
                     >
@@ -179,6 +178,9 @@ export default function BuyerWishlist() {
           })}
         </div>
       )}
+
+      {/* Raccourcis */}
+      <BuyerShortcuts context="wishlist" />
     </div>
   )
 }

@@ -1,6 +1,7 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../context/AuthContext'
 import UserMenu from '../components/layout/UserMenu'
+import CartIcon from '../components/layout/CartIcon'
 import NotificationBell from '../components/layout/NotificationBell'
 import { LogOut } from 'lucide-react'
 import BadgePopup from '../components/BadgePopup'
@@ -97,7 +98,10 @@ export default function Home() {
                     <span className="hidden md:inline">Déconnexion</span>
                   </button>
                   <UserMenu />
-                  <NotificationBell count={0} />
+                  <div className="flex items-center gap-2">
+                    <CartIcon />
+                    <NotificationBell count={0} />
+                  </div>
                 </>
               ) : (
                 <>

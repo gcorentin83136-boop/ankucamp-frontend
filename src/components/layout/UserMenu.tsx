@@ -6,13 +6,12 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  User, MessageSquare, ShoppingBag, ShoppingCart,
+  User, MessageSquare, ShoppingBag,
   Store, Calendar, Settings, Shield, FileCheck,
   Sparkles, LogOut, ChevronDown, Home as HomeIcon,
   FileText, LayoutDashboard, Award, Ticket,
 } from 'lucide-react'
 import { useAuthStore } from '../../context/AuthContext'
-import { useCartStore } from '../../context/CartContext'
 
 const ANKU = {
   green: '#6aa84f',
@@ -74,7 +73,6 @@ interface MenuItem {
 export default function UserMenu() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
-  const cartCount = useCartStore((s) => s.itemsCount)
   const [open, setOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState({ top: 0, left: 12, width: 330 })
   const [thumb, setThumb] = useState({ height: 0, top: 0, visible: false })
@@ -178,22 +176,7 @@ export default function UserMenu() {
         { icon: MessageSquare, label: 'Messagerie', to: '/messages' },
       ],
     },
-    {
-      title: 'Mes achats',
-      items: [
-        {
-          icon: ShoppingCart,
-          label: 'Mon panier',
-          to: '/cart',
-          badge: cartCount > 0 ? String(cartCount) : undefined,
-        },
-        {
-          icon: ShoppingBag,
-          label: 'Mes commandes',
-          to: '/dashboard/user/orders',
-        },
-      ],
-    },
+
   ]
 
   // ESPACE PRO (pro ou admin)

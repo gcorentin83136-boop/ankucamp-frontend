@@ -9,10 +9,11 @@ const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
 interface FollowedShop {
   id: number
   shop_id: number
-  name?: string
-  logo_url?: string | null
-  city?: string | null
-  slug?: string
+  created_at: string
+  shop_name: string | null
+  shop_logo_url: string | null
+  shop_city: string | null
+  shop_owner_id: number | null
 }
 
 export default function BuyerFollows() {
@@ -78,16 +79,16 @@ export default function BuyerFollows() {
           {shops.map((s) => (
             <div key={s.id} className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
               <div className="flex items-center gap-3">
-                {s.logo_url ? (
-                  <img src={s.logo_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                {s.shop_logo_url ? (
+                  <img src={s.shop_logo_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
                 ) : (
                   <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: ANKU.greenPale, color: ANKU.greenDark }}>
                     <Store size={22} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{s.name ?? 'Boutique #' + s.shop_id}</p>
-                  {s.city && <p className="text-[11px] text-gray-500">{s.city}</p>}
+                  <p className="text-sm font-bold text-gray-900 truncate">{s.shop_name ?? 'Boutique #' + s.shop_id}</p>
+                  {s.shop_city && <p className="text-[11px] text-gray-500">{s.shop_city}</p>}
                 </div>
               </div>
               <div className="flex gap-2">

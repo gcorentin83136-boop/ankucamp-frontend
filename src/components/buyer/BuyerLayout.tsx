@@ -5,6 +5,7 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   LayoutDashboard,
+  ShoppingBag,
   Heart,
   Star,
   Calendar,
@@ -24,6 +25,7 @@ const ANKU = {
 
 const links = [
   { to: '/dashboard/user', label: "Vue d'ensemble", icon: LayoutDashboard, end: true },
+  { to: '/dashboard/user/orders', label: 'Mes commandes', icon: ShoppingBag },
   { to: '/dashboard/user/wishlist', label: 'Ma wishlist', icon: Heart },
   { to: '/dashboard/user/reviews', label: 'Mes avis', icon: Star },
   { to: '/dashboard/user/events', label: 'Mes événements', icon: Calendar },
