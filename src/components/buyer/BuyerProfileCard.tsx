@@ -34,7 +34,7 @@ const ICONS = [
   { icon: Calendar, label: 'Événements', to: '/dashboard/user/events', colorFrom: '#22d3ee', colorTo: '#0891b2' },
   { icon: MapPin, label: 'Suivis', to: '/dashboard/user/follows', colorFrom: '#f472b6', colorTo: '#db2777' },
   { icon: Star, label: 'Mes avis', to: '/dashboard/user/reviews', colorFrom: '#facc15', colorTo: '#ca8a04' },
-  { icon: Store, label: 'Boutiques', to: '/', colorFrom: '#a3e635', colorTo: '#65a30d' },
+  { icon: Store, label: 'Boutiques', to: '/shops', colorFrom: '#a3e635', colorTo: '#65a30d' },
   { icon: Camera, label: 'Publier', to: '/feed', colorFrom: '#4ade80', colorTo: '#16a34a' },
   { icon: Settings, label: 'Réglages', to: '/settings', colorFrom: '#94a3b8', colorTo: '#475569' },
 ]

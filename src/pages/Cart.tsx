@@ -189,7 +189,7 @@ export default function Cart() {
                   Ajoute des produits depuis les boutiques pour commencer
                 </p>
                 <Link
-                  to="/"
+                  to="/shops"
                   className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold text-white transition"
                   style={{ background: ANKU.green }}
                 >
