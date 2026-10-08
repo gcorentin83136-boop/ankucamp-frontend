@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   Store,
   Home as HomeIcon,
@@ -51,7 +51,7 @@ const S = {
     icon: Store,
     label: 'Boutiques',
     desc: 'Nos producteurs',
-    to: '/',
+    to: '/shops',
     gradient: 'from-emerald-400 to-emerald-600',
   },
   feed: {
