@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
@@ -486,7 +486,7 @@ export default function AdminModeration() {
     null
   )
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setLoadingReports(true)
     try {
       const [listRes, statsRes] = await Promise.all([
@@ -502,7 +502,7 @@ export default function AdminModeration() {
     }
   }
 
-  const fetchFlagged = async () => {
+  const fetchFlagged = useCallback(async () => {
     setLoadingReviews(true)
     try {
       const res = await reviewsAdminApi.listFlagged(statusFilter)
@@ -516,12 +516,11 @@ export default function AdminModeration() {
 
   useEffect(() => {
     fetchReports()
-  }, [statusFilter])
+  }, [fetchReports, statusFilter])
 
   useEffect(() => {
     fetchFlagged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter])
+  }, [fetchFlagged, statusFilter])
 
   // Filtrage des reports par "section"
   const socialReports = useMemo(
