@@ -161,7 +161,7 @@ export default function BuyerDashboard() {
             Array.isArray(anyRes?.refunds) ? anyRes.refunds.length : 0
           )
         }
-      } catch (err: any) {
+      } catch {
         toast.error('Erreur de chargement partielle')
       } finally {
         setLoading(false)

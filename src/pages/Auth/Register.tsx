@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Inscription (responsive mobile-first)
 // ============================================================
 
@@ -102,7 +102,7 @@ export default function Register() {
 
   const onSubmit = async (data: RegisterFormOutput) => {
     setServerError('')
-    const { confirm_password, accept_terms, ...payload } = data
+    const { confirm_password: _confirm_password, accept_terms: _accept_terms, ...payload } = data
     const ok = await registerUser(payload)
     if (ok) {
       setRegisteredRole(data.role)
