@@ -500,7 +500,7 @@ export default function AdminModeration() {
     } finally {
       setLoadingReports(false)
     }
-  }
+  }, [statusFilter])
 
   const fetchFlagged = useCallback(async () => {
     setLoadingReviews(true)
@@ -512,7 +512,7 @@ export default function AdminModeration() {
     } finally {
       setLoadingReviews(false)
     }
-  }
+  }, [statusFilter])
 
   useEffect(() => {
     fetchReports()
