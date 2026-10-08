@@ -7,9 +7,7 @@ import toast from 'react-hot-toast'
 import {
   Search, Store, MapPin, Star, Package, Users, Loader,
   SlidersHorizontal, X, Home, Compass,
-  Sprout, Wheat, Carrot, Milk, Wine,
-  Beef, Fish, Cake, Coffee, Flower2, Leaf,
-  Croissant, Salad, Cookie,
+
   ChevronLeft, ChevronRight, ChevronRight as ChevR,
 } from 'lucide-react'
 import searchApi from '../../service/api/search.api'
@@ -105,7 +103,8 @@ export default function ShopsList() {
       const res = await followsApi.toggle(shopId)
       setFollowingIds((prev) => {
         const next = new Set(prev)
-        res.following ? next.add(shopId) : next.delete(shopId)
+        if (res.following) next.add(shopId)
+        else next.delete(shopId)
         return next
       })
       toast.success(res.following ? 'Boutique suivie ✅' : 'Ne suit plus')
