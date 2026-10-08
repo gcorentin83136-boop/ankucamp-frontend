@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Types Shops
 // ============================================================
 
@@ -30,6 +30,9 @@ export interface Shop {
   created_at: string
   owner?: ShopOwner | null
   distance_km?: number
+  products_count?: number
+  followers_count?: number
+  is_followed_by_me?: boolean
 }
 
 export interface ShopSettings {

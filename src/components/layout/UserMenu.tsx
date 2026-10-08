@@ -171,6 +171,7 @@ export default function UserMenu() {
           to: '/dashboard/user',
           highlight: false,
         },
+        { icon: Store, label: 'Boutiques ANKU', to: '/shops' },
         { icon: User, label: 'Mon profil ANKU', to: '/profile' },
         { icon: HomeIcon, label: "Mon fil d'actualité", to: '/feed' },
         { icon: MessageSquare, label: 'Messagerie', to: '/messages' },

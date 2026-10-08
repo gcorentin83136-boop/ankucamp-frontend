@@ -3,7 +3,7 @@ import { useAuthStore } from '../context/AuthContext'
 import UserMenu from '../components/layout/UserMenu'
 import CartIcon from '../components/layout/CartIcon'
 import NotificationBell from '../components/layout/NotificationBell'
-import { LogOut } from 'lucide-react'
+import { LogOut, Store, Users, LayoutDashboard, ChevronRight } from 'lucide-react'
 import BadgePopup from '../components/BadgePopup'
 
 export default function Home() {
@@ -257,45 +257,101 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============ 3 CARTES VALEURS ============ */}
+        {/* ============ 3 CARTES NAVIGATION (connecté) OU VALEURS (invité) ============ */}
         <section className="w-full px-3 sm:px-4 pb-3 sm:pb-5 shrink-0">
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
-            {[
-              {
-                icon: '🌱',
-                title: 'Circuit court',
-                desc: 'Achetez directement auprès des producteurs près de chez vous.',
-              },
-              {
-                icon: '🤝',
-                title: 'Vraie communauté',
-                desc: 'Échangez et créez du lien avec des personnes qui partagent vos valeurs.',
-              },
-              {
-                icon: '🔍',
-                title: 'Transparence totale',
-                desc: 'Origine des produits, avis vérifiés : consommez en confiance.',
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl bg-black/15 backdrop-blur-xl border-2 border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.25)] hover:bg-black/25 hover:border-emerald-400/70 transition-all duration-300 group"
-              >
-                <div className="flex items-center md:items-start gap-2.5 sm:gap-4">
-                  <div className="w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-2xl bg-emerald-500/30 border border-emerald-400/60 flex items-center justify-center text-lg sm:text-xl md:text-2xl shrink-0 group-hover:scale-110 transition-transform">
-                    {item.icon}
+            {isAuthenticated && user
+              ? [
+                  {
+                    Icon: Store,
+                    title: 'Boutiques',
+                    desc: 'Découvre les producteurs, artisans et créateurs près de chez toi.',
+                    to: '/shops',
+                    gradient: 'from-emerald-400 to-emerald-600',
+                  },
+                  {
+                    Icon: Users,
+                    title: 'Réseau social',
+                    desc: 'Publie, échange et crée du lien avec la communauté.',
+                    to: '/feed',
+                    gradient: 'from-blue-400 to-blue-600',
+                  },
+                  {
+                    Icon: LayoutDashboard,
+                    title: 'Tableau de bord',
+                    desc: 'Tes commandes, wishlist, messages et raccourcis.',
+                    to: '/dashboard/user',
+                    gradient: 'from-violet-400 to-violet-600',
+                  },
+                ].map((item) => {
+                  const Icon = item.Icon
+                  return (
+                    <Link
+                      key={item.title}
+                      to={item.to}
+                      className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl bg-black/15 backdrop-blur-xl border-2 border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.25)] hover:bg-black/25 hover:border-emerald-400/70 transition-all duration-300 group"
+                    >
+                      <div className="flex items-center md:items-start gap-2.5 sm:gap-4">
+                        <div
+                          className={
+                            'w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-2xl bg-gradient-to-br border border-white/30 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ' +
+                            item.gradient
+                          }
+                        >
+                          <Icon size={18} className="text-white sm:w-6 sm:h-6 md:w-7 md:h-7" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xs sm:text-sm md:text-base font-bold mb-0.5 sm:mb-1.5 text-white flex items-center gap-1.5">
+                            {item.title}
+                            <ChevronRight
+                              size={12}
+                              className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                            />
+                          </h3>
+                          <p className="text-[10px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed text-white/95">
+                            {item.desc}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })
+              : [
+                  {
+                    icon: '🌱',
+                    title: 'Circuit court',
+                    desc: 'Achetez directement auprès des producteurs près de chez vous.',
+                  },
+                  {
+                    icon: '🤝',
+                    title: 'Vraie communauté',
+                    desc: 'Échangez et créez du lien avec des personnes qui partagent vos valeurs.',
+                  },
+                  {
+                    icon: '🔍',
+                    title: 'Transparence totale',
+                    desc: 'Origine des produits, avis vérifiés : consommez en confiance.',
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl bg-black/15 backdrop-blur-xl border-2 border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.25)] hover:bg-black/25 hover:border-emerald-400/70 transition-all duration-300 group"
+                  >
+                    <div className="flex items-center md:items-start gap-2.5 sm:gap-4">
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-2xl bg-emerald-500/30 border border-emerald-400/60 flex items-center justify-center text-lg sm:text-xl md:text-2xl shrink-0 group-hover:scale-110 transition-transform">
+                        {item.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xs sm:text-sm md:text-base font-bold mb-0.5 sm:mb-1.5 text-white">
+                          {item.title}
+                        </h3>
+                        <p className="text-[10px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed text-white/95">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs sm:text-sm md:text-base font-bold mb-0.5 sm:mb-1.5 text-white">
-                      {item.title}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed text-white/95">
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
+                ))}
           </div>
         </section>
 
