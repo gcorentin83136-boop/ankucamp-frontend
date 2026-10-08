@@ -17,6 +17,9 @@ import {
   CheckCircle2,
   ArrowRight,
   Send,
+  Home,
+  Heart,
+  User as UserIcon,
 } from 'lucide-react'
 import shopsApi from '../../service/api/shops.api'
 import productsApi from '../../service/api/products.api'
@@ -27,7 +30,6 @@ import type { Product } from '../../types/product'
 import { useAuthStore } from '../../context/AuthContext'
 import { useCartStore } from '../../context/CartContext'
 import AnimatedShopsBackground from '../../components/shops/AnimatedShopsBackground'
-import QuickMenu from '../../components/shops/QuickMenu'
 
 const ANKU = {
   green: '#6aa84f',
@@ -40,6 +42,74 @@ function formatEuro(v: string | number | null | undefined): string {
   const n = typeof v === 'string' ? parseFloat(v) : v
   if (isNaN(n)) return '0,00 €'
   return n.toFixed(2).replace('.', ',') + ' €'
+}
+
+// ==========================================================
+// Menu vertical rapide (sticky à droite)
+// ==========================================================
+function QuickMenu({
+  following,
+  onToggleFollow,
+  onContact,
+}: {
+  following: boolean
+  onToggleFollow: () => void
+  onContact: () => void
+}) {
+  const items = [
+    { to: '/',                       icon: Home,        label: 'Accueil' },
+    { to: '/shops',                  icon: Store,       label: 'Boutiques' },
+    { to: '/cart',                   icon: ShoppingCart, label: 'Panier' },
+    { to: '/dashboard/user/wishlist', icon: Heart,       label: 'Wishlist' },
+    { to: '/messages',               icon: MessageCircle, label: 'Messages' },
+    { to: '/dashboard/user',         icon: UserIcon,    label: 'Mon espace' },
+  ]
+
+  return (
+    <div className="flex fixed right-4 top-1/2 -translate-y-1/2 z-50" style={{ background: 'red' }}>
+      <div
+        className="flex flex-col gap-1 rounded-2xl bg-white/90 backdrop-blur-xl p-2 shadow-lg"
+        style={{ border: `1px solid ${ANKU.green}22` }}
+      >
+        {items.map((it) => {
+          const Icon = it.icon
+          return (
+            <NavLink
+              key={it.to}
+              to={it.to}
+              title={it.label}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:bg-gray-50"
+            >
+              <Icon size={16} style={{ color: ANKU.greenDark }} />
+            </NavLink>
+          )
+        })}
+
+        <div className="h-px bg-gray-100 my-1" />
+
+        <button
+          type="button"
+          onClick={onToggleFollow}
+          title={following ? 'Ne plus suivre' : 'Suivre'}
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:bg-gray-50"
+        >
+          <Users
+            size={16}
+            style={{ color: following ? ANKU.green : ANKU.greenDark }}
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={onContact}
+          title="Contacter"
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:bg-gray-50"
+        >
+          <Send size={16} style={{ color: ANKU.greenDark }} />
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default function ShopDetail() {
@@ -243,12 +313,14 @@ export default function ShopDetail() {
   const owner = shop.owner
 
   return (
-    <>
-      <QuickMenu />
-      <div className="relative min-h-screen">
-        <AnimatedShopsBackground />
+    <div className="relative min-h-screen">
+      <AnimatedShopsBackground />
 
-
+      <QuickMenu
+        following={following}
+        onToggleFollow={handleToggleFollow}
+        onContact={() => setContactOpen(true)}
+      />
 
       <div className="relative max-w-6xl mx-auto py-6 px-3 sm:px-5">
         {/* Bouton retour */}
@@ -329,22 +401,16 @@ export default function ShopDetail() {
                 <button
                   type="button"
                   onClick={handleToggleFollow}
-                  className="rounded-full px-4 py-2 text-xs font-bold transition inline-flex items-center gap-1.5 border-2"
-                  style={{
-                    background: following ? ANKU.green : '#ffffff',
-                    color: following ? '#ffffff' : ANKU.greenDark,
-                    borderColor: ANKU.green,
-                  }}
+                  className={
+                    'rounded-full px-4 py-2 text-xs font-bold transition inline-flex items-center gap-1.5 border ' +
+                    (following
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50')
+                  }
                 >
                   <Users size={14} />
                   {following ? 'Suivi·e' : 'Suivre'}
-                  <span
-                    className="ml-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background: following ? 'rgba(255,255,255,0.25)' : ANKU.greenPale,
-                      color: following ? '#ffffff' : ANKU.greenDark,
-                    }}
-                  >
+                  <span className="ml-1 text-[10px] font-extrabold opacity-70">
                     {followersCount}
                   </span>
                 </button>
@@ -619,7 +685,6 @@ export default function ShopDetail() {
           </div>
         </div>
       )}
-      </div>
-    </>
+    </div>
   )
 }
