@@ -7,8 +7,8 @@ import toast from 'react-hot-toast'
 import {
   Search, Store, MapPin, Star, Package, Users, Loader,
   SlidersHorizontal, X, Home, Compass,
-
   ChevronLeft, ChevronRight, ChevronRight as ChevR,
+  CheckCircle2,
 } from 'lucide-react'
 import searchApi from '../../service/api/search.api'
 import categoriesApi from '../../service/api/categories.api'
@@ -500,8 +500,27 @@ export default function ShopsList() {
                       {shop.name}
                     </Link>
 
+                    {/* Badges */}
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {shop.owner_verification_status === 'verified' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-0.5">
+                          <CheckCircle2 size={8} /> Vérifié
+                        </span>
+                      )}
+                      {shop.vacation_mode === 1 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                          🌴 En vacances
+                        </span>
+                      )}
+                      {shop.owner_badges && shop.owner_badges.slice(0, 2).map((b) => (
+                        <span key={b} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+
                     {shop.city && (
-                      <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                      <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-1.5">
                         <MapPin size={10} />
                         {shop.city}
                         {shop.distance_km !== undefined && (
@@ -519,7 +538,11 @@ export default function ShopsList() {
                       </span>
                       <span className="flex items-center gap-1 text-gray-500">
                         <Package size={10} />
-                        {shop.products_count}
+                        {shop.products_count} produit{shop.products_count > 1 ? 's' : ''}
+                      </span>
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <Users size={10} />
+                        {shop.followers_count} abonné{shop.followers_count > 1 ? 's' : ''}
                       </span>
                     </div>
 

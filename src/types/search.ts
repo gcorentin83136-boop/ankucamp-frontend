@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Types Search
 // ============================================================
 
@@ -12,7 +12,14 @@ export interface ShopSearchResult {
   postal_code: string | null
   created_at: string
   products_count: number
+  followers_count: number
   average_rating: number
+  vacation_mode: number
+  owner_id: number
+  owner_username: string | null
+  owner_avatar_url: string | null
+  owner_verification_status: string | null
+  owner_badges: string[] | null
   distance_km?: number
 }
 
