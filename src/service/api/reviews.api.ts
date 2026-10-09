@@ -26,6 +26,17 @@ export const reviewsApi = {
     return data
   },
 
+  listByShop: async (
+    shopId: number,
+    params?: ListReviewsParams
+  ): Promise<ReviewsListResponse> => {
+    const { data } = await httpClient.get<ReviewsListResponse>(
+      `/reviews/shop/${shopId}`,
+      { params }
+    )
+    return data
+  },
+
   productStats: async (
     productId: number
   ): Promise<ProductStatsResponse> => {

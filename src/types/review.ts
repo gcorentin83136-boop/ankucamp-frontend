@@ -27,6 +27,7 @@ export interface Review {
 
   // Champs aplatis (seller views)
   product_name?: string | null
+  product_image_url?: string | null
   author_first_name?: string | null
   author_last_name?: string | null
   author_username?: string | null

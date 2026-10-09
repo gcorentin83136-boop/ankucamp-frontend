@@ -18,13 +18,19 @@ import {
   ArrowRight,
   Send,
   UserCircle2,
+  Plus,
+  PenLine,
 } from 'lucide-react'
 import shopsApi from '../../service/api/shops.api'
 import productsApi from '../../service/api/products.api'
 import followsApi from '../../service/api/follows.api'
+import reviewsApi from '../../service/api/reviews.api'
+import ordersApi from '../../service/api/orders.api'
 import { startDirectConversation } from '../../service/api/messages.api'
 import type { Shop } from '../../types/shop'
 import type { Product } from '../../types/product'
+import type { Review } from '../../types/review'
+import type { Order, OrderItem } from '../../types/order'
 import { useAuthStore } from '../../context/AuthContext'
 import { useCartStore } from '../../context/CartContext'
 import AnimatedShopsBackground from '../../components/shops/AnimatedShopsBackground'
@@ -41,6 +47,18 @@ function formatEuro(v: string | number | null | undefined): string {
   const n = typeof v === 'string' ? parseFloat(v) : v
   if (isNaN(n)) return '0,00 €'
   return n.toFixed(2).replace('.', ',') + ' €'
+}
+
+function formatDate(d: string): string {
+  try {
+    return new Date(d).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  } catch {
+    return d
+  }
 }
 
 export default function ShopDetail() {
@@ -65,6 +83,26 @@ export default function ShopDetail() {
     'Bonjour, je suis intéressé(e) par votre boutique.'
   )
   const [sendingMessage, setSendingMessage] = useState(false)
+
+  // ---------- Avis ----------
+  const [reviewsPreview, setReviewsPreview] = useState<Review[]>([])
+  const [reviewsOpen, setReviewsOpen] = useState(false)
+  const [allReviews, setAllReviews] = useState<Review[]>([])
+  const [loadingAllReviews, setLoadingAllReviews] = useState(false)
+  const [reviewSort, setReviewSort] = useState<
+    'recent' | 'rating_desc' | 'rating_asc'
+  >('recent')
+
+  // ---------- Déposer un avis ----------
+  const [writeOpen, setWriteOpen] = useState(false)
+  const [myOrders, setMyOrders] = useState<Order[]>([])
+  const [myReviews, setMyReviews] = useState<Review[]>([])
+  const [loadingOrders, setLoadingOrders] = useState(false)
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
+  const [writeRating, setWriteRating] = useState(0)
+  const [writeComment, setWriteComment] = useState('')
+  const [publishing, setPublishing] = useState(false)
 
   // ==========================================================
   // Charger la boutique
@@ -130,6 +168,24 @@ export default function ShopDetail() {
   }, [shopId])
 
   // ==========================================================
+  // Charger un aperçu des avis de la boutique (3 derniers)
+  // ==========================================================
+  useEffect(() => {
+    if (!shopId || isNaN(shopId)) return
+    ;(async () => {
+      try {
+        const res = await reviewsApi.listByShop(shopId, {
+          limit: 3,
+          sort: 'recent',
+        })
+        setReviewsPreview(res.reviews)
+      } catch {
+        // ignore
+      }
+    })()
+  }, [shopId])
+
+  // ==========================================================
   // Filtrage local
   // ==========================================================
   const filteredProducts = useMemo(() => {
@@ -137,6 +193,19 @@ export default function ShopDetail() {
     if (!q) return products
     return products.filter((p) => p.name.toLowerCase().includes(q))
   }, [products, search])
+
+  // ==========================================================
+  // Stats avis (moyenne + count) depuis les previews
+  // ==========================================================
+  const reviewStats = useMemo(() => {
+    const list = allReviews.length > 0 ? allReviews : reviewsPreview
+    if (list.length === 0) return { average: 0, count: 0 }
+    const total = list.reduce((sum, r) => sum + r.rating, 0)
+    return {
+      average: total / list.length,
+      count: list.length,
+    }
+  }, [allReviews, reviewsPreview])
 
   // ==========================================================
   // Toggle follow
@@ -205,6 +274,142 @@ export default function ShopDetail() {
     const ok = await cart.add(product.id, 1)
     if (ok) toast.success(`${product.name} ajouté ✅`)
     else toast.error("Erreur lors de l'ajout")
+  }
+
+  // ==========================================================
+  // Ouvrir modale "Tous les avis"
+  // ==========================================================
+  const openAllReviews = async () => {
+    setReviewsOpen(true)
+    setLoadingAllReviews(true)
+    try {
+      const res = await reviewsApi.listByShop(shopId, {
+        limit: 50,
+        sort: reviewSort,
+      })
+      setAllReviews(res.reviews)
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Erreur de chargement des avis'
+      )
+    } finally {
+      setLoadingAllReviews(false)
+    }
+  }
+
+  // Recharge les avis quand on change le tri dans la modale
+  useEffect(() => {
+    if (!reviewsOpen) return
+    ;(async () => {
+      setLoadingAllReviews(true)
+      try {
+        const res = await reviewsApi.listByShop(shopId, {
+          limit: 50,
+          sort: reviewSort,
+        })
+        setAllReviews(res.reviews)
+      } catch {
+        // ignore
+      } finally {
+        setLoadingAllReviews(false)
+      }
+    })()
+  }, [reviewSort, reviewsOpen, shopId])
+
+  // ==========================================================
+  // Ouvrir modale "Déposer un avis"
+  // ==========================================================
+  const openWriteModal = async () => {
+    if (!auth.isAuthenticated) {
+      toast.error('Connecte-toi pour laisser un avis')
+      return
+    }
+    setWriteOpen(true)
+    setSelectedOrderId(null)
+    setSelectedProductId(null)
+    setWriteRating(0)
+    setWriteComment('')
+
+    setLoadingOrders(true)
+    try {
+      const [ordersRes, myReviewsRes] = await Promise.all([
+        ordersApi.listMine(),
+        reviewsApi.listMine().catch(() => null),
+      ])
+
+      const delivered = (ordersRes.orders || []).filter(
+        (o) => o.status === 'delivered' && o.shop?.id === shopId
+      )
+      setMyOrders(delivered)
+      setMyReviews(myReviewsRes?.reviews ?? [])
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Erreur de chargement des commandes'
+      )
+    } finally {
+      setLoadingOrders(false)
+    }
+  }
+
+  const selectedOrder = useMemo(
+    () => myOrders.find((o) => o.id === selectedOrderId) ?? null,
+    [myOrders, selectedOrderId]
+  )
+
+  // Items non encore notés
+  const reviewableItems = useMemo(() => {
+    if (!selectedOrder?.items) return []
+    return selectedOrder.items.filter(
+      (it) =>
+        !myReviews.some(
+          (r) =>
+            r.order_id === selectedOrder.id && r.product_id === it.product_id
+        )
+    )
+  }, [selectedOrder, myReviews])
+
+  // ==========================================================
+  // Publier l'avis
+  // ==========================================================
+  const handlePublishReview = async () => {
+    if (!selectedOrder || !selectedProductId) {
+      toast.error('Choisis une commande et un produit')
+      return
+    }
+    if (writeRating < 1) {
+      toast.error('Mets au moins 1 étoile')
+      return
+    }
+
+    setPublishing(true)
+    try {
+      await reviewsApi.create({
+        order_id: selectedOrder.id,
+        product_id: selectedProductId,
+        rating: writeRating,
+        comment: writeComment.trim() || null,
+      })
+      toast.success('Avis publié ✅')
+      setWriteOpen(false)
+
+      // Recharge les avis de la boutique
+      const res = await reviewsApi.listByShop(shopId, {
+        limit: 3,
+        sort: 'recent',
+      })
+      setReviewsPreview(res.reviews)
+      if (reviewsOpen) {
+        const all = await reviewsApi.listByShop(shopId, {
+          limit: 50,
+          sort: reviewSort,
+        })
+        setAllReviews(all.reviews)
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur lors de l'envoi")
+    } finally {
+      setPublishing(false)
+    }
   }
 
   // ==========================================================
@@ -323,7 +528,7 @@ export default function ShopDetail() {
                       )}
                     </div>
 
-                    {/* Infos : ville, CP, tél, compteurs */}
+                    {/* Infos */}
                     <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-600">
                       {shop.city && (
                         <span className="flex items-center gap-1">
@@ -466,6 +671,103 @@ export default function ShopDetail() {
           </div>
 
           {/* ====================================================
+              Bloc avis (résumé + boutons)
+             ==================================================== */}
+          <div className="mt-6 rounded-3xl border border-white/50 bg-white/85 backdrop-blur-xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <Star size={18} fill="#f59e0b" className="text-amber-500" />
+                <div>
+                  <p className="text-sm font-bold text-gray-900">
+                    Avis clients
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {reviewStats.count > 0
+                      ? `${reviewStats.average.toFixed(1)} / 5 · ${reviewStats.count} avis`
+                      : 'Aucun avis pour le moment'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {reviewStats.count > 0 && (
+                  <button
+                    type="button"
+                    onClick={openAllReviews}
+                    className="rounded-full px-3 py-1.5 text-[11px] font-bold border transition"
+                    style={{
+                      color: ANKU.greenDark,
+                      borderColor: `${ANKU.green}55`,
+                      background: '#ffffff',
+                    }}
+                  >
+                    Voir tous les avis
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={openWriteModal}
+                  className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white transition inline-flex items-center gap-1"
+                  style={{ background: ANKU.green }}
+                >
+                  <Plus size={11} /> Déposer un avis
+                </button>
+              </div>
+            </div>
+
+            {/* Aperçu : 3 derniers */}
+            {reviewsPreview.length > 0 && (
+              <div className="space-y-2 border-t border-gray-100 pt-3">
+                {reviewsPreview.map((r) => (
+                  <div key={r.id} className="flex gap-2">
+                    {r.author_avatar_url ? (
+                      <img
+                        src={r.author_avatar_url}
+                        alt={r.author_username ?? ''}
+                        className="w-8 h-8 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                        <Users size={14} className="text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-bold text-gray-900 truncate">
+                          {r.author_first_name && r.author_last_name
+                            ? `${r.author_first_name} ${r.author_last_name}`
+                            : r.author_username ?? 'Utilisateur'}
+                        </p>
+                        <div className="flex items-center">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <Star
+                              key={i}
+                              size={9}
+                              fill={i <= r.rating ? '#f59e0b' : 'none'}
+                              className={
+                                i <= r.rating
+                                  ? 'text-amber-500'
+                                  : 'text-gray-300'
+                              }
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-gray-400">
+                          {formatDate(r.created_at)}
+                        </span>
+                      </div>
+                      {r.comment && (
+                        <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                          {r.comment}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ====================================================
               Barre recherche produits
              ==================================================== */}
           <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-3 shadow-sm flex items-center gap-3">
@@ -589,6 +891,374 @@ export default function ShopDetail() {
             </div>
           )}
         </div>
+
+        {/* ====================================================
+            Modale : Tous les avis
+           ==================================================== */}
+        {reviewsOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-3">
+            <div className="w-full max-w-3xl max-h-[85vh] rounded-3xl bg-white shadow-2xl flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Star size={18} fill="#f59e0b" className="text-amber-500" />
+                  <p className="text-sm font-bold text-gray-900">
+                    Tous les avis {reviewStats.count > 0 ? `(${reviewStats.count})` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewsOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Tri */}
+              <div className="px-4 pt-3 flex items-center gap-2">
+                {(
+                  [
+                    { v: 'recent', label: 'Récents' },
+                    { v: 'rating_desc', label: 'Mieux notés' },
+                    { v: 'rating_asc', label: 'Moins bien notés' },
+                  ] as const
+                ).map((opt) => {
+                  const active = reviewSort === opt.v
+                  return (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setReviewSort(opt.v)}
+                      className={
+                        'rounded-full px-3 py-1.5 text-[11px] font-bold transition ' +
+                        (active
+                          ? 'text-white'
+                          : 'text-gray-700 bg-gray-100 hover:bg-gray-200')
+                      }
+                      style={active ? { background: ANKU.green } : undefined}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {loadingAllReviews ? (
+                  <div className="py-10 text-center">
+                    <Loader
+                      size={20}
+                      className="animate-spin text-gray-400 mx-auto"
+                    />
+                  </div>
+                ) : allReviews.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-10">
+                    Aucun avis pour le moment.
+                  </p>
+                ) : (
+                  allReviews.map((r) => (
+                    <div
+                      key={r.id}
+                      className="rounded-2xl border border-gray-100 bg-gray-50/50 p-3 flex gap-3"
+                    >
+                      {r.author_avatar_url ? (
+                        <img
+                          src={r.author_avatar_url}
+                          alt={r.author_username ?? ''}
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                          <Users size={14} className="text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-bold text-gray-900">
+                            {r.author_first_name && r.author_last_name
+                              ? `${r.author_first_name} ${r.author_last_name}`
+                              : r.author_username ?? 'Utilisateur'}
+                          </p>
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <Star
+                                key={i}
+                                size={10}
+                                fill={i <= r.rating ? '#f59e0b' : 'none'}
+                                className={
+                                  i <= r.rating
+                                    ? 'text-amber-500'
+                                    : 'text-gray-300'
+                                }
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-gray-400">
+                            {formatDate(r.created_at)}
+                          </span>
+                        </div>
+                        {r.product_name && (
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            <Package size={9} className="inline" />{' '}
+                            {r.product_name}
+                          </p>
+                        )}
+                        {r.comment && (
+                          <p className="text-xs text-gray-700 mt-1 whitespace-pre-line">
+                            {r.comment}
+                          </p>
+                        )}
+                        {r.reply_text && (
+                          <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-100 p-2">
+                            <p className="text-[10px] font-bold text-emerald-700">
+                              Réponse du vendeur
+                            </p>
+                            <p className="text-xs text-gray-700 mt-0.5">
+                              {r.reply_text}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================
+            Modale : Déposer un avis
+           ==================================================== */}
+        {writeOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-3">
+            <div className="w-full max-w-lg max-h-[85vh] rounded-3xl bg-white shadow-2xl flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <PenLine size={16} style={{ color: ANKU.greenDark }} />
+                  <p className="text-sm font-bold text-gray-900">
+                    Déposer un avis
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWriteOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {loadingOrders ? (
+                  <div className="py-10 text-center">
+                    <Loader
+                      size={20}
+                      className="animate-spin text-gray-400 mx-auto"
+                    />
+                  </div>
+                ) : myOrders.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <Package size={36} className="mx-auto text-gray-300 mb-3" />
+                    <p className="text-sm font-bold text-gray-800">
+                      Aucune commande livrée
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tu pourras laisser un avis après réception d’une commande
+                      dans cette boutique.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Étape 1 : choisir la commande */}
+                    <div>
+                      <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
+                        1. Choisis ta commande
+                      </label>
+                      <div className="space-y-2">
+                        {myOrders.map((o) => {
+                          const active = selectedOrderId === o.id
+                          return (
+                            <button
+                              key={o.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedOrderId(o.id)
+                                setSelectedProductId(null)
+                              }}
+                              className={
+                                'w-full flex items-center justify-between gap-3 rounded-2xl border p-3 text-left transition ' +
+                                (active
+                                  ? 'border-emerald-400 bg-emerald-50/60'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50')
+                              }
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-gray-900">
+                                  Commande #{o.id}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatDate(o.created_at)} ·{' '}
+                                  {formatEuro(o.total_price)}
+                                </p>
+                              </div>
+                              {active && (
+                                <CheckCircle2
+                                  size={18}
+                                  className="text-emerald-500 shrink-0"
+                                />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Étape 2 : choisir le produit */}
+                    {selectedOrder && (
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
+                          2. Choisis un produit à noter
+                        </label>
+                        {reviewableItems.length === 0 ? (
+                          <p className="text-xs text-gray-500 italic">
+                            Tous les produits de cette commande ont déjà été
+                            notés.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            {reviewableItems.map((it: OrderItem) => {
+                              const active = selectedProductId === it.product_id
+                              return (
+                                <button
+                                  key={it.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedProductId(it.product_id)
+                                  }
+                                  className={
+                                    'flex items-center gap-2 rounded-xl border p-2 text-left transition ' +
+                                    (active
+                                      ? 'border-emerald-400 bg-emerald-50/60'
+                                      : 'border-gray-200 bg-white hover:bg-gray-50')
+                                  }
+                                >
+                                  {it.product?.image_url ? (
+                                    <img
+                                      src={it.product.image_url}
+                                      alt={it.product.name}
+                                      className="w-10 h-10 rounded-lg object-cover shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                                      <Package
+                                        size={14}
+                                        className="text-gray-400"
+                                      />
+                                    </div>
+                                  )}
+                                  <p className="text-[11px] font-semibold text-gray-900 line-clamp-2">
+                                    {it.product?.name ?? `Produit #${it.product_id}`}
+                                  </p>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Étape 3 : note + commentaire */}
+                    {selectedProductId && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
+                            3. Ta note
+                          </label>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setWriteRating(n)}
+                                className="p-1 transition hover:scale-110"
+                                title={`${n} étoile${n > 1 ? 's' : ''}`}
+                              >
+                                <Star
+                                  size={28}
+                                  fill={n <= writeRating ? '#f59e0b' : 'none'}
+                                  className={
+                                    n <= writeRating
+                                      ? 'text-amber-500'
+                                      : 'text-gray-300'
+                                  }
+                                />
+                              </button>
+                            ))}
+                            {writeRating > 0 && (
+                              <span className="ml-2 text-sm font-bold text-gray-700">
+                                {writeRating}/5
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide mb-1.5 block">
+                            4. Ton commentaire (optionnel)
+                          </label>
+                          <textarea
+                            value={writeComment}
+                            onChange={(e) => setWriteComment(e.target.value)}
+                            rows={4}
+                            maxLength={2000}
+                            placeholder="Partage ton expérience…"
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
+                          />
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            {writeComment.length}/2000
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Actions */}
+              {myOrders.length > 0 && (
+                <div className="p-4 border-t border-gray-100 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWriteOpen(false)}
+                    className="flex-1 rounded-full py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePublishReview}
+                    disabled={
+                      publishing ||
+                      !selectedOrder ||
+                      !selectedProductId ||
+                      writeRating < 1
+                    }
+                    className="flex-1 rounded-full py-2.5 text-xs font-bold text-white transition inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    style={{ background: ANKU.green }}
+                  >
+                    {publishing ? (
+                      <Loader size={14} className="animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                    Publier l’avis
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ====================================================
             Modale contact vendeur
