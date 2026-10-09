@@ -2,7 +2,7 @@
 // ANKU — Page Liste des Boutiques (Buyer)
 // ============================================================
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Search, Store, MapPin, Star, Package, Users, Loader,
@@ -55,15 +55,29 @@ export default function ShopsList() {
   const [categories, setCategories]     = useState<Category[]>([])
   const [shops, setShops]               = useState<ShopSearchResult[]>([])
 
-  const [search, setSearch]                     = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
-  const [sort, setSort]                         = useState<SortValue>('relevance')
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const [search, setSearch]                     = useState(searchParams.get('q') ?? '')
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(() => {
+    const v = searchParams.get('category_id')
+    return v ? Number(v) : null
+  })
+  const [sort, setSort]                         = useState<SortValue>(() => {
+    const v = searchParams.get('sort')
+    return (v as SortValue) || 'relevance'
+  })
   const [showSortMenu, setShowSortMenu]         = useState(false)
   const [showFilterPanel, setShowFilterPanel]   = useState(false)
-  const [filterCity, setFilterCity]             = useState('')
-  const [filterMinRating, setFilterMinRating]   = useState<number>(0)
-  const [filterDelivery, setFilterDelivery]     = useState<DeliveryValue | null>(null)
-  const [filterHasStock, setFilterHasStock]     = useState(false)
+  const [filterCity, setFilterCity]             = useState(searchParams.get('city') ?? '')
+  const [filterMinRating, setFilterMinRating]   = useState<number>(() => {
+    const v = searchParams.get('min_rating')
+    return v ? Number(v) : 0
+  })
+  const [filterDelivery, setFilterDelivery]     = useState<DeliveryValue | null>(() => {
+    const v = searchParams.get('delivery')
+    return (v as DeliveryValue) || null
+  })
+  const [filterHasStock, setFilterHasStock]     = useState(() => searchParams.get('has_stock') === 'true')
   const [followingIds, setFollowingIds]         = useState<Set<number>>(new Set())
   const [pendingIds, setPendingIds]             = useState<Set<number>>(new Set())
 
@@ -107,6 +121,19 @@ export default function ShopsList() {
     }, 300)
     return () => clearTimeout(t)
   }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock])
+
+  // -------- Synchronise les filtres vers l'URL (pour persistance) --------
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('q', search.trim())
+    if (selectedCategory !== null) params.set('category_id', String(selectedCategory))
+    if (sort !== 'relevance') params.set('sort', sort)
+    if (filterCity.trim()) params.set('city', filterCity.trim())
+    if (filterMinRating > 0) params.set('min_rating', String(filterMinRating))
+    if (filterDelivery) params.set('delivery', filterDelivery)
+    if (filterHasStock) params.set('has_stock', 'true')
+    setSearchParams(params, { replace: true })
+  }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock, setSearchParams])
 
   const toggleFollow = async (shopId: number) => {
     if (!isLogged) {
@@ -371,7 +398,7 @@ export default function ShopsList() {
         </section>
 
         {/* ================= Barre recherche + tri + filtres ================= */}
-        <section className="rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <section className="relative z-30 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Search
               size={16}
@@ -427,10 +454,10 @@ export default function ShopsList() {
             {showFilterPanel && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-[998]"
                   onClick={() => setShowFilterPanel(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 w-72 sm:w-80 space-y-4">
+                <div className="absolute right-0 top-full mt-1 z-[999] bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 w-72 sm:w-80 space-y-4">
                   {/* Ville */}
                   <div>
                     <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1 mb-1.5">
@@ -562,10 +589,10 @@ export default function ShopsList() {
             {showSortMenu && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-[998]"
                   onClick={() => setShowSortMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-2xl border border-gray-200 p-1 min-w-[180px]">
+                <div className="absolute right-0 top-full mt-1 z-[999] bg-white rounded-xl shadow-2xl border border-gray-200 p-1 min-w-[180px]">
                   {SORT_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
