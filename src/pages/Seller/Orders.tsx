@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
@@ -607,9 +607,8 @@ export default function SellerOrders() {
     confirmed: orders.filter((o) => o.status === 'confirmed').length,
     shipped: orders.filter((o) => o.status === 'shipped').length,
     delivered: orders.filter((o) => o.status === 'delivered').length,
-    cancelled: orders.filter(
-      (o) => o.status === 'cancelled' || o.status === 'refunded'
-    ).length,
+    cancelled: orders.filter((o) => o.status === 'cancelled').length,
+    refunded: orders.filter((o) => o.status === 'refunded').length,
     total: orders.length,
   }
 
@@ -668,10 +667,10 @@ export default function SellerOrders() {
           onClick={() => setFilter('cancelled')}
         />
         <StatCard
-          label="Total"
-          value={stats.total}
-          icon={<ShoppingBag size={18} />}
-          onClick={() => setFilter('all')}
+          label="Rembours."
+          value={stats.refunded}
+          icon={<RotateCcw size={18} />}
+          onClick={() => setFilter('refunded')}
         />
       </div>
 

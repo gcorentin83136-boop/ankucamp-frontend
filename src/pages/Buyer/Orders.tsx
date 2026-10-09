@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
@@ -324,7 +324,7 @@ function OrderDetailModal({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            {order.status === 'pending' && (
+            {(order.status === 'pending' || order.status === 'confirmed') && (
               <button
                 type="button"
                 onClick={handleCancel}
