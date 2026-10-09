@@ -15,9 +15,13 @@ import {
   MessageCircle,
   Share2,
   X,
+  UserPlus,
+  MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
+import httpClient from '../service/api/httpClient'
+import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import type { Post, PostComment, PostVisibility } from '../types/post'
 
 const ANKU = {
@@ -86,6 +90,250 @@ const SHORTCUTS = [
   { to: '/shops', label: 'Boutiques', icon: Store, color: '#6aa84f' },
   { to: '/dashboard/user/reviews', label: 'Mes avis', icon: Star, color: '#f59e0b' },
 ]
+
+// ============================================================
+// SIDEBAR — Ma carte
+// ============================================================
+function ProfileCard() {
+  const auth = useAuthStore()
+  const user = (auth as any)?.user
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center gap-3">
+        {user?.avatar_url ? (
+          <img
+            src={user.avatar_url}
+            alt=""
+            className="w-14 h-14 rounded-full object-cover"
+          />
+        ) : (
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            style={{ background: ANKU.greenDark }}
+          >
+            {(user?.first_name?.[0] ?? '') + (user?.last_name?.[0] ?? '')}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-gray-900 truncate">
+            {user?.first_name} {user?.last_name}
+          </p>
+          <p className="text-xs text-gray-500 truncate">
+            @{user?.username ?? 'utilisateur'}
+          </p>
+        </div>
+      </div>
+      <Link
+        to="/profile"
+        className="mt-3 block text-center rounded-full py-2 text-xs font-bold transition border-2"
+        style={{
+          background: '#ffffff',
+          color: ANKU.greenDark,
+          borderColor: ANKU.green,
+        }}
+      >
+        Voir mon profil
+      </Link>
+    </div>
+  )
+}
+
+// ============================================================
+// SIDEBAR — Aperçu des amis
+// ============================================================
+function FriendsPreview() {
+  const [loading, setLoading] = useState(true)
+  const [friends, setFriends] = useState<any[]>([])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const { data } = await httpClient.get<{ friends: any[] }>(
+          '/friends/me'
+        )
+        setFriends((data.friends ?? []).slice(0, 6))
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+          <Users size={14} style={{ color: ANKU.greenDark }} />
+          Mes amis
+        </p>
+        <Link
+          to="/friends"
+          className="text-[10px] font-bold hover:underline"
+          style={{ color: ANKU.greenDark }}
+        >
+          Voir tous
+        </Link>
+      </div>
+      {loading ? (
+        <Loader size={16} className="animate-spin text-gray-300 mx-auto" />
+      ) : friends.length === 0 ? (
+        <p className="text-xs text-gray-500 italic">Aucun ami pour l'instant</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {friends.map((f) => {
+            const u = f.friend ?? f.user ?? f
+            return (
+              <Link
+                key={u.id}
+                to={u.username ? `/u/${u.username}` : '#'}
+                className="flex flex-col items-center gap-1 hover:opacity-80 transition"
+                title={u.username}
+              >
+                {u.avatar_url ? (
+                  <img
+                    src={u.avatar_url}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ background: ANKU.greenDark }}
+                  >
+                    {(u.first_name?.[0] ?? '') + (u.last_name?.[0] ?? '')}
+                  </div>
+                )}
+                <p className="text-[9px] text-gray-600 truncate w-full text-center">
+                  {u.first_name}
+                </p>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// SIDEBAR — Ma boutique (si pro)
+// ============================================================
+function MyShopPreview() {
+  const auth = useAuthStore()
+  const user = (auth as any)?.user
+  const [loading, setLoading] = useState(true)
+  const [shop, setShop] = useState<any>(null)
+
+  const isPro = user?.role === 'professionnel'
+
+  useEffect(() => {
+    if (!isPro) {
+      setLoading(false)
+      return
+    }
+    ;(async () => {
+      try {
+        const { data } = await httpClient.get<{ shops: any[] }>('/shops/mine')
+        setShop((data.shops ?? [])[0] ?? null)
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [isPro])
+
+  if (!isPro) return null
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+      <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5 mb-3">
+        <Store size={14} style={{ color: ANKU.greenDark }} />
+        Ma boutique
+      </p>
+      {loading ? (
+        <Loader size={16} className="animate-spin text-gray-300 mx-auto" />
+      ) : !shop ? (
+        <Link
+          to="/become-pro"
+          className="block text-center rounded-full py-2 text-xs font-bold text-white transition"
+          style={{ background: ANKU.green }}
+        >
+          Créer ma boutique
+        </Link>
+      ) : (
+        <>
+          <div className="flex items-center gap-3">
+            {shop.logo_url ? (
+              <img
+                src={shop.logo_url}
+                alt=""
+                className="w-12 h-12 rounded-xl object-cover"
+              />
+            ) : (
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold"
+                style={{ background: ANKU.greenDark }}
+              >
+                {shop.name?.[0] ?? 'S'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900 truncate">
+                {shop.name}
+              </p>
+              {shop.city && (
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <MapPin size={10} /> {shop.city}
+                </p>
+              )}
+            </div>
+          </div>
+          <Link
+            to={`/shops/${shop.id}`}
+            className="mt-3 block text-center rounded-full py-2 text-xs font-bold text-white transition"
+            style={{ background: ANKU.green }}
+          >
+            Voir ma boutique
+          </Link>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// SIDEBAR — Raccourcis rapides
+// ============================================================
+function QuickLinks() {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+      <p className="text-sm font-bold text-gray-900 mb-3">Raccourcis</p>
+      <div className="space-y-1">
+        {SHORTCUTS.slice(0, 5).map((s) => {
+          const Icon = s.icon
+          return (
+            <Link
+              key={s.to}
+              to={s.to}
+              className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0"
+                style={{ background: s.color }}
+              >
+                <Icon size={13} />
+              </div>
+              {s.label}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 // ============================================================
 // COMPOSANT : PostCard
@@ -179,8 +427,7 @@ function PostCard({
   }
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      {/* Header */}
+    <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
       <div className="flex items-start gap-3 p-4">
         <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
           {post.author?.avatar_url ? (
@@ -207,7 +454,8 @@ function PostCard({
             {authorName(post)}
           </Link>
           <p className="text-xs text-gray-500">
-            @{post.author?.username ?? 'utilisateur'} · {formatDate(post.created_at)}
+            @{post.author?.username ?? 'utilisateur'} ·{' '}
+            {formatDate(post.created_at)}
           </p>
         </div>
         {post.visibility === 'private' && (
@@ -222,7 +470,6 @@ function PostCard({
         )}
       </div>
 
-      {/* Contenu texte */}
       {post.content && (
         <div className="px-4 pb-3">
           <p className="text-sm text-gray-800 whitespace-pre-line">
@@ -231,7 +478,6 @@ function PostCard({
         </div>
       )}
 
-      {/* Médias */}
       {media.length > 0 && (
         <div
           className={
@@ -251,10 +497,12 @@ function PostCard({
         </div>
       )}
 
-      {/* Compteurs */}
       <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
         <span className="flex items-center gap-1">
-          <Heart size={12} className={liked ? 'fill-red-500 text-red-500' : ''} />
+          <Heart
+            size={12}
+            className={liked ? 'fill-red-500 text-red-500' : ''}
+          />
           {likesCount}
         </span>
         <span className="flex items-center gap-1">
@@ -267,14 +515,15 @@ function PostCard({
         </span>
       </div>
 
-      {/* Actions */}
       <div className="px-2 py-1 flex border-t border-gray-100">
         <button
           type="button"
           onClick={toggleLike}
           className={
             'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
-            (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')
+            (liked
+              ? 'text-red-500 bg-red-50'
+              : 'text-gray-600 hover:bg-gray-50')
           }
         >
           <Heart size={14} className={liked ? 'fill-red-500' : ''} />
@@ -298,7 +547,6 @@ function PostCard({
         </button>
       </div>
 
-      {/* Commentaires */}
       {commentsOpen && (
         <div className="border-t border-gray-100 bg-gray-50/50 p-4 space-y-3">
           {loadingComments ? (
@@ -377,12 +625,13 @@ function PostCard({
         </div>
       )}
 
-      {/* Modale partage */}
       {shareOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-gray-900">Partager ce post</p>
+              <p className="text-sm font-bold text-gray-900">
+                Partager ce post
+              </p>
               <button
                 type="button"
                 onClick={() => setShareOpen(false)}
@@ -441,7 +690,6 @@ export default function Feed() {
   const [hasMore, setHasMore] = useState(true)
   const LIMIT = 10
 
-  // ----- Publier -----
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<PostVisibility>('public')
   const [publishing, setPublishing] = useState(false)
@@ -491,194 +739,224 @@ export default function Feed() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-3 sm:px-5 py-6 space-y-4">
-        {/* ============================================
-            Bannière
-           ============================================ */}
-        <div
-          className="rounded-3xl p-6 sm:p-8 relative overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, ${ANKU.greenPale} 0%, #ffffff 100%)`,
-            border: `1px solid ${ANKU.green}22`,
-          }}
-        >
-          <span
-            className="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full mb-3"
-            style={{ background: ANKU.green, color: '#fff' }}
-          >
-            ● RÉSEAU SOCIAL ENGAGÉ
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
-            Bonjour {user?.first_name ?? 'toi'} 👋
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Explore, partage, échange — ta communauté t'attend.
-          </p>
+    <div className="relative min-h-screen">
+      {/* Fond animé */}
+      <AnimatedShopsBackground />
 
-          {/* Actions droite */}
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
-            <Link
-              to="/profile"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition border-2"
+      <div className="relative max-w-7xl mx-auto px-3 sm:px-5 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+          {/* ============================================
+              SIDEBAR GAUCHE
+             ============================================ */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-6 space-y-4">
+              <ProfileCard />
+              <FriendsPreview />
+              <MyShopPreview />
+              <QuickLinks />
+            </div>
+          </aside>
+
+          {/* ============================================
+              ZONE PRINCIPALE
+             ============================================ */}
+          <main className="space-y-4 min-w-0">
+            {/* Bannière */}
+            <div
+              className="rounded-3xl p-6 sm:p-8 relative overflow-hidden backdrop-blur-sm"
               style={{
-                background: '#ffffff',
-                color: ANKU.greenDark,
-                borderColor: ANKU.green,
+                background: `linear-gradient(135deg, ${ANKU.greenPale}cc 0%, #ffffffcc 100%)`,
+                border: `1px solid ${ANKU.green}22`,
               }}
             >
-              {user?.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt=""
-                  className="w-5 h-5 rounded-full object-cover"
-                />
-              ) : (
-                <Users size={14} />
-              )}
-              Mon profil
-            </Link>
-            <Link
-              to="/messages"
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition"
-              style={{ background: ANKU.green }}
-            >
-              <MessageSquare size={14} />
-              Messagerie
-            </Link>
-          </div>
-        </div>
-
-        {/* ============================================
-            Raccourcis
-           ============================================ */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {SHORTCUTS.map((s) => {
-            const Icon = s.icon
-            return (
-              <Link
-                key={s.to}
-                to={s.to}
-                className="rounded-2xl border border-gray-200 bg-white p-3 flex flex-col items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition"
+              <span
+                className="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full mb-3"
+                style={{ background: ANKU.green, color: '#fff' }}
               >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
-                  style={{ background: s.color }}
+                ● RÉSEAU SOCIAL ENGAGÉ
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
+                Bonjour {user?.first_name ?? 'toi'} 👋
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Explore, partage, échange — ta communauté t'attend.
+              </p>
+
+              <div className="flex items-center gap-2 mt-4 flex-wrap">
+                <Link
+                  to="/profile"
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition border-2 lg:hidden"
+                  style={{
+                    background: '#ffffff',
+                    color: ANKU.greenDark,
+                    borderColor: ANKU.green,
+                  }}
                 >
-                  <Icon size={18} />
-                </div>
-                <p className="text-[11px] font-bold text-gray-800 text-center leading-tight">
-                  {s.label}
-                </p>
-              </Link>
-            )
-          })}
-        </div>
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt=""
+                      className="w-5 h-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <Users size={14} />
+                  )}
+                  Mon profil
+                </Link>
+                <Link
+                  to="/messages"
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition"
+                  style={{ background: ANKU.green }}
+                >
+                  <MessageSquare size={14} />
+                  Messagerie
+                </Link>
+              </div>
+            </div>
 
-        {/* ============================================
-            Publier
-           ============================================ */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="flex items-start gap-3">
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt=""
-                className="w-10 h-10 rounded-full object-cover shrink-0"
-              />
+            {/* Raccourcis (mobile + tablette) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
+              {SHORTCUTS.map((s) => {
+                const Icon = s.icon
+                return (
+                  <Link
+                    key={s.to}
+                    to={s.to}
+                    className="rounded-2xl border border-gray-200 bg-white p-3 flex flex-col items-center gap-2 hover:shadow-md transition"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                      style={{ background: s.color }}
+                    >
+                      <Icon size={18} />
+                    </div>
+                    <p className="text-[11px] font-bold text-gray-800 text-center leading-tight">
+                      {s.label}
+                    </p>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Publier */}
+            <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-4">
+              <div className="flex items-start gap-3">
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                    style={{ background: ANKU.greenDark }}
+                  >
+                    {(user?.first_name?.[0] ?? '') +
+                      (user?.last_name?.[0] ?? '')}
+                  </div>
+                )}
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={`Quoi de neuf, ${user?.first_name ?? 'toi'} ?`}
+                  rows={3}
+                  maxLength={5000}
+                  className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
+                />
+              </div>
+              <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-full transition"
+                    title="Ajouter une photo (bientôt)"
+                  >
+                    <ImageIcon size={12} />
+                    Photo
+                  </button>
+                  <select
+                    value={visibility}
+                    onChange={(e) =>
+                      setVisibility(e.target.value as PostVisibility)
+                    }
+                    className="text-[11px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-full transition cursor-pointer focus:outline-none"
+                  >
+                    <option value="public">🌍 Public</option>
+                    <option value="friends">👥 Amis</option>
+                    <option value="private">🔒 Privé</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  disabled={publishing || !content.trim()}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
+                  style={{ background: ANKU.green }}
+                >
+                  {publishing ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                  Publier
+                </button>
+              </div>
+            </div>
+
+            {/* Fil d'actu */}
+            {loading ? (
+              <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
+                <Loader
+                  size={24}
+                  className="animate-spin text-gray-400 mx-auto"
+                />
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
+                <Users size={40} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-sm font-bold text-gray-800">
+                  Aucun post pour le moment
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ajoute des amis pour voir leurs posts ici !
+                </p>
+                <Link
+                  to="/friends"
+                  className="inline-flex items-center gap-2 mt-4 rounded-full px-4 py-2 text-xs font-bold text-white transition"
+                  style={{ background: ANKU.green }}
+                >
+                  <UserPlus size={14} />
+                  Trouver des amis
+                </Link>
+              </div>
             ) : (
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                style={{ background: ANKU.greenDark }}
-              >
-                {(user?.first_name?.[0] ?? '') + (user?.last_name?.[0] ?? '')}
+              <div className="space-y-4">
+                {posts.map((p) => (
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    onPostUpdated={() => loadPosts(true)}
+                  />
+                ))}
+
+                {hasMore && (
+                  <button
+                    type="button"
+                    onClick={() => loadPosts(false)}
+                    className="w-full rounded-full py-3 text-xs font-bold transition border-2 bg-white/90 backdrop-blur"
+                    style={{
+                      color: ANKU.greenDark,
+                      borderColor: ANKU.green,
+                    }}
+                  >
+                    Voir plus
+                  </button>
+                )}
               </div>
             )}
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={`Quoi de neuf, ${user?.first_name ?? 'toi'} ?`}
-              rows={3}
-              maxLength={5000}
-              className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
-            />
-          </div>
-          <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-full transition"
-                title="Ajouter une photo (bientôt)"
-              >
-                <ImageIcon size={12} />
-                Photo
-              </button>
-              <select
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value as PostVisibility)}
-                className="text-[11px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-full transition cursor-pointer focus:outline-none"
-              >
-                <option value="public">🌍 Public</option>
-                <option value="friends">👥 Amis</option>
-                <option value="private">🔒 Privé</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={publishing || !content.trim()}
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
-              style={{ background: ANKU.green }}
-            >
-              {publishing ? (
-                <Loader size={14} className="animate-spin" />
-              ) : (
-                <Send size={14} />
-              )}
-              Publier
-            </button>
-          </div>
+          </main>
         </div>
-
-        {/* ============================================
-            Fil d'actu
-           ============================================ */}
-        {loading ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-            <Loader size={24} className="animate-spin text-gray-400 mx-auto" />
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-            <Users size={40} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-sm font-bold text-gray-800">
-              Aucun post pour le moment
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Ajoute des amis pour voir leurs posts ici !
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {posts.map((p) => (
-              <PostCard key={p.id} post={p} onPostUpdated={() => loadPosts(true)} />
-            ))}
-
-            {hasMore && (
-              <button
-                type="button"
-                onClick={() => loadPosts(false)}
-                className="w-full rounded-full py-3 text-xs font-bold transition border-2"
-                style={{
-                  background: '#ffffff',
-                  color: ANKU.greenDark,
-                  borderColor: ANKU.green,
-                }}
-              >
-                Voir plus
-              </button>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )
