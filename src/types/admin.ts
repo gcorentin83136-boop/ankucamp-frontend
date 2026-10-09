@@ -140,6 +140,38 @@ export interface FlaggedReview {
 // ------------------------------------------------------------
 // REFUNDS
 // ------------------------------------------------------------
+export interface RefundRequestBuyer {
+  id: number
+  first_name: string
+  last_name: string
+  username: string
+  avatar_url: string | null
+  email: string
+}
+
+export interface RefundRequestOrder {
+  id: number
+  total_price: string
+  status: string
+  delivery_method: string
+  created_at: string
+  seller_id: number
+}
+
+export interface RefundRequestShop {
+  id: number
+  name: string
+  logo_url: string | null
+  owner_id: number
+}
+
+export interface RefundRequestPayment {
+  id: number
+  stripe_payment_intent: string
+  amount_ttc: string
+  status: string
+}
+
 export interface RefundRequest {
   id: number
   order_id: number
@@ -153,6 +185,10 @@ export interface RefundRequest {
   admin_comment: string | null
   requested_at: string
   processed_at: string | null
+  buyer?: RefundRequestBuyer | null
+  order?: RefundRequestOrder | null
+  shop?: RefundRequestShop | null
+  payment?: RefundRequestPayment | null
 }
 
 // ------------------------------------------------------------

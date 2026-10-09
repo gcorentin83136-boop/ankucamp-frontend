@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
   RotateCcw,
@@ -6,8 +7,15 @@ import {
   XCircle,
   Clock,
   Filter,
+  Search,
+  ArrowUpDown,
+  User as UserIcon,
+  Store,
+  ShoppingBag,
+  CreditCard,
+  Calendar,
+  Mail,
 } from 'lucide-react'
-import { createPortal } from 'react-dom'
 import { refundsAdminApi } from '../../service/api/admin.api'
 import type { RefundRequest } from '../../types/admin'
 
@@ -16,6 +24,9 @@ const ANKU = {
   greenDark: '#4a7a35',
   greenPale: '#f0f9e8',
 }
+
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'failed'
+type SortOption = 'recent' | 'oldest' | 'amount_desc' | 'amount_asc'
 
 function formatDate(iso: string) {
   try {
@@ -41,7 +52,7 @@ function formatEuro(v: string | number | null | undefined): string {
 }
 
 // ============================================================
-// MODAL DÉTAIL
+// MODAL DÉTAIL ENRICHI
 // ============================================================
 function RefundModal({
   refund,
@@ -57,10 +68,20 @@ function RefundModal({
   const [approveNote, setApproveNote] = useState('')
   const [rejectOpen, setRejectOpen] = useState(false)
 
+  useEffect(() => {
+    setRejectOpen(false)
+    setRejectNote('')
+    setApproveNote('')
+  }, [refund])
+
   if (!refund) return null
 
   const handleApprove = async () => {
-    if (!confirm(`Approuver le remboursement de ${formatEuro(refund.refund_amount)} ?`))
+    if (
+      !confirm(
+        `Approuver le remboursement de ${formatEuro(refund.refund_amount)} ?`
+      )
+    )
       return
     setLoading(true)
     try {
@@ -118,41 +139,159 @@ function RefundModal({
         </header>
 
         <div className="p-5 space-y-4">
-          <section className="rounded-xl border border-gray-200 p-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-gray-500">
-                  Commande
-                </p>
-                <p className="text-sm font-bold text-gray-900 mt-0.5">
-                  #{refund.order_id}
-                </p>
+          {/* 👤 Demandeur */}
+          {refund.buyer && (
+            <section className="rounded-xl border border-gray-200 p-4">
+              <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <UserIcon size={14} style={{ color: ANKU.greenDark }} />
+                Demandeur
+              </h4>
+              <div className="flex items-center gap-3">
+                {refund.buyer.avatar_url ? (
+                  <img
+                    src={refund.buyer.avatar_url}
+                    alt={refund.buyer.username}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ background: ANKU.greenPale, color: ANKU.greenDark }}
+                  >
+                    <UserIcon size={18} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">
+                    {refund.buyer.first_name} {refund.buyer.last_name}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    @{refund.buyer.username}
+                  </p>
+                  <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                    <Mail size={10} /> {refund.buyer.email}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-gray-500">
-                  Montant
-                </p>
-                <p className="text-lg font-extrabold text-gray-900 mt-0.5">
-                  {formatEuro(refund.refund_amount)}
-                </p>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
+          {/* 🏪 Boutique + Commande */}
+          {(refund.shop || refund.order) && (
+            <section className="rounded-xl border border-gray-200 p-4">
+              <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <ShoppingBag size={14} style={{ color: ANKU.greenDark }} />
+                Commande & boutique
+              </h4>
+              <div className="flex items-center gap-3">
+                {refund.shop?.logo_url ? (
+                  <img
+                    src={refund.shop.logo_url}
+                    alt={refund.shop.name}
+                    className="w-12 h-12 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: ANKU.greenPale, color: ANKU.greenDark }}
+                  >
+                    <Store size={18} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">
+                    {refund.shop?.name ?? `Boutique #${refund.order?.seller_id}`}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Commande #{refund.order_id} ·{' '}
+                    {formatEuro(refund.order?.total_price)}
+                  </p>
+                  {refund.order && (
+                    <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Calendar size={10} /> Commandé le{' '}
+                      {formatDate(refund.order.created_at)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 💳 Paiement */}
+          {refund.payment && (
+            <section className="rounded-xl border border-gray-200 p-4">
+              <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <CreditCard size={14} style={{ color: ANKU.greenDark }} />
+                Paiement
+              </h4>
+              <div className="space-y-1 text-xs">
+                <p className="text-gray-500">
+                  Montant TTC :{' '}
+                  <span className="font-bold text-gray-900">
+                    {formatEuro(refund.payment.amount_ttc)}
+                  </span>
+                </p>
+                <p className="text-gray-500">
+                  Statut :{' '}
+                  <span
+                    className={`font-bold ${
+                      refund.payment.status === 'succeeded'
+                        ? 'text-emerald-600'
+                        : refund.payment.status === 'refunded'
+                        ? 'text-sky-600'
+                        : 'text-gray-600'
+                    }`}
+                  >
+                    {refund.payment.status}
+                  </span>
+                </p>
+                <p className="text-gray-500 font-mono text-[10px] break-all">
+                  PI: {refund.payment.stripe_payment_intent}
+                </p>
+                {refund.stripe_refund_id && (
+                  <p className="text-gray-500 font-mono text-[10px] break-all">
+                    Refund Stripe: {refund.stripe_refund_id}
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* 📝 Motif */}
           <section className="rounded-xl border border-gray-200 p-4">
             <p className="text-[10px] font-semibold uppercase text-gray-500">
               Motif de la demande
             </p>
             <p className="text-sm text-gray-900 mt-1 italic">
-              « {refund.reason} »
+              « {refund.reason ?? '—'} »
             </p>
           </section>
 
-          {!rejectOpen && (
+          {/* Admin comment existant (si traité) */}
+          {refund.status !== 'pending' && refund.admin_comment && (
+            <section className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-[10px] font-semibold uppercase text-gray-500">
+                Commentaire admin
+              </p>
+              <p className="text-sm text-gray-700 mt-1">
+                {refund.admin_comment}
+              </p>
+              {refund.processed_at && (
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Traité le {formatDate(refund.processed_at)}
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* Actions : pending uniquement */}
+          {refund.status === 'pending' && !rejectOpen && (
             <section className="rounded-xl border border-gray-200 p-4 space-y-2">
               <label className="block text-sm font-semibold text-gray-800">
                 Commentaire admin{' '}
-                <span className="text-gray-400">(optionnel pour approuver)</span>
+                <span className="text-gray-400">
+                  (optionnel pour approuver)
+                </span>
               </label>
               <textarea
                 value={approveNote}
@@ -164,7 +303,7 @@ function RefundModal({
             </section>
           )}
 
-          {rejectOpen && (
+          {refund.status === 'pending' && rejectOpen && (
             <section className="rounded-xl border border-red-200 p-4 bg-red-50">
               <label className="block text-sm font-semibold text-red-800 mb-2">
                 Motif du rejet
@@ -256,9 +395,9 @@ function RefundModal({
 export default function AdminRefunds() {
   const [loading, setLoading] = useState(true)
   const [refunds, setRefunds] = useState<RefundRequest[]>([])
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'pending' | 'approved' | 'rejected'
-  >('pending')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<SortOption>('recent')
   const [selected, setSelected] = useState<RefundRequest | null>(null)
 
   const fetchAll = async () => {
@@ -277,25 +416,95 @@ export default function AdminRefunds() {
     fetchAll()
   }, [])
 
-  const filtered = refunds.filter((r) => {
-    if (statusFilter === 'all') return true
-    if (statusFilter === 'approved') {
-      return r.status === 'approved' || r.status === 'refunded'
-    }
-    return r.status === statusFilter
-  })
+  // -------- Stats --------
+  const stats = useMemo(
+    () => ({
+      pending: refunds.filter((r) => r.status === 'pending').length,
+      approved: refunds.filter(
+        (r) => r.status === 'approved' || r.status === 'refunded'
+      ).length,
+      rejected: refunds.filter((r) => r.status === 'rejected').length,
+      failed: refunds.filter((r) => r.status === 'failed').length,
+      total: refunds.length,
+    }),
+    [refunds]
+  )
 
-  const stats = {
-    pending: refunds.filter((r) => r.status === 'pending').length,
-    approved: refunds.filter(
-      (r) => r.status === 'approved' || r.status === 'refunded'
-    ).length,
-    rejected: refunds.filter((r) => r.status === 'rejected').length,
-    total: refunds.length,
-  }
+  // -------- Filtre + recherche + tri --------
+  const filtered = useMemo(() => {
+    let list = [...refunds]
+
+    // Filtre statut
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'approved') {
+        list = list.filter(
+          (r) => r.status === 'approved' || r.status === 'refunded'
+        )
+      } else {
+        list = list.filter((r) => r.status === statusFilter)
+      }
+    }
+
+    // Recherche
+    const q = search.trim().toLowerCase()
+    if (q) {
+      list = list.filter((r) => {
+        const buyerName = r.buyer
+          ? `${r.buyer.first_name} ${r.buyer.last_name} ${r.buyer.username} ${r.buyer.email}`.toLowerCase()
+          : ''
+        const shopName = r.shop?.name?.toLowerCase() ?? ''
+        const reason = r.reason?.toLowerCase() ?? ''
+        const orderId = String(r.order_id)
+        const refundId = String(r.id)
+        return (
+          buyerName.includes(q) ||
+          shopName.includes(q) ||
+          reason.includes(q) ||
+          orderId.includes(q) ||
+          refundId.includes(q)
+        )
+      })
+    }
+
+    // Tri
+    switch (sort) {
+      case 'oldest':
+        list.sort(
+          (a, b) =>
+            new Date(a.requested_at).getTime() -
+            new Date(b.requested_at).getTime()
+        )
+        break
+      case 'amount_desc':
+        list.sort(
+          (a, b) =>
+            parseFloat(b.refund_amount ?? '0') -
+            parseFloat(a.refund_amount ?? '0')
+        )
+        break
+      case 'amount_asc':
+        list.sort(
+          (a, b) =>
+            parseFloat(a.refund_amount ?? '0') -
+            parseFloat(b.refund_amount ?? '0')
+        )
+        break
+      case 'recent':
+      default:
+        list.sort(
+          (a, b) =>
+            new Date(b.requested_at).getTime() -
+            new Date(a.requested_at).getTime()
+        )
+        break
+    }
+
+    return list
+  }, [refunds, statusFilter, search, sort])
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div
         className="rounded-2xl p-5"
         style={{
@@ -312,9 +521,14 @@ export default function AdminRefunds() {
         </p>
       </div>
 
+      {/* Stats cliquables */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div
-          className="rounded-2xl p-4 border"
+        <button
+          type="button"
+          onClick={() => setStatusFilter('pending')}
+          className={`rounded-2xl p-4 border text-left transition hover:shadow-md ${
+            statusFilter === 'pending' ? 'ring-2 ring-amber-400' : ''
+          }`}
           style={{ borderColor: '#fde68a', background: '#fffbeb' }}
         >
           <div className="flex items-center gap-2">
@@ -326,9 +540,13 @@ export default function AdminRefunds() {
           <p className="text-2xl font-extrabold text-amber-900 mt-1">
             {stats.pending}
           </p>
-        </div>
-        <div
-          className="rounded-2xl p-4 border"
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('approved')}
+          className={`rounded-2xl p-4 border text-left transition hover:shadow-md ${
+            statusFilter === 'approved' ? 'ring-2 ring-emerald-400' : ''
+          }`}
           style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}
         >
           <div className="flex items-center gap-2">
@@ -340,9 +558,13 @@ export default function AdminRefunds() {
           <p className="text-2xl font-extrabold text-emerald-900 mt-1">
             {stats.approved}
           </p>
-        </div>
-        <div
-          className="rounded-2xl p-4 border"
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('rejected')}
+          className={`rounded-2xl p-4 border text-left transition hover:shadow-md ${
+            statusFilter === 'rejected' ? 'ring-2 ring-red-400' : ''
+          }`}
           style={{ borderColor: '#fecaca', background: '#fef2f2' }}
         >
           <div className="flex items-center gap-2">
@@ -354,9 +576,13 @@ export default function AdminRefunds() {
           <p className="text-2xl font-extrabold text-red-900 mt-1">
             {stats.rejected}
           </p>
-        </div>
-        <div
-          className="rounded-2xl p-4 border"
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter('all')}
+          className={`rounded-2xl p-4 border text-left transition hover:shadow-md ${
+            statusFilter === 'all' ? 'ring-2 ring-gray-400' : ''
+          }`}
           style={{ borderColor: '#e5e7eb', background: '#f9fafb' }}
         >
           <div className="flex items-center gap-2">
@@ -368,48 +594,86 @@ export default function AdminRefunds() {
           <p className="text-2xl font-extrabold text-gray-900 mt-1">
             {stats.total}
           </p>
-        </div>
+        </button>
       </div>
 
-      <div className="rounded-2xl p-4 border border-gray-200 bg-white flex flex-col sm:flex-row gap-3">
+      {/* Filtres + recherche + tri */}
+      <div className="rounded-2xl p-4 border border-gray-200 bg-white space-y-3">
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Filter size={14} />
           <span className="font-semibold">Filtres :</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(['pending', 'approved', 'rejected', 'all'] as const).map((s) => (
+          {(
+            [
+              { v: 'pending', label: 'En attente' },
+              { v: 'approved', label: 'Approuvés' },
+              { v: 'rejected', label: 'Rejetés' },
+              { v: 'failed', label: 'Échoués' },
+              { v: 'all', label: 'Tous' },
+            ] as const
+          ).map((s) => (
             <button
-              key={s}
+              key={s.v}
               type="button"
-              onClick={() => setStatusFilter(s)}
+              onClick={() => setStatusFilter(s.v as StatusFilter)}
               className={`text-xs font-semibold px-3 py-1.5 rounded-full transition ${
-                statusFilter === s
+                statusFilter === s.v
                   ? 'text-white'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
               style={{
-                background: statusFilter === s ? ANKU.green : '#f3f4f6',
+                background: statusFilter === s.v ? ANKU.green : '#f3f4f6',
               }}
             >
-              {s === 'pending'
-                ? 'En attente'
-                : s === 'approved'
-                ? 'Approuvés'
-                : s === 'rejected'
-                ? 'Rejetés'
-                : 'Tous'}
+              {s.label}
             </button>
           ))}
         </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
+          <div className="relative flex-1">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher (n° commande, acheteur, boutique, motif)…"
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition"
+            />
+          </div>
+          <div className="relative shrink-0">
+            <ArrowUpDown
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+              className="rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-8 py-2 text-sm font-semibold text-gray-700 focus:outline-none focus:border-emerald-400 focus:bg-white transition appearance-none cursor-pointer"
+            >
+              <option value="recent">Plus récents</option>
+              <option value="oldest">Plus anciens</option>
+              <option value="amount_desc">Montant ↓</option>
+              <option value="amount_asc">Montant ↑</option>
+            </select>
+          </div>
+        </div>
       </div>
 
+      {/* Liste */}
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         {loading ? (
           <p className="text-sm text-gray-500 p-6 text-center">Chargement…</p>
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center">
             <RotateCcw size={40} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500">Aucun remboursement 🎉</p>
+            <p className="text-sm text-gray-500">
+              Aucun remboursement à afficher
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -420,35 +684,62 @@ export default function AdminRefunds() {
                 onClick={() => setSelected(r)}
                 className="w-full text-left flex items-center gap-3 p-4 hover:bg-gray-50 transition"
               >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ background: ANKU.greenPale, color: ANKU.greenDark }}
-                >
-                  <RotateCcw size={16} />
-                </div>
+                {/* Avatar buyer */}
+                {r.buyer?.avatar_url ? (
+                  <img
+                    src={r.buyer.avatar_url}
+                    alt=""
+                    className="w-12 h-12 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      background: ANKU.greenPale,
+                      color: ANKU.greenDark,
+                    }}
+                  >
+                    <UserIcon size={18} />
+                  </div>
+                )}
+
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {r.buyer
+                        ? `${r.buyer.first_name} ${r.buyer.last_name}`
+                        : `Demandeur #${r.requested_by}`}
+                    </p>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        r.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : r.status === 'approved' || r.status === 'refunded'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : r.status === 'failed'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {r.status === 'refunded' ? 'Approuvé' : r.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
                     Commande #{r.order_id}
+                    {r.shop?.name ? ` · ${r.shop.name}` : ''}
+                    {' · '}
+                    {formatDate(r.requested_at)}
                   </p>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">
-                    {r.reason}
+                  <p className="text-[11px] text-gray-400 mt-0.5 truncate italic">
+                    « {r.reason} »
                   </p>
                 </div>
+
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-extrabold text-gray-900">
+                  <p className="text-base font-extrabold text-gray-900">
                     {formatEuro(r.refund_amount)}
                   </p>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      r.status === 'pending'
-                        ? 'bg-amber-100 text-amber-700'
-                        : r.status === 'approved'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {r.status === 'refunded' ? 'approuvé' : r.status}
-                  </span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Voir</p>
                 </div>
               </button>
             ))}
