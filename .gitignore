@@ -27,3 +27,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Backups locaux
+*.bak
+*.bak2
+*.bak*
