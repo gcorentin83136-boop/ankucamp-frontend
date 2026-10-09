@@ -32,6 +32,7 @@ export interface Shop {
   distance_km?: number
   products_count?: number
   followers_count?: number
+  vacation_mode?: number
   is_followed_by_me?: boolean
 }
 

@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ArrowRight,
   Send,
+  UserCircle2,
 } from 'lucide-react'
 import shopsApi from '../../service/api/shops.api'
 import productsApi from '../../service/api/products.api'
@@ -106,7 +107,7 @@ export default function ShopDetail() {
   }, [shopId, auth.isAuthenticated])
 
   // ==========================================================
-  // Charger les produits (avec debounce sur recherche)
+  // Charger les produits
   // ==========================================================
   useEffect(() => {
     if (!shopId || isNaN(shopId)) return
@@ -129,7 +130,7 @@ export default function ShopDetail() {
   }, [shopId])
 
   // ==========================================================
-  // Filtrage local par recherche
+  // Filtrage local
   // ==========================================================
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -156,7 +157,7 @@ export default function ShopDetail() {
   }
 
   // ==========================================================
-  // Contacter le vendeur
+  // Contacter
   // ==========================================================
   const handleContact = async () => {
     if (!auth.isAuthenticated) {
@@ -191,7 +192,7 @@ export default function ShopDetail() {
   }
 
   // ==========================================================
-  // Ajout rapide au panier depuis une carte produit
+  // Ajout rapide panier
   // ==========================================================
   const handleQuickAdd = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault()
@@ -241,6 +242,9 @@ export default function ShopDetail() {
   }
 
   const owner = shop.owner
+  const productsCount = shop.products_count ?? 0
+  const isVerified = owner?.verification_status === 'verified'
+  const isVacation = shop.vacation_mode === 1
 
   return (
     <>
@@ -248,377 +252,406 @@ export default function ShopDetail() {
       <div className="relative min-h-screen">
         <AnimatedShopsBackground />
 
-
-
-      <div className="relative max-w-6xl mx-auto py-6 px-3 sm:px-5">
-        {/* Bouton retour */}
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-gray-600 hover:text-gray-900"
-        >
-          <ChevronLeft size={14} /> Retour
-        </button>
-
-        {/* ====================================================
-            Bannière + logo
-           ==================================================== */}
-        <div className="rounded-3xl overflow-hidden border border-white/50 shadow-sm">
-          {/* Bannière */}
-          <div
-            className="h-40 sm:h-52 relative"
-            style={{
-              background: shop.banner_url
-                ? undefined
-                : `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
-            }}
+        <div className="relative max-w-6xl mx-auto py-6 px-3 sm:px-5">
+          {/* Bouton retour */}
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-gray-600 hover:text-gray-900"
           >
-            {shop.banner_url && (
-              <img
-                src={shop.banner_url}
-                alt={shop.name}
-                className="w-full h-full object-cover"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </div>
+            <ChevronLeft size={14} /> Retour
+          </button>
 
-          {/* Logo + infos */}
-          <div className="relative bg-white/85 backdrop-blur-xl px-5 sm:px-7 pb-5 pt-3">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12 sm:-mt-14">
-              <div className="flex items-end gap-4">
-                {shop.logo_url ? (
-                  <img
-                    src={shop.logo_url}
-                    alt={shop.name}
-                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white shadow-lg"
-                  />
-                ) : (
-                  <div
-                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl flex items-center justify-center text-3xl font-extrabold text-white border-4 border-white shadow-lg"
-                    style={{
-                      background: `linear-gradient(135deg, #8bc34a 0%, ${ANKU.greenDark} 100%)`,
-                    }}
-                  >
-                    {shop.name?.[0]?.toUpperCase() ?? 'S'}
-                  </div>
-                )}
-
-                <div className="pb-1">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
-                    {shop.name}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-600">
-                    {shop.city && (
-                      <span className="flex items-center gap-1">
-                        <MapPin size={12} /> {shop.city}
-                        {shop.postal_code ? ` (${shop.postal_code})` : ''}
-                      </span>
-                    )}
-                    {shop.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone size={12} /> {shop.phone}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleToggleFollow}
-                  className="rounded-full px-4 py-2 text-xs font-bold transition inline-flex items-center gap-1.5 border-2"
-                  style={{
-                    background: following ? ANKU.green : '#ffffff',
-                    color: following ? '#ffffff' : ANKU.greenDark,
-                    borderColor: ANKU.green,
-                  }}
-                >
-                  <Users size={14} />
-                  {following ? 'Suivi·e' : 'Suivre'}
-                  <span
-                    className="ml-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background: following ? 'rgba(255,255,255,0.25)' : ANKU.greenPale,
-                      color: following ? '#ffffff' : ANKU.greenDark,
-                    }}
-                  >
-                    {followersCount}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContactOpen(true)}
-                  className="rounded-full px-4 py-2 text-xs font-bold text-white transition inline-flex items-center gap-1.5"
-                  style={{ background: ANKU.green }}
-                >
-                  <MessageCircle size={14} />
-                  Contacter
-                </button>
-              </div>
+          {/* ====================================================
+              Bannière + logo
+             ==================================================== */}
+          <div className="rounded-3xl overflow-hidden border border-white/50 shadow-sm">
+            {/* Bannière */}
+            <div
+              className="h-40 sm:h-52 relative"
+              style={{
+                background: shop.banner_url
+                  ? undefined
+                  : `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
+              }}
+            >
+              {shop.banner_url && (
+                <img
+                  src={shop.banner_url}
+                  alt={shop.name}
+                  className="w-full h-full object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
             </div>
 
-            {/* Description */}
-            {shop.description && (
-              <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-                {shop.description}
-              </p>
-            )}
-
-            {/* Infos vendeur */}
-            {owner && (
-              <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
-                {owner.avatar_url ? (
-                  <img
-                    src={owner.avatar_url}
-                    alt={owner.username}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
-                    style={{ background: ANKU.greenDark }}
-                  >
-                    {(owner.first_name?.[0] ?? '') +
-                      (owner.last_name?.[0] ?? '')}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-bold text-gray-900 truncate">
-                      {owner.first_name} {owner.last_name}
-                    </p>
-                    {owner.verification_status === 'verified' && (
-                      <CheckCircle2
-                        size={14}
-                        className="text-emerald-500 shrink-0"
-                      />
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">@{owner.username}</p>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1 font-bold text-amber-600">
-                    <Star size={12} fill="#f59e0b" />
-                    {Number(owner.rating?.average ?? 0).toFixed(1)}
-                    <span className="text-gray-400 font-normal">
-                      ({owner.rating?.count ?? 0})
-                    </span>
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Badges */}
-            {owner?.badges && owner.badges.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {owner.badges.map((b) => (
-                  <span
-                    key={b}
-                    className="text-[10px] font-bold px-2 py-1 rounded-full"
-                    style={{ background: ANKU.greenPale, color: ANKU.greenDark }}
-                  >
-                    {b}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ====================================================
-            Barre recherche + tri produits
-           ==================================================== */}
-        <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-3 shadow-sm flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un produit dans cette boutique…"
-              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 transition"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </div>
-          <span className="text-xs font-bold text-gray-500 whitespace-nowrap">
-            {filteredProducts.length} produit
-            {filteredProducts.length > 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* ====================================================
-            Grille produits
-           ==================================================== */}
-        {loadingProducts ? (
-          <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-10 text-center shadow-sm">
-            <Loader size={24} className="animate-spin text-gray-400 mx-auto" />
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-10 text-center shadow-sm">
-            <Package size={40} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-sm font-bold text-gray-800">
-              Aucun produit trouvé
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {search
-                ? 'Essaie une autre recherche'
-                : 'Cette boutique n’a pas encore publié de produit'}
-            </p>
-          </div>
-        ) : (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            {filteredProducts.map((p) => (
-              <Link
-                key={p.id}
-                to={`/products/${p.id}`}
-                className="group rounded-2xl overflow-hidden border border-white/60 bg-white/90 backdrop-blur-xl shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
-              >
-                {/* Image */}
-                <div className="relative aspect-square overflow-hidden bg-gray-100">
-                  {p.image_url ? (
+            {/* Logo + infos */}
+            <div className="relative bg-white/85 backdrop-blur-xl px-5 sm:px-7 pb-5 pt-3">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12 sm:-mt-14">
+                <div className="flex items-end gap-4">
+                  {shop.logo_url ? (
                     <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      src={shop.logo_url}
+                      alt={shop.name}
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white shadow-lg"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <Package size={32} />
+                    <div
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl flex items-center justify-center text-3xl font-extrabold text-white border-4 border-white shadow-lg"
+                      style={{
+                        background: `linear-gradient(135deg, #8bc34a 0%, ${ANKU.greenDark} 100%)`,
+                      }}
+                    >
+                      {shop.name?.[0]?.toUpperCase() ?? 'S'}
                     </div>
                   )}
 
-                  {/* Badge stock */}
-                  {p.stock !== null && p.has_unlimited_stock === 0 && (
-                    <span
-                      className={
-                        'absolute top-2 left-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full ' +
-                        (p.stock > 0
-                          ? 'bg-white/90 text-gray-700'
-                          : 'bg-red-100 text-red-700')
-                      }
-                    >
-                      {p.stock > 0 ? `Stock ${p.stock}` : 'Rupture'}
-                    </span>
-                  )}
+                  <div className="pb-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
+                        {shop.name}
+                      </h1>
+                      {isVerified && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 size={11} /> Vérifié
+                        </span>
+                      )}
+                      {isVacation && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                          🌴 En vacances
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Bouton + panier */}
+                    {/* Infos : ville, CP, tél, compteurs */}
+                    <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-600">
+                      {shop.city && (
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} /> {shop.city}
+                          {shop.postal_code ? ` (${shop.postal_code})` : ''}
+                        </span>
+                      )}
+                      {shop.phone && (
+                        <a
+                          href={`tel:${shop.phone}`}
+                          className="flex items-center gap-1 hover:text-emerald-600 transition"
+                        >
+                          <Phone size={12} /> {shop.phone}
+                        </a>
+                      )}
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <Package size={12} /> {productsCount} produit
+                        {productsCount > 1 ? 's' : ''}
+                      </span>
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <Users size={12} /> {followersCount} abonné
+                        {followersCount > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={(e) => handleQuickAdd(e, p)}
-                    className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center bg-white/95 text-gray-700 shadow-md hover:bg-emerald-500 hover:text-white transition"
-                    title="Ajouter au panier"
+                    onClick={handleToggleFollow}
+                    className="rounded-full px-4 py-2 text-xs font-bold transition inline-flex items-center gap-1.5 border-2"
+                    style={{
+                      background: following ? ANKU.green : '#ffffff',
+                      color: following ? '#ffffff' : ANKU.greenDark,
+                      borderColor: ANKU.green,
+                    }}
                   >
-                    <ShoppingCart size={14} />
+                    <Users size={14} />
+                    {following ? 'Suivi·e' : 'Suivre'}
+                    <span
+                      className="ml-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: following
+                          ? 'rgba(255,255,255,0.25)'
+                          : ANKU.greenPale,
+                        color: following ? '#ffffff' : ANKU.greenDark,
+                      }}
+                    >
+                      {followersCount}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContactOpen(true)}
+                    className="rounded-full px-4 py-2 text-xs font-bold text-white transition inline-flex items-center gap-1.5"
+                    style={{ background: ANKU.green }}
+                  >
+                    <MessageCircle size={14} />
+                    Contacter
                   </button>
                 </div>
+              </div>
 
-                {/* Infos */}
-                <div className="p-3 flex-1 flex flex-col">
-                  <p className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug min-h-[2.5rem]">
-                    {p.name}
-                  </p>
-                  <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-500">
-                    {p.location && (
-                      <span className="flex items-center gap-1 truncate">
-                        <MapPin size={10} /> {p.location}
+              {/* Description */}
+              {shop.description && (
+                <p className="text-sm text-gray-600 mt-4 leading-relaxed">
+                  {shop.description}
+                </p>
+              )}
+
+              {/* Infos vendeur */}
+              {owner && (
+                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+                  {owner.avatar_url ? (
+                    <img
+                      src={owner.avatar_url}
+                      alt={owner.username}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                      style={{ background: ANKU.greenDark }}
+                    >
+                      {(owner.first_name?.[0] ?? '') +
+                        (owner.last_name?.[0] ?? '')}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {owner.first_name} {owner.last_name}
+                    </p>
+                    <p className="text-xs text-gray-500">@{owner.username}</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1 font-bold text-amber-600">
+                      <Star size={12} fill="#f59e0b" />
+                      {Number(owner.rating?.average ?? 0).toFixed(1)}
+                      <span className="text-gray-400 font-normal">
+                        ({owner.rating?.count ?? 0})
+                      </span>
+                    </span>
+                  </div>
+                  {owner.username && (
+                    <Link
+                      to={`/u/${owner.username}`}
+                      className="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold transition border"
+                      style={{
+                        background: '#ffffff',
+                        color: ANKU.greenDark,
+                        borderColor: `${ANKU.green}55`,
+                      }}
+                    >
+                      <UserCircle2 size={12} /> Voir le profil
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {/* Badges métier */}
+              {owner?.badges && owner.badges.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {owner.badges.map((b) => (
+                    <span
+                      key={b}
+                      className="text-[10px] font-bold px-2 py-1 rounded-full"
+                      style={{
+                        background: ANKU.greenPale,
+                        color: ANKU.greenDark,
+                      }}
+                    >
+                      {b}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ====================================================
+              Barre recherche produits
+             ==================================================== */}
+          <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-3 shadow-sm flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher un produit dans cette boutique…"
+                className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 transition"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
+                >
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+            <span className="text-xs font-bold text-gray-500 whitespace-nowrap">
+              {filteredProducts.length} produit
+              {filteredProducts.length > 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* ====================================================
+              Grille produits
+             ==================================================== */}
+          {loadingProducts ? (
+            <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-10 text-center shadow-sm">
+              <Loader size={24} className="animate-spin text-gray-400 mx-auto" />
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-10 text-center shadow-sm">
+              <Package size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-sm font-bold text-gray-800">
+                Aucun produit trouvé
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {search
+                  ? 'Essaie une autre recherche'
+                  : 'Cette boutique n’a pas encore publié de produit'}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {filteredProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/products/${p.id}`}
+                  className="group rounded-2xl overflow-hidden border border-white/60 bg-white/90 backdrop-blur-xl shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-gray-100">
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                        <Package size={32} />
+                      </div>
+                    )}
+
+                    {p.stock !== null && p.has_unlimited_stock === 0 && (
+                      <span
+                        className={
+                          'absolute top-2 left-2 text-[10px] font-extrabold px-2 py-0.5 rounded-full ' +
+                          (p.stock > 0
+                            ? 'bg-white/90 text-gray-700'
+                            : 'bg-red-100 text-red-700')
+                        }
+                      >
+                        {p.stock > 0 ? `Stock ${p.stock}` : 'Rupture'}
                       </span>
                     )}
-                  </div>
-                  <div className="mt-auto pt-2 flex items-end justify-between">
-                    <span
-                      className="text-base font-extrabold"
-                      style={{ color: ANKU.greenDark }}
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleQuickAdd(e, p)}
+                      className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center bg-white/95 text-gray-700 shadow-md hover:bg-emerald-500 hover:text-white transition"
+                      title="Ajouter au panier"
                     >
-                      {formatEuro(p.price)}
-                    </span>
-                    <ArrowRight
-                      size={14}
-                      className="text-gray-300 group-hover:text-emerald-500 transition"
-                    />
+                      <ShoppingCart size={14} />
+                    </button>
                   </div>
+
+                  <div className="p-3 flex-1 flex flex-col">
+                    <p className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug min-h-[2.5rem]">
+                      {p.name}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-500">
+                      {p.location && (
+                        <span className="flex items-center gap-1 truncate">
+                          <MapPin size={10} /> {p.location}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-auto pt-2 flex items-end justify-between">
+                      <span
+                        className="text-base font-extrabold"
+                        style={{ color: ANKU.greenDark }}
+                      >
+                        {formatEuro(p.price)}
+                      </span>
+                      <ArrowRight
+                        size={14}
+                        className="text-gray-300 group-hover:text-emerald-500 transition"
+                      />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ====================================================
+            Modale contact vendeur
+           ==================================================== */}
+        {contactOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-3">
+            <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <MessageCircle size={18} style={{ color: ANKU.greenDark }} />
+                  <p className="text-sm font-bold text-gray-900">
+                    Contacter {shop.name}
+                  </p>
                 </div>
-              </Link>
-            ))}
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(false)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-2">
+                Ton message sera envoyé en direct au vendeur via la messagerie
+                ANKU.
+              </p>
+
+              <textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                rows={4}
+                maxLength={5000}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
+                placeholder="Écris ton message…"
+              />
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(false)}
+                  className="flex-1 rounded-full py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleContact}
+                  disabled={sendingMessage}
+                  className="flex-1 rounded-full py-2.5 text-xs font-bold text-white transition inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  style={{ background: ANKU.green }}
+                >
+                  {sendingMessage ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                  Envoyer
+                </button>
+              </div>
+            </div>
           </div>
         )}
-      </div>
-
-      {/* ====================================================
-          Modale contact vendeur
-         ==================================================== */}
-      {contactOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-3">
-          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <MessageCircle size={18} style={{ color: ANKU.greenDark }} />
-                <p className="text-sm font-bold text-gray-900">
-                  Contacter {shop.name}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setContactOpen(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            <p className="text-xs text-gray-500 mb-2">
-              Ton message sera envoyé en direct au vendeur via la messagerie
-              ANKU.
-            </p>
-
-            <textarea
-              value={contactMessage}
-              onChange={(e) => setContactMessage(e.target.value)}
-              rows={4}
-              maxLength={5000}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
-              placeholder="Écris ton message…"
-            />
-
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setContactOpen(false)}
-                className="flex-1 rounded-full py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleContact}
-                disabled={sendingMessage}
-                className="flex-1 rounded-full py-2.5 text-xs font-bold text-white transition inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
-                style={{ background: ANKU.green }}
-              >
-                {sendingMessage ? (
-                  <Loader size={14} className="animate-spin" />
-                ) : (
-                  <Send size={14} />
-                )}
-                Envoyer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </>
   )
