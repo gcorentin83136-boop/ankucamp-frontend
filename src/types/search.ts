@@ -114,6 +114,9 @@ export interface ShopSearchParams {
   q?: string
   city?: string
   category_id?: number
+  min_rating?: number
+  delivery?: 'pickup' | 'shipping' | 'meeting'
+  has_stock?: boolean
   sort?: 'relevance' | 'rating' | 'products_count' | 'recent'
   limit?: number
   offset?: number

@@ -8,7 +8,7 @@ import {
   Search, Store, MapPin, Star, Package, Users, Loader,
   SlidersHorizontal, X, Home, Compass,
   ChevronLeft, ChevronRight, ChevronRight as ChevR,
-  CheckCircle2,
+  CheckCircle2, Filter, Truck, Handshake,
 } from 'lucide-react'
 import searchApi from '../../service/api/search.api'
 import categoriesApi from '../../service/api/categories.api'
@@ -36,7 +36,14 @@ const SORT_OPTIONS = [
   { value: 'recent',         label: 'Récents' },
 ] as const
 
+const DELIVERY_OPTIONS = [
+  { value: 'pickup',   label: 'Retrait',      icon: Store },
+  { value: 'shipping', label: 'Livraison',    icon: Truck },
+  { value: 'meeting',  label: 'Point de RDV', icon: Handshake },
+] as const
+
 type SortValue = typeof SORT_OPTIONS[number]['value']
+type DeliveryValue = typeof DELIVERY_OPTIONS[number]['value']
 
 export default function ShopsList() {
   const auth = useAuthStore()
@@ -52,6 +59,11 @@ export default function ShopsList() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [sort, setSort]                         = useState<SortValue>('relevance')
   const [showSortMenu, setShowSortMenu]         = useState(false)
+  const [showFilterPanel, setShowFilterPanel]   = useState(false)
+  const [filterCity, setFilterCity]             = useState('')
+  const [filterMinRating, setFilterMinRating]   = useState<number>(0)
+  const [filterDelivery, setFilterDelivery]     = useState<DeliveryValue | null>(null)
+  const [filterHasStock, setFilterHasStock]     = useState(false)
   const [followingIds, setFollowingIds]         = useState<Set<number>>(new Set())
   const [pendingIds, setPendingIds]             = useState<Set<number>>(new Set())
 
@@ -79,6 +91,10 @@ export default function ShopsList() {
         const res = await searchApi.shops({
           q: search.trim() || undefined,
           category_id: selectedCategory ?? undefined,
+          city: filterCity.trim() || undefined,
+          min_rating: filterMinRating > 0 ? filterMinRating : undefined,
+          delivery: filterDelivery ?? undefined,
+          has_stock: filterHasStock ? true : undefined,
           sort,
           limit: 50,
         })
@@ -90,7 +106,7 @@ export default function ShopsList() {
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [search, selectedCategory, sort])
+  }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock])
 
   const toggleFollow = async (shopId: number) => {
     if (!isLogged) {
@@ -126,11 +142,40 @@ export default function ShopsList() {
     el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
   }
 
-  const hasActiveFilters = search.trim() !== '' || selectedCategory !== null
+  const hasActiveFilters =
+    search.trim() !== '' ||
+    selectedCategory !== null ||
+    filterCity.trim() !== '' ||
+    filterMinRating > 0 ||
+    filterDelivery !== null ||
+    filterHasStock
+
+  const activeFiltersCount =
+    (filterCity.trim() !== '' ? 1 : 0) +
+    (filterMinRating > 0 ? 1 : 0) +
+    (filterDelivery !== null ? 1 : 0) +
+    (filterHasStock ? 1 : 0)
+
   const activeCategoryName =
     selectedCategory !== null
       ? categories.find((c) => c.id === selectedCategory)?.name
       : null
+
+  const resetAllFilters = () => {
+    setSearch('')
+    setSelectedCategory(null)
+    setFilterCity('')
+    setFilterMinRating(0)
+    setFilterDelivery(null)
+    setFilterHasStock(false)
+  }
+
+  const resetAdvancedFilters = () => {
+    setFilterCity('')
+    setFilterMinRating(0)
+    setFilterDelivery(null)
+    setFilterHasStock(false)
+  }
 
   return (
     <>
@@ -199,7 +244,6 @@ export default function ShopsList() {
               )}
             </div>
 
-            {/* Flèches */}
             <div className="hidden sm:flex items-center gap-1.5">
               <button
                 type="button"
@@ -233,7 +277,6 @@ export default function ShopsList() {
                 scrollbarWidth: 'thin',
               }}
             >
-              {/* Carte "Tout" */}
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
@@ -288,7 +331,6 @@ export default function ShopsList() {
                       boxShadow: `0 0 0 3px ${ANKU.green}40`,
                     }}
                   >
-                    {/* Image ou gradient */}
                     {cat.image_url ? (
                       <img
                         src={cat.image_url}
@@ -299,10 +341,8 @@ export default function ShopsList() {
                       <div className="absolute inset-0" style={{ background: bg }} />
                     )}
 
-                    {/* Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-                    {/* Contenu */}
                     <div className="relative h-full flex flex-col justify-end p-3 text-white text-left">
                       <div
                         className="w-9 h-9 rounded-xl flex items-center justify-center mb-2 border border-white/30 backdrop-blur-sm"
@@ -315,7 +355,6 @@ export default function ShopsList() {
                       </span>
                     </div>
 
-                    {/* Badge actif */}
                     {active && (
                       <div
                         className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
@@ -331,7 +370,7 @@ export default function ShopsList() {
           )}
         </section>
 
-        {/* ================= Barre recherche + tri ================= */}
+        {/* ================= Barre recherche + tri + filtres ================= */}
         <section className="rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Search
@@ -356,11 +395,164 @@ export default function ShopsList() {
             )}
           </div>
 
+          {/* Bouton Filtres */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setShowFilterPanel((v) => !v)
+                setShowSortMenu(false)
+              }}
+              className={
+                'rounded-full px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 border ' +
+                (activeFiltersCount > 0
+                  ? 'text-white border-transparent'
+                  : 'text-gray-700 bg-gray-100 hover:bg-gray-200 border-transparent')
+              }
+              style={
+                activeFiltersCount > 0
+                  ? { background: ANKU.green }
+                  : undefined
+              }
+            >
+              <Filter size={12} />
+              Filtres
+              {activeFiltersCount > 0 && (
+                <span className="ml-0.5 bg-white/30 rounded-full px-1.5 text-[10px] font-extrabold">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+
+            {showFilterPanel && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowFilterPanel(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 w-72 sm:w-80 space-y-4">
+                  {/* Ville */}
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                      <MapPin size={11} /> Ville
+                    </label>
+                    <input
+                      type="text"
+                      value={filterCity}
+                      onChange={(e) => setFilterCity(e.target.value)}
+                      placeholder="Ex : Lyon, Marseille…"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition"
+                    />
+                  </div>
+
+                  {/* Note minimum */}
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                      <Star size={11} /> Note minimum
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {[0, 1, 2, 3, 4, 5].map((n) => {
+                        const active = filterMinRating === n
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setFilterMinRating(active ? 0 : n)}
+                            className={
+                              'flex-1 rounded-lg py-1.5 text-xs font-bold transition ' +
+                              (active
+                                ? 'text-white'
+                                : 'text-gray-700 bg-gray-100 hover:bg-gray-200')
+                            }
+                            style={active ? { background: ANKU.green } : undefined}
+                          >
+                            {n === 0 ? 'Tout' : `${n}+`}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Livraison */}
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                      <Truck size={11} /> Mode de livraison
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DELIVERY_OPTIONS.map((opt) => {
+                        const Icon = opt.icon
+                        const active = filterDelivery === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() =>
+                              setFilterDelivery(active ? null : opt.value)
+                            }
+                            className={
+                              'rounded-full px-3 py-1.5 text-[11px] font-semibold transition flex items-center gap-1 ' +
+                              (active
+                                ? 'text-white'
+                                : 'text-gray-700 bg-gray-100 hover:bg-gray-200')
+                            }
+                            style={active ? { background: ANKU.green } : undefined}
+                          >
+                            <Icon size={11} />
+                            {opt.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* En stock */}
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filterHasStock}
+                        onChange={(e) => setFilterHasStock(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                        <Package size={12} /> Avec produits en stock
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    {activeFiltersCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={resetAdvancedFilters}
+                        className="flex-1 rounded-full py-2 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition"
+                      >
+                        Réinitialiser les filtres
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowFilterPanel(false)}
+                      className="flex-1 rounded-full py-2 text-[11px] font-bold text-white transition"
+                      style={{ background: ANKU.green }}
+                    >
+                      Appliquer
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Tri */}
           <div className="relative shrink-0">
             <button
               type="button"
-              onClick={() => setShowSortMenu((s) => !s)}
+              onClick={() => {
+                setShowSortMenu((s) => !s)
+                setShowFilterPanel(false)
+              }}
               className="rounded-full px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition flex items-center gap-1.5"
             >
               <SlidersHorizontal size={12} />
@@ -400,14 +592,11 @@ export default function ShopsList() {
             )}
           </div>
 
-          {/* Reset */}
+          {/* Reset global */}
           {hasActiveFilters && (
             <button
               type="button"
-              onClick={() => {
-                setSearch('')
-                setSelectedCategory(null)
-              }}
+              onClick={resetAllFilters}
               className="shrink-0 rounded-full px-3 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition flex items-center gap-1.5"
             >
               <X size={12} /> Réinitialiser
