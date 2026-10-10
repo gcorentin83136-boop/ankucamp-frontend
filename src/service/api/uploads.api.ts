@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — API Uploads
 // ============================================================
 
@@ -88,6 +88,20 @@ export const uploadsApi = {
     formData.append('file', file)
     const { data } = await httpClient.post<UploadResponse>(
       '/uploads/post-media',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return data
+  },
+
+  // ----------------------------------------------------------
+  // POST VIDEO (réseau social)
+  // ----------------------------------------------------------
+  uploadPostVideo: async (file: File): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await httpClient.post<UploadResponse>(
+      '/uploads/post-video',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     )

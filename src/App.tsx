@@ -48,6 +48,7 @@ import BuyerFollows from './pages/Buyer/Follows'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import Profile from './pages/Profile'
+import Friends from './pages/Friends'
 import UserProfile from './pages/UserProfile'
 import Feed from './pages/Feed'
 import Messages from './pages/Messages'
@@ -122,6 +123,7 @@ function App() {
       </Route>
 
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
       <Route path="/u/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
       <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />

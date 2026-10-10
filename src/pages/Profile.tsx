@@ -11,7 +11,6 @@ import {
   Store,
   Loader,
   Send,
-  Image as ImageIcon,
   Heart,
   MessageCircle,
   Share2,
@@ -25,6 +24,8 @@ import postsApi from '../service/api/posts.api'
 import httpClient from '../service/api/httpClient'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
+import MediaUploader from '../components/common/MediaUploader'
+import type { MediaItem } from '../components/common/MediaUploader'
 import type { UserMe } from '../types/user'
 import type { Post, PostComment } from '../types/post'
 
@@ -77,18 +78,30 @@ function memberSince(iso: string | null | undefined) {
 function parseMedia(p: Post): string[] {
   if (p.media && Array.isArray(p.media)) {
     return p.media
-      .map((m) => (typeof m === 'string' ? m : m.url))
+      .map((m: any) => (typeof m === 'string' ? m : m.url))
       .filter(Boolean)
   }
-  if (p.media_urls) {
+  const raw: any = (p as any).media_urls
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.filter(Boolean)
+  if (typeof raw === 'string') {
     try {
-      const arr = JSON.parse(p.media_urls)
-      return Array.isArray(arr) ? arr : []
+      const arr = JSON.parse(raw)
+      return Array.isArray(arr) ? arr.filter(Boolean) : []
     } catch {
       return []
     }
   }
   return []
+}
+
+function isVideoUrl(url: string): boolean {
+  return (
+    url.includes('/video/') ||
+    url.endsWith('.mp4') ||
+    url.endsWith('.webm') ||
+    url.endsWith('.mov')
+  )
 }
 
 // ============================================================
@@ -207,15 +220,25 @@ function PostCard({
             (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
           }
         >
-          {media.slice(0, 4).map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              className="w-full aspect-video object-cover rounded-lg"
-              loading="lazy"
-            />
-          ))}
+          {media.slice(0, 4).map((url, i) =>
+            isVideoUrl(url) ? (
+              <video
+                key={i}
+                src={url}
+                className="w-full aspect-video object-cover rounded-lg bg-black"
+                controls
+                preload="metadata"
+              />
+            ) : (
+              <img
+                key={i}
+                src={url}
+                alt=""
+                className="w-full aspect-video object-cover rounded-lg"
+                loading="lazy"
+              />
+            )
+          )}
         </div>
       )}
 
@@ -351,6 +374,7 @@ export default function Profile() {
   // Publier
   const [content, setContent] = useState('')
   const [publishToFeed, setPublishToFeed] = useState(true)
+  const [media, setMedia] = useState<MediaItem[]>([])
   const [publishing, setPublishing] = useState(false)
 
   // ==========================================================
@@ -407,17 +431,16 @@ export default function Profile() {
   // Publier
   // ==========================================================
   const handlePublish = async () => {
-    if (!content.trim()) {
-      toast.error('Écris quelque chose')
+    if (!content.trim() && media.length === 0) {
+      toast.error('Écris quelque chose ou ajoute un média')
       return
     }
     setPublishing(true)
     try {
       await postsApi.create({
-        content: content.trim(),
-        // Option A : la checkbox pilote la visibilité
+        content: content.trim() || null,
         visibility: publishToFeed ? 'public' : 'friends',
-        media_urls: [],
+        media_urls: media.map((m) => m.url),
       })
       toast.success(
         publishToFeed
@@ -425,6 +448,7 @@ export default function Profile() {
           : 'Publié sur ton mur (visible par tes amis) ✅'
       )
       setContent('')
+      setMedia([])
       await loadPosts()
       await loadProfile()
     } catch (err: any) {
@@ -435,9 +459,7 @@ export default function Profile() {
   }
 
   // Galerie : médias extraits des posts
-  const galleryItems = posts
-    .flatMap((p) => parseMedia(p))
-    .filter(Boolean)
+  const galleryItems = posts.flatMap((p) => parseMedia(p)).filter(Boolean)
 
   // ==========================================================
   // Rendu : chargement
@@ -474,9 +496,7 @@ export default function Profile() {
       <AnimatedShopsBackground />
 
       <div className="relative max-w-5xl mx-auto py-6 px-3 sm:px-5 space-y-5">
-        {/* ====================================================
-            Bannière + avatar
-           ==================================================== */}
+        {/* Bannière + avatar */}
         <div className="rounded-3xl overflow-hidden border border-white/60 shadow-sm bg-white/95 backdrop-blur">
           <div
             className="h-40 sm:h-52 relative"
@@ -498,7 +518,6 @@ export default function Profile() {
 
           <div className="px-5 sm:px-7 pb-5 pt-3 relative">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-14 sm:-mt-16">
-              {/* Avatar */}
               <div className="flex items-end gap-4">
                 {me.avatar_url ? (
                   <img
@@ -519,7 +538,6 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Infos */}
             <div className="mt-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
@@ -541,7 +559,6 @@ export default function Profile() {
               </div>
               <p className="text-sm text-gray-500 mt-0.5">@{me.username}</p>
 
-              {/* Bio + infos */}
               {me.bio && (
                 <p className="text-sm text-gray-700 mt-3 leading-relaxed">
                   {me.bio}
@@ -571,7 +588,6 @@ export default function Profile() {
                 </span>
               </div>
 
-              {/* Actions */}
               <div className="flex flex-wrap items-center gap-2 mt-4">
                 <Link
                   to="/settings"
@@ -609,9 +625,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* ====================================================
-            Compteurs
-           ==================================================== */}
+        {/* Compteurs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-4">
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase">
@@ -653,9 +667,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* ====================================================
-            Publier sur mon mur
-           ==================================================== */}
+        {/* Publier sur mon mur */}
         <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-4">
           <div className="flex items-start gap-3">
             {me.avatar_url ? (
@@ -700,19 +712,16 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-full transition"
-              title="Ajouter une photo (bientôt)"
-            >
-              <ImageIcon size={12} />
-              Photo
-            </button>
+          {/* MediaUploader */}
+          <div className="mt-3">
+            <MediaUploader media={media} onChange={setMedia} />
+          </div>
+
+          <div className="mt-3 flex items-center justify-end gap-2 flex-wrap">
             <button
               type="button"
               onClick={handlePublish}
-              disabled={publishing || !content.trim()}
+              disabled={publishing || (!content.trim() && media.length === 0)}
               className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
               style={{ background: ANKU.green }}
             >
@@ -726,9 +735,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* ====================================================
-            Onglets Posts / Galerie
-           ==================================================== */}
+        {/* Onglets Posts / Galerie */}
         <div className="flex items-center gap-2 border-b border-gray-200">
           <button
             type="button"
@@ -764,9 +771,7 @@ export default function Profile() {
           </button>
         </div>
 
-        {/* ====================================================
-            Contenu selon l'onglet
-           ==================================================== */}
+        {/* Contenu selon l'onglet */}
         {tab === 'posts' ? (
           loadingPosts ? (
             <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
@@ -810,15 +815,25 @@ export default function Profile() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {galleryItems.map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt=""
-                className="w-full aspect-square object-cover rounded-xl border border-gray-200"
-                loading="lazy"
-              />
-            ))}
+            {galleryItems.map((url, i) =>
+              isVideoUrl(url) ? (
+                <video
+                  key={i}
+                  src={url}
+                  className="w-full aspect-square object-cover rounded-xl border border-gray-200 bg-black"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  className="w-full aspect-square object-cover rounded-xl border border-gray-200"
+                  loading="lazy"
+                />
+              )
+            )}
           </div>
         )}
       </div>

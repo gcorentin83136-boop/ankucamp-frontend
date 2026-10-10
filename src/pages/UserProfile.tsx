@@ -81,13 +81,16 @@ function memberSince(iso: string | null | undefined) {
 function parseMedia(p: Post): string[] {
   if (p.media && Array.isArray(p.media)) {
     return p.media
-      .map((m) => (typeof m === 'string' ? m : m.url))
+      .map((m: any) => (typeof m === 'string' ? m : m.url))
       .filter(Boolean)
   }
-  if (p.media_urls) {
+  const raw: any = (p as any).media_urls
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.filter(Boolean)
+  if (typeof raw === 'string') {
     try {
-      const arr = JSON.parse(p.media_urls)
-      return Array.isArray(arr) ? arr : []
+      const arr = JSON.parse(raw)
+      return Array.isArray(arr) ? arr.filter(Boolean) : []
     } catch {
       return []
     }

@@ -8,7 +8,6 @@ import {
   Newspaper,
   Store,
   Star,
-  Image as ImageIcon,
   Send,
   Loader,
   Heart,
@@ -25,6 +24,8 @@ import httpClient from '../service/api/httpClient'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
 import ReportModal from '../components/common/ReportModal'
+import MediaUploader, { type MediaItem } from '../components/common/MediaUploader'
+import ImageLightbox from '../components/common/ImageLightbox'
 import type { Post, PostComment, PostVisibility } from '../types/post'
 import type { ReportTargetType } from '../types/report'
 
@@ -69,18 +70,30 @@ function authorName(p: Post): string {
 function parseMedia(p: Post): string[] {
   if (p.media && Array.isArray(p.media)) {
     return p.media
-      .map((m) => (typeof m === 'string' ? m : m.url))
+      .map((m: any) => (typeof m === 'string' ? m : m.url))
       .filter(Boolean)
   }
-  if (p.media_urls) {
+  const raw: any = (p as any).media_urls
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.filter(Boolean)
+  if (typeof raw === 'string') {
     try {
-      const arr = JSON.parse(p.media_urls)
-      return Array.isArray(arr) ? arr : []
+      const arr = JSON.parse(raw)
+      return Array.isArray(arr) ? arr.filter(Boolean) : []
     } catch {
       return []
     }
   }
   return []
+}
+
+function isVideoUrl(url: string): boolean {
+  return (
+    url.includes('/video/') ||
+    url.endsWith('.mp4') ||
+    url.endsWith('.webm') ||
+    url.endsWith('.mov')
+  )
 }
 
 // ============================================================
@@ -364,7 +377,7 @@ function PostCard({
   const [shareText, setShareText] = useState('')
   const [sharing, setSharing] = useState(false)
 
-  // Signalement
+  const [lightboxIndex, setLightboxIndex] = useState(-1)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportTargetType, setReportTargetType] =
     useState<ReportTargetType>('post')
@@ -372,6 +385,7 @@ function PostCard({
   const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
 
   const media = parseMedia(post)
+  const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
   const toggleLike = async () => {
     try {
@@ -452,9 +466,6 @@ function PostCard({
     }
   }
 
-  // ==========================================================
-  // Ouvrir signalement
-  // ==========================================================
   const openReportPost = () => {
     setReportTargetType('post')
     setReportTargetId(post.id)
@@ -469,14 +480,14 @@ function PostCard({
     setReportOpen(true)
   }
 
+  // Retourne l'index de cette URL dans la liste des images uniquement
+  const imageIndex = (url: string) => imageOnlyUrls.indexOf(url)
+
   return (
     <>
       <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
-        {/* Header */}
         <div className="flex items-start gap-3 p-4">
-          <Link
-            to={post.author?.username ? `/u/${post.author.username}` : '#'}
-          >
+          <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
             {post.author?.avatar_url ? (
               <img
                 src={post.author.avatar_url}
@@ -506,7 +517,6 @@ function PostCard({
             </p>
           </div>
 
-          {/* Badges visibilité */}
           {post.visibility === 'private' && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
               Privé
@@ -518,7 +528,6 @@ function PostCard({
             </span>
           )}
 
-          {/* Menu d'actions */}
           <PostActionsMenu
             isOwn={isOwn}
             onReport={openReportPost}
@@ -541,15 +550,31 @@ function PostCard({
               (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
             }
           >
-            {media.slice(0, 4).map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt=""
-                className="w-full aspect-video object-cover rounded-lg"
-                loading="lazy"
-              />
-            ))}
+            {media.map((url, i) =>
+              isVideoUrl(url) ? (
+                <video
+                  key={i}
+                  src={url}
+                  className="w-full aspect-video object-cover rounded-lg bg-black"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setLightboxIndex(imageIndex(url))}
+                  className="w-full aspect-video overflow-hidden rounded-lg cursor-zoom-in bg-gray-100"
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    className="w-full h-full object-cover hover:opacity-95 transition"
+                    loading="lazy"
+                  />
+                </button>
+              )
+            )}
           </div>
         )}
 
@@ -577,9 +602,7 @@ function PostCard({
             onClick={toggleLike}
             className={
               'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
-              (liked
-                ? 'text-red-500 bg-red-50'
-                : 'text-gray-600 hover:bg-gray-50')
+              (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')
             }
           >
             <Heart size={14} className={liked ? 'fill-red-500' : ''} />
@@ -747,13 +770,19 @@ function PostCard({
         )}
       </article>
 
-      {/* Modal signalement */}
       <ReportModal
         open={reportOpen}
         onClose={() => setReportOpen(false)}
         targetType={reportTargetType}
         targetId={reportTargetId}
         targetLabel={reportTargetLabel}
+      />
+
+      <ImageLightbox
+        images={imageOnlyUrls}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(-1)}
+        onNavigate={setLightboxIndex}
       />
     </>
   )
@@ -774,6 +803,7 @@ export default function Feed() {
 
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<PostVisibility>('public')
+  const [media, setMedia] = useState<MediaItem[]>([])
   const [publishing, setPublishing] = useState(false)
 
   const loadPosts = useCallback(
@@ -799,19 +829,20 @@ export default function Feed() {
   }, [])
 
   const handlePublish = async () => {
-    if (!content.trim()) {
-      toast.error('Écris quelque chose')
+    if (!content.trim() && media.length === 0) {
+      toast.error('Écris quelque chose ou ajoute un média')
       return
     }
     setPublishing(true)
     try {
       await postsApi.create({
-        content: content.trim(),
+        content: content.trim() || null,
         visibility,
-        media_urls: [],
+        media_urls: media.map((m) => m.url),
       })
       toast.success('Post publié ✅')
       setContent('')
+      setMedia([])
       await loadPosts(true)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
@@ -826,7 +857,6 @@ export default function Feed() {
 
       <div className="relative max-w-7xl mx-auto px-3 sm:px-5 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
-          {/* SIDEBAR */}
           <aside className="hidden lg:block">
             <div className="sticky top-6 space-y-4">
               <ProfileCard />
@@ -836,9 +866,7 @@ export default function Feed() {
             </div>
           </aside>
 
-          {/* CONTENU */}
           <main className="space-y-4 min-w-0">
-            {/* Bannière */}
             <div
               className="rounded-3xl p-6 sm:p-8 relative overflow-hidden backdrop-blur-sm"
               style={{
@@ -891,7 +919,6 @@ export default function Feed() {
               </div>
             </div>
 
-            {/* Raccourcis mobile */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
               {SHORTCUTS.map((s) => {
                 const Icon = s.icon
@@ -942,32 +969,27 @@ export default function Feed() {
                   className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
                 />
               </div>
+
+              <div className="mt-3">
+                <MediaUploader media={media} onChange={setMedia} />
+              </div>
+
               <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-full transition"
-                    title="Ajouter une photo (bientôt)"
-                  >
-                    <ImageIcon size={12} />
-                    Photo
-                  </button>
-                  <select
-                    value={visibility}
-                    onChange={(e) =>
-                      setVisibility(e.target.value as PostVisibility)
-                    }
-                    className="text-[11px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-full transition cursor-pointer focus:outline-none"
-                  >
-                    <option value="public">🌍 Public</option>
-                    <option value="friends">👥 Amis</option>
-                    <option value="private">🔒 Privé</option>
-                  </select>
-                </div>
+                <select
+                  value={visibility}
+                  onChange={(e) =>
+                    setVisibility(e.target.value as PostVisibility)
+                  }
+                  className="text-[11px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-full transition cursor-pointer focus:outline-none"
+                >
+                  <option value="public">🌍 Public</option>
+                  <option value="friends">👥 Amis</option>
+                  <option value="private">🔒 Privé</option>
+                </select>
                 <button
                   type="button"
                   onClick={handlePublish}
-                  disabled={publishing || !content.trim()}
+                  disabled={publishing || (!content.trim() && media.length === 0)}
                   className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
                   style={{ background: ANKU.green }}
                 >
@@ -981,7 +1003,6 @@ export default function Feed() {
               </div>
             </div>
 
-            {/* Fil d'actu */}
             {loading ? (
               <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
                 <Loader
