@@ -17,12 +17,16 @@ import {
   X,
   UserPlus,
   MapPin,
+  Flag,
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
 import httpClient from '../service/api/httpClient'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
+import PostActionsMenu from '../components/common/PostActionsMenu'
+import ReportModal from '../components/common/ReportModal'
 import type { Post, PostComment, PostVisibility } from '../types/post'
+import type { ReportTargetType } from '../types/report'
 
 const ANKU = {
   green: '#6aa84f',
@@ -340,11 +344,15 @@ function QuickLinks() {
 // ============================================================
 function PostCard({
   post,
+  currentUserId,
   onPostUpdated,
 }: {
   post: Post
+  currentUserId: number | undefined
   onPostUpdated: () => void
 }) {
+  const isOwn = post.author_id === currentUserId
+
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
   const [commentsOpen, setCommentsOpen] = useState(false)
@@ -355,6 +363,13 @@ function PostCard({
   const [shareOpen, setShareOpen] = useState(false)
   const [shareText, setShareText] = useState('')
   const [sharing, setSharing] = useState(false)
+
+  // Signalement
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportTargetType, setReportTargetType] =
+    useState<ReportTargetType>('post')
+  const [reportTargetId, setReportTargetId] = useState<number>(0)
+  const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
 
   const media = parseMedia(post)
 
@@ -415,6 +430,17 @@ function PostCard({
     }
   }
 
+  const deletePost = async () => {
+    if (!confirm('Supprimer ce post ?')) return
+    try {
+      await postsApi.remove(post.id)
+      toast.success('Post supprimé')
+      onPostUpdated()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    }
+  }
+
   const deleteComment = async (commentId: number) => {
     if (!confirm('Supprimer ce commentaire ?')) return
     try {
@@ -426,254 +452,310 @@ function PostCard({
     }
   }
 
+  // ==========================================================
+  // Ouvrir signalement
+  // ==========================================================
+  const openReportPost = () => {
+    setReportTargetType('post')
+    setReportTargetId(post.id)
+    setReportTargetLabel('ce post')
+    setReportOpen(true)
+  }
+
+  const openReportComment = (commentId: number) => {
+    setReportTargetType('comment')
+    setReportTargetId(commentId)
+    setReportTargetLabel('ce commentaire')
+    setReportOpen(true)
+  }
+
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
-      <div className="flex items-start gap-3 p-4">
-        <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
-          {post.author?.avatar_url ? (
-            <img
-              src={post.author.avatar_url}
-              alt={authorName(post)}
-              className="w-11 h-11 rounded-full object-cover"
-            />
-          ) : (
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold"
-              style={{ background: ANKU.greenDark }}
-            >
-              {(post.author?.first_name?.[0] ?? '') +
-                (post.author?.last_name?.[0] ?? '')}
-            </div>
-          )}
-        </Link>
-        <div className="flex-1 min-w-0">
+    <>
+      <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4">
           <Link
             to={post.author?.username ? `/u/${post.author.username}` : '#'}
-            className="text-sm font-bold text-gray-900 hover:underline"
           >
-            {authorName(post)}
+            {post.author?.avatar_url ? (
+              <img
+                src={post.author.avatar_url}
+                alt={authorName(post)}
+                className="w-11 h-11 rounded-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold"
+                style={{ background: ANKU.greenDark }}
+              >
+                {(post.author?.first_name?.[0] ?? '') +
+                  (post.author?.last_name?.[0] ?? '')}
+              </div>
+            )}
           </Link>
-          <p className="text-xs text-gray-500">
-            @{post.author?.username ?? 'utilisateur'} ·{' '}
-            {formatDate(post.created_at)}
-          </p>
-        </div>
-        {post.visibility === 'private' && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-            Privé
-          </span>
-        )}
-        {post.visibility === 'friends' && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-            Amis
-          </span>
-        )}
-      </div>
-
-      {post.content && (
-        <div className="px-4 pb-3">
-          <p className="text-sm text-gray-800 whitespace-pre-line">
-            {post.content}
-          </p>
-        </div>
-      )}
-
-      {media.length > 0 && (
-        <div
-          className={
-            'grid gap-1 px-4 pb-3 ' +
-            (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
-          }
-        >
-          {media.slice(0, 4).map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              className="w-full aspect-video object-cover rounded-lg"
-              loading="lazy"
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
-        <span className="flex items-center gap-1">
-          <Heart
-            size={12}
-            className={liked ? 'fill-red-500 text-red-500' : ''}
-          />
-          {likesCount}
-        </span>
-        <span className="flex items-center gap-1">
-          <MessageCircle size={12} />
-          {post.comments_count ?? 0}
-        </span>
-        <span className="flex items-center gap-1">
-          <Share2 size={12} />
-          {post.shares_count ?? 0}
-        </span>
-      </div>
-
-      <div className="px-2 py-1 flex border-t border-gray-100">
-        <button
-          type="button"
-          onClick={toggleLike}
-          className={
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
-            (liked
-              ? 'text-red-500 bg-red-50'
-              : 'text-gray-600 hover:bg-gray-50')
-          }
-        >
-          <Heart size={14} className={liked ? 'fill-red-500' : ''} />
-          J'aime
-        </button>
-        <button
-          type="button"
-          onClick={openComments}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
-        >
-          <MessageCircle size={14} />
-          Commenter
-        </button>
-        <button
-          type="button"
-          onClick={() => setShareOpen(true)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
-        >
-          <Share2 size={14} />
-          Partager
-        </button>
-      </div>
-
-      {commentsOpen && (
-        <div className="border-t border-gray-100 bg-gray-50/50 p-4 space-y-3">
-          {loadingComments ? (
-            <Loader size={18} className="animate-spin text-gray-400 mx-auto" />
-          ) : comments.length === 0 ? (
-            <p className="text-xs text-gray-500 italic text-center">
-              Aucun commentaire
+          <div className="flex-1 min-w-0">
+            <Link
+              to={post.author?.username ? `/u/${post.author.username}` : '#'}
+              className="text-sm font-bold text-gray-900 hover:underline"
+            >
+              {authorName(post)}
+            </Link>
+            <p className="text-xs text-gray-500">
+              @{post.author?.username ?? 'utilisateur'} ·{' '}
+              {formatDate(post.created_at)}
             </p>
-          ) : (
-            <div className="space-y-2">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2">
-                  {c.author?.avatar_url ? (
-                    <img
-                      src={c.author.avatar_url}
-                      alt=""
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ background: ANKU.greenDark }}
-                    >
-                      {(c.author?.first_name?.[0] ?? '') +
-                        (c.author?.last_name?.[0] ?? '')}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 bg-white rounded-xl px-3 py-2 border border-gray-100">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-gray-900">
-                        {c.author?.first_name} {c.author?.last_name}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => deleteComment(c.id)}
-                        className="text-gray-400 hover:text-red-500"
-                        title="Supprimer"
-                      >
-                        <X size={11} />
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">
-                      {c.content}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          </div>
+
+          {/* Badges visibilité */}
+          {post.visibility === 'private' && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+              Privé
+            </span>
+          )}
+          {post.visibility === 'friends' && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+              Amis
+            </span>
           )}
 
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              placeholder="Écris un commentaire…"
-              className="flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs placeholder-gray-400 focus:outline-none focus:border-emerald-400"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitComment()
-              }}
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={sendingComment || !commentInput.trim()}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white disabled:opacity-50"
-              style={{ background: ANKU.green }}
-            >
-              {sendingComment ? (
-                <Loader size={12} className="animate-spin" />
-              ) : (
-                <Send size={12} />
-              )}
-            </button>
-          </div>
+          {/* Menu d'actions */}
+          <PostActionsMenu
+            isOwn={isOwn}
+            onReport={openReportPost}
+            onDelete={isOwn ? deletePost : undefined}
+          />
         </div>
-      )}
 
-      {shareOpen && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-gray-900">
-                Partager ce post
-              </p>
-              <button
-                type="button"
-                onClick={() => setShareOpen(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <textarea
-              value={shareText}
-              onChange={(e) => setShareText(e.target.value)}
-              rows={3}
-              placeholder="Ajoute un commentaire (optionnel)…"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white resize-none"
+        {post.content && (
+          <div className="px-4 pb-3">
+            <p className="text-sm text-gray-800 whitespace-pre-line">
+              {post.content}
+            </p>
+          </div>
+        )}
+
+        {media.length > 0 && (
+          <div
+            className={
+              'grid gap-1 px-4 pb-3 ' +
+              (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
+            }
+          >
+            {media.slice(0, 4).map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt=""
+                className="w-full aspect-video object-cover rounded-lg"
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
+          <span className="flex items-center gap-1">
+            <Heart
+              size={12}
+              className={liked ? 'fill-red-500 text-red-500' : ''}
             />
-            <div className="mt-4 flex gap-2">
+            {likesCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageCircle size={12} />
+            {post.comments_count ?? 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 size={12} />
+            {post.shares_count ?? 0}
+          </span>
+        </div>
+
+        <div className="px-2 py-1 flex border-t border-gray-100">
+          <button
+            type="button"
+            onClick={toggleLike}
+            className={
+              'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
+              (liked
+                ? 'text-red-500 bg-red-50'
+                : 'text-gray-600 hover:bg-gray-50')
+            }
+          >
+            <Heart size={14} className={liked ? 'fill-red-500' : ''} />
+            J'aime
+          </button>
+          <button
+            type="button"
+            onClick={openComments}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <MessageCircle size={14} />
+            Commenter
+          </button>
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <Share2 size={14} />
+            Partager
+          </button>
+        </div>
+
+        {commentsOpen && (
+          <div className="border-t border-gray-100 bg-gray-50/50 p-4 space-y-3">
+            {loadingComments ? (
+              <Loader size={18} className="animate-spin text-gray-400 mx-auto" />
+            ) : comments.length === 0 ? (
+              <p className="text-xs text-gray-500 italic text-center">
+                Aucun commentaire
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {comments.map((c) => {
+                  const isMyComment = c.author_id === currentUserId
+                  return (
+                    <div key={c.id} className="flex gap-2">
+                      {c.author?.avatar_url ? (
+                        <img
+                          src={c.author.avatar_url}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                          style={{ background: ANKU.greenDark }}
+                        >
+                          {(c.author?.first_name?.[0] ?? '') +
+                            (c.author?.last_name?.[0] ?? '')}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 bg-white rounded-xl px-3 py-2 border border-gray-100">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-bold text-gray-900">
+                            {c.author?.first_name} {c.author?.last_name}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {isMyComment ? (
+                              <button
+                                type="button"
+                                onClick={() => deleteComment(c.id)}
+                                className="text-gray-400 hover:text-red-500"
+                                title="Supprimer"
+                              >
+                                <X size={11} />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openReportComment(c.id)}
+                                className="text-gray-400 hover:text-amber-500"
+                                title="Signaler"
+                              >
+                                <Flag size={11} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">
+                          {c.content}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                placeholder="Écris un commentaire…"
+                className="flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs placeholder-gray-400 focus:outline-none focus:border-emerald-400"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitComment()
+                }}
+              />
               <button
                 type="button"
-                onClick={() => setShareOpen(false)}
-                className="flex-1 rounded-full py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={submitShare}
-                disabled={sharing}
-                className="flex-1 rounded-full py-2.5 text-xs font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                onClick={submitComment}
+                disabled={sendingComment || !commentInput.trim()}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white disabled:opacity-50"
                 style={{ background: ANKU.green }}
               >
-                {sharing ? (
-                  <Loader size={14} className="animate-spin" />
+                {sendingComment ? (
+                  <Loader size={12} className="animate-spin" />
                 ) : (
-                  <Share2 size={14} />
+                  <Send size={12} />
                 )}
-                Partager
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </article>
+        )}
+
+        {shareOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-gray-900">
+                  Partager ce post
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShareOpen(false)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <textarea
+                value={shareText}
+                onChange={(e) => setShareText(e.target.value)}
+                rows={3}
+                placeholder="Ajoute un commentaire (optionnel)…"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white resize-none"
+              />
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShareOpen(false)}
+                  className="flex-1 rounded-full py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={submitShare}
+                  disabled={sharing}
+                  className="flex-1 rounded-full py-2.5 text-xs font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  style={{ background: ANKU.green }}
+                >
+                  {sharing ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Share2 size={14} />
+                  )}
+                  Partager
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </article>
+
+      {/* Modal signalement */}
+      <ReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType={reportTargetType}
+        targetId={reportTargetId}
+        targetLabel={reportTargetLabel}
+      />
+    </>
   )
 }
 
@@ -740,14 +822,11 @@ export default function Feed() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Fond animé */}
       <AnimatedShopsBackground />
 
       <div className="relative max-w-7xl mx-auto px-3 sm:px-5 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
-          {/* ============================================
-              SIDEBAR GAUCHE
-             ============================================ */}
+          {/* SIDEBAR */}
           <aside className="hidden lg:block">
             <div className="sticky top-6 space-y-4">
               <ProfileCard />
@@ -757,9 +836,7 @@ export default function Feed() {
             </div>
           </aside>
 
-          {/* ============================================
-              ZONE PRINCIPALE
-             ============================================ */}
+          {/* CONTENU */}
           <main className="space-y-4 min-w-0">
             {/* Bannière */}
             <div
@@ -814,7 +891,7 @@ export default function Feed() {
               </div>
             </div>
 
-            {/* Raccourcis (mobile + tablette) */}
+            {/* Raccourcis mobile */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
               {SHORTCUTS.map((s) => {
                 const Icon = s.icon
@@ -936,6 +1013,7 @@ export default function Feed() {
                   <PostCard
                     key={p.id}
                     post={p}
+                    currentUserId={user?.id}
                     onPostUpdated={() => loadPosts(true)}
                   />
                 ))}
