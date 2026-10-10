@@ -15,7 +15,6 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  X,
   CheckCircle2,
   Lock,
   Grid3x3,
@@ -25,6 +24,7 @@ import usersApi from '../service/api/users.api'
 import postsApi from '../service/api/posts.api'
 import httpClient from '../service/api/httpClient'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
+import PostActionsMenu from '../components/common/PostActionsMenu'
 import type { UserMe } from '../types/user'
 import type { Post, PostComment } from '../types/post'
 
@@ -184,14 +184,11 @@ function PostCard({
           </p>
         </div>
         {isOwnProfile && (
-          <button
-            type="button"
-            onClick={deletePost}
-            className="text-gray-400 hover:text-red-500 transition"
-            title="Supprimer"
-          >
-            <X size={14} />
-          </button>
+          <PostActionsMenu
+            isOwn={true}
+            onReport={() => {}}
+            onDelete={deletePost}
+          />
         )}
       </div>
 
