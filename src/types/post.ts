@@ -43,10 +43,12 @@ export interface PostComment {
   post_id: number
   author_id: number
   content: string
+  media_url?: string | null
   parent_comment_id: number | null
   created_at: string
 
   author?: PostAuthor | null
+  replies?: PostComment[]
 }
 
 export interface CreatePostPayload {

@@ -10,7 +10,7 @@ const ANKU = {
 }
 
 const MAX_IMAGES = 20
-const MAX_IMAGE_SIZE_MB = 10
+const MAX_IMAGE_SIZE_MB = 5
 const MAX_VIDEO_SIZE_MB = 50
 
 export interface MediaItem {
@@ -21,9 +21,11 @@ export interface MediaItem {
 export default function MediaUploader({
   media,
   onChange,
+  compact = false,
 }: {
   media: MediaItem[]
   onChange: (next: MediaItem[]) => void
+  compact?: boolean
 }) {
   const [uploading, setUploading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -40,7 +42,7 @@ export default function MediaUploader({
     if (!files || files.length === 0) return
 
     if (hasVideo) {
-      toast.error('Retire la vidéo avant d\'ajouter des images')
+      toast.error("Retire la vidéo avant d'ajouter des images")
       return
     }
     const currentCount = media.filter((m) => m.type === 'image').length
@@ -90,11 +92,11 @@ export default function MediaUploader({
     if (!file) return
 
     if (media.length > 0) {
-      toast.error('Retire les images avant d\'ajouter une vidéo')
+      toast.error("Retire les images avant d'ajouter une vidéo")
       return
     }
     if (!file.type.startsWith('video/')) {
-      toast.error('Ce fichier n\'est pas une vidéo')
+      toast.error("Ce fichier n'est pas une vidéo")
       return
     }
     if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
@@ -128,13 +130,13 @@ export default function MediaUploader({
             'grid gap-2 ' +
             (media.length === 1
               ? 'grid-cols-1'
-              : 'grid-cols-2 sm:grid-cols-4')
+              : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5')
           }
         >
           {media.map((m) => (
             <div
               key={m.url}
-              className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
+              className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group"
             >
               {m.type === 'image' ? (
                 <img
@@ -153,14 +155,14 @@ export default function MediaUploader({
               <button
                 type="button"
                 onClick={() => removeMedia(m.url)}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/80 text-white transition"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-500 text-white transition opacity-0 group-hover:opacity-100"
                 title="Retirer"
               >
                 <X size={12} />
               </button>
               {m.type === 'video' && (
-                <span className="absolute bottom-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/70 text-white">
-                  🎥 Vidéo
+                <span className="absolute bottom-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/70 text-white">
+                  🎥
                 </span>
               )}
             </div>
@@ -189,7 +191,7 @@ export default function MediaUploader({
         </div>
       )}
 
-      {/* Input caché image */}
+      {/* Inputs cachés */}
       <input
         ref={imageInputRef}
         type="file"
@@ -198,7 +200,6 @@ export default function MediaUploader({
         onChange={handleImagesSelect}
         className="hidden"
       />
-      {/* Input caché vidéo */}
       <input
         ref={videoInputRef}
         type="file"
@@ -208,55 +209,73 @@ export default function MediaUploader({
       />
 
       {/* Boutons d'action */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {media.length === 0 && (
-          <>
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full transition border"
-              style={{
-                color: ANKU.greenDark,
-                borderColor: `${ANKU.green}55`,
-                background: '#ffffff',
-              }}
-            >
-              {uploading ? (
-                <Loader size={12} className="animate-spin" />
-              ) : (
-                <ImageIcon size={12} />
-              )}
-              Photos (max {MAX_IMAGES})
-            </button>
+      {media.length === 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={uploading}
+            className={
+              'inline-flex items-center gap-1.5 rounded-full transition ' +
+              (compact
+                ? 'w-8 h-8 justify-center text-gray-500 hover:bg-emerald-50 hover:text-emerald-600'
+                : 'px-3 py-1.5 text-[11px] font-bold border')
+            }
+            style={
+              compact
+                ? undefined
+                : {
+                    color: ANKU.greenDark,
+                    borderColor: `${ANKU.green}55`,
+                    background: '#ffffff',
+                  }
+            }
+            title={`Photos (max ${MAX_IMAGES})`}
+          >
+            {uploading ? (
+              <Loader size={compact ? 14 : 12} className="animate-spin" />
+            ) : (
+              <ImageIcon size={compact ? 16 : 12} />
+            )}
+            {!compact && `Photos (max ${MAX_IMAGES})`}
+          </button>
 
-            <button
-              type="button"
-              onClick={() => videoInputRef.current?.click()}
-              disabled={uploading}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full transition border"
-              style={{
-                color: ANKU.greenDark,
-                borderColor: `${ANKU.green}55`,
-                background: '#ffffff',
-              }}
-            >
-              {uploading ? (
-                <Loader size={12} className="animate-spin" />
-              ) : (
-                <Video size={12} />
-              )}
-              Vidéo (max {MAX_VIDEO_SIZE_MB} MB)
-            </button>
-          </>
-        )}
+          <button
+            type="button"
+            onClick={() => videoInputRef.current?.click()}
+            disabled={uploading}
+            className={
+              'inline-flex items-center gap-1.5 rounded-full transition ' +
+              (compact
+                ? 'w-8 h-8 justify-center text-gray-500 hover:bg-purple-50 hover:text-purple-600'
+                : 'px-3 py-1.5 text-[11px] font-bold border')
+            }
+            style={
+              compact
+                ? undefined
+                : {
+                    color: ANKU.greenDark,
+                    borderColor: `${ANKU.green}55`,
+                    background: '#ffffff',
+                  }
+            }
+            title={`Vidéo (max ${MAX_VIDEO_SIZE_MB} MB)`}
+          >
+            {uploading ? (
+              <Loader size={compact ? 14 : 12} className="animate-spin" />
+            ) : (
+              <Video size={compact ? 16 : 12} />
+            )}
+            {!compact && `Vidéo (max ${MAX_VIDEO_SIZE_MB} MB)`}
+          </button>
+        </div>
+      )}
 
-        {hasVideo && media.length === 1 && (
-          <p className="text-[10px] text-gray-500 italic">
-            🎥 Vidéo seule (retire-la pour ajouter des images)
-          </p>
-        )}
-      </div>
+      {hasVideo && media.length === 1 && (
+        <p className="text-[10px] text-gray-500 italic">
+          🎥 Vidéo seule (retire-la pour ajouter des images)
+        </p>
+      )}
     </div>
   )
 }
