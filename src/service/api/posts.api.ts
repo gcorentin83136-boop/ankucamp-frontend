@@ -107,11 +107,16 @@ export const postsApi = {
   addComment: async (
     id: number,
     content: string,
-    parent_comment_id?: number | null
+    parent_comment_id?: number | null,
+    media_url?: string | null
   ): Promise<CommentResponse> => {
     const { data } = await httpClient.post<CommentResponse>(
       `/posts/${id}/comments`,
-      { content, parent_comment_id: parent_comment_id ?? null }
+      {
+        content,
+        parent_comment_id: parent_comment_id ?? null,
+        media_url: media_url ?? null,
+      }
     )
     return data
   },

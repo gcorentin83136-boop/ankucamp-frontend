@@ -95,6 +95,20 @@ export const uploadsApi = {
   },
 
   // ----------------------------------------------------------
+  // COMMENT MEDIA (image pour commentaire)
+  // ----------------------------------------------------------
+  uploadCommentMedia: async (file: File): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await httpClient.post<UploadResponse>(
+      '/uploads/comment-media',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return data
+  },
+
+  // ----------------------------------------------------------
   // POST VIDEO (réseau social)
   // ----------------------------------------------------------
   uploadPostVideo: async (file: File): Promise<UploadResponse> => {

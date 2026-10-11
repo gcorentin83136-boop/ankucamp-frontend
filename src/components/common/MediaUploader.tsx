@@ -3,57 +3,53 @@ import toast from 'react-hot-toast'
 import { Image as ImageIcon, Video, X, Loader, Plus } from 'lucide-react'
 import uploadsApi from '../../service/api/uploads.api'
 
-const ANKU = {
-  green: '#6aa84f',
-  greenDark: '#4a7a35',
-  greenPale: '#f0f9e8',
-}
-
 const MAX_IMAGES = 20
+const MAX_VIDEOS = 1
 const MAX_IMAGE_SIZE_MB = 5
-const MAX_VIDEO_SIZE_MB = 50
+const MAX_VIDEO_SIZE_MB = 100
 
 export interface MediaItem {
   url: string
   type: 'image' | 'video'
 }
 
+type Variant = 'full' | 'preview' | 'buttons'
+
 export default function MediaUploader({
   media,
   onChange,
-  compact = false,
+  variant = 'full',
 }: {
   media: MediaItem[]
   onChange: (next: MediaItem[]) => void
-  compact?: boolean
+  variant?: Variant
 }) {
   const [uploading, setUploading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
-  const hasImages = media.some((m) => m.type === 'image')
-  const hasVideo = media.some((m) => m.type === 'video')
+  const imageCount = media.filter((m) => m.type === 'image').length
+  const videoCount = media.filter((m) => m.type === 'video').length
 
-  // ----- Images -----
+  const canAddImage = imageCount < MAX_IMAGES
+  const canAddVideo = videoCount < MAX_VIDEOS
+
+  // ----- Images (UPLOAD PARALLÈLE 🚀) -----
   const handleImagesSelect = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    if (hasVideo) {
-      toast.error("Retire la vidéo avant d'ajouter des images")
-      return
-    }
-    const currentCount = media.filter((m) => m.type === 'image').length
-    if (currentCount + files.length > MAX_IMAGES) {
+    if (imageCount + files.length > MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images par post`)
       return
     }
 
     setUploading(true)
-    const newItems: MediaItem[] = []
     try {
+      // 1) Filtre les fichiers invalides
+      const validFiles: File[] = []
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) {
           toast.error(`${file.name} n'est pas une image`)
@@ -63,20 +59,38 @@ export default function MediaUploader({
           toast.error(`${file.name} dépasse ${MAX_IMAGE_SIZE_MB} MB`)
           continue
         }
-        try {
-          const res = await uploadsApi.uploadPostMedia(file)
-          newItems.push({ url: res.url, type: 'image' })
-        } catch (err: any) {
-          toast.error(
-            err?.response?.data?.message || `Erreur upload ${file.name}`
-          )
+        validFiles.push(file)
+      }
+
+      // 2) Upload en parallèle
+      const results = await Promise.allSettled(
+        validFiles.map((file) => uploadsApi.uploadPostMedia(file))
+      )
+
+      // 3) Agrège les résultats
+      const newItems: MediaItem[] = []
+      let failed = 0
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          newItems.push({ url: r.value.url, type: 'image' })
+        } else {
+          failed++
         }
       }
+
       if (newItems.length > 0) {
         onChange([...media, ...newItems])
-        toast.success(
-          `${newItems.length} image${newItems.length > 1 ? 's' : ''} ajoutée${newItems.length > 1 ? 's' : ''}`
-        )
+        if (failed > 0) {
+          toast.error(
+            `${failed} image${failed > 1 ? 's' : ''} n'ont pas pu être uploadée${failed > 1 ? 's' : ''}`
+          )
+        } else {
+          toast.success(
+            `${newItems.length} image${newItems.length > 1 ? 's' : ''} ajoutée${newItems.length > 1 ? 's' : ''}`
+          )
+        }
+      } else if (failed > 0) {
+        toast.error('Aucune image n\'a pu être uploadée')
       }
     } finally {
       setUploading(false)
@@ -91,8 +105,8 @@ export default function MediaUploader({
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (media.length > 0) {
-      toast.error("Retire les images avant d'ajouter une vidéo")
+    if (!canAddVideo) {
+      toast.error(`Maximum ${MAX_VIDEOS} vidéo par post`)
       return
     }
     if (!file.type.startsWith('video/')) {
@@ -107,7 +121,7 @@ export default function MediaUploader({
     setUploading(true)
     try {
       const res = await uploadsApi.uploadPostVideo(file)
-      onChange([{ url: res.url, type: 'video' }])
+      onChange([...media, { url: res.url, type: 'video' }])
       toast.success('Vidéo ajoutée ✅')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur upload vidéo')
@@ -121,22 +135,29 @@ export default function MediaUploader({
     onChange(media.filter((m) => m.url !== url))
   }
 
+  const showPreview = variant === 'full' || variant === 'preview'
+  const showButtons = variant === 'full' || variant === 'buttons'
+
+  const singleImageOnly = media.length === 1 && media[0].type === 'image'
+
   return (
     <div className="space-y-2">
       {/* Miniatures */}
-      {media.length > 0 && (
+      {showPreview && media.length > 0 && (
         <div
           className={
-            'grid gap-2 ' +
-            (media.length === 1
-              ? 'grid-cols-1'
-              : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5')
+            singleImageOnly
+              ? 'flex justify-center'
+              : 'grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-5'
           }
         >
           {media.map((m) => (
             <div
               key={m.url}
-              className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group"
+              className={
+                'relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100 group ' +
+                (singleImageOnly ? 'w-40' : 'w-full')
+              }
             >
               {m.type === 'image' ? (
                 <img
@@ -155,7 +176,7 @@ export default function MediaUploader({
               <button
                 type="button"
                 onClick={() => removeMedia(m.url)}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-500 text-white transition opacity-0 group-hover:opacity-100"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center bg-black/60 hover:bg-red-500 text-white transition"
                 title="Retirer"
               >
                 <X size={12} />
@@ -168,13 +189,14 @@ export default function MediaUploader({
             </div>
           ))}
 
-          {/* Bouton "+" si on peut encore ajouter des images */}
-          {hasImages && media.length < MAX_IMAGES && (
+          {/* Bouton "+" pour ajouter une image (si on peut encore et si >1 média) */}
+          {!singleImageOnly && canAddImage && (
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
               disabled={uploading}
-              className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-emerald-400 hover:text-emerald-500 transition disabled:opacity-50"
+              className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-emerald-400 hover:text-emerald-500 transition disabled:opacity-50 w-full"
+              title="Ajouter une image"
             >
               {uploading ? (
                 <Loader size={18} className="animate-spin" />
@@ -182,7 +204,7 @@ export default function MediaUploader({
                 <>
                   <Plus size={18} />
                   <span className="text-[10px] font-bold">
-                    {media.length}/{MAX_IMAGES}
+                    {imageCount}/{MAX_IMAGES}
                   </span>
                 </>
               )}
@@ -208,73 +230,41 @@ export default function MediaUploader({
         className="hidden"
       />
 
-      {/* Boutons d'action */}
-      {media.length === 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => imageInputRef.current?.click()}
-            disabled={uploading}
-            className={
-              'inline-flex items-center gap-1.5 rounded-full transition ' +
-              (compact
-                ? 'w-8 h-8 justify-center text-gray-500 hover:bg-emerald-50 hover:text-emerald-600'
-                : 'px-3 py-1.5 text-[11px] font-bold border')
-            }
-            style={
-              compact
-                ? undefined
-                : {
-                    color: ANKU.greenDark,
-                    borderColor: `${ANKU.green}55`,
-                    background: '#ffffff',
-                  }
-            }
-            title={`Photos (max ${MAX_IMAGES})`}
-          >
-            {uploading ? (
-              <Loader size={compact ? 14 : 12} className="animate-spin" />
-            ) : (
-              <ImageIcon size={compact ? 16 : 12} />
-            )}
-            {!compact && `Photos (max ${MAX_IMAGES})`}
-          </button>
+      {/* Boutons d'action — icônes uniquement */}
+      {showButtons && (canAddImage || canAddVideo) && (
+        <div className="flex items-center gap-0.5">
+          {canAddImage && (
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={uploading}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
+              title={`Ajouter des photos (${imageCount}/${MAX_IMAGES})`}
+            >
+              {uploading ? (
+                <Loader size={18} className="animate-spin" />
+              ) : (
+                <ImageIcon size={18} />
+              )}
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => videoInputRef.current?.click()}
-            disabled={uploading}
-            className={
-              'inline-flex items-center gap-1.5 rounded-full transition ' +
-              (compact
-                ? 'w-8 h-8 justify-center text-gray-500 hover:bg-purple-50 hover:text-purple-600'
-                : 'px-3 py-1.5 text-[11px] font-bold border')
-            }
-            style={
-              compact
-                ? undefined
-                : {
-                    color: ANKU.greenDark,
-                    borderColor: `${ANKU.green}55`,
-                    background: '#ffffff',
-                  }
-            }
-            title={`Vidéo (max ${MAX_VIDEO_SIZE_MB} MB)`}
-          >
-            {uploading ? (
-              <Loader size={compact ? 14 : 12} className="animate-spin" />
-            ) : (
-              <Video size={compact ? 16 : 12} />
-            )}
-            {!compact && `Vidéo (max ${MAX_VIDEO_SIZE_MB} MB)`}
-          </button>
+          {canAddVideo && (
+            <button
+              type="button"
+              onClick={() => videoInputRef.current?.click()}
+              disabled={uploading}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-purple-600 hover:bg-purple-50 transition disabled:opacity-50"
+              title={`Ajouter une vidéo (max ${MAX_VIDEO_SIZE_MB} MB)`}
+            >
+              {uploading ? (
+                <Loader size={18} className="animate-spin" />
+              ) : (
+                <Video size={18} />
+              )}
+            </button>
+          )}
         </div>
-      )}
-
-      {hasVideo && media.length === 1 && (
-        <p className="text-[10px] text-gray-500 italic">
-          🎥 Vidéo seule (retire-la pour ajouter des images)
-        </p>
       )}
     </div>
   )
