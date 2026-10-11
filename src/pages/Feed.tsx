@@ -13,12 +13,12 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  X,
   UserPlus,
   MapPin,
   Globe,
   Lock,
   ChevronDown,
+  Play,
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
@@ -30,6 +30,7 @@ import MediaUploader, { type MediaItem } from '../components/common/MediaUploade
 import ImageLightbox from '../components/common/ImageLightbox'
 import EmojiPicker from '../components/common/EmojiPicker'
 import CommentsSection from '../components/social/CommentsSection'
+import ShareMenu from '../components/social/ShareMenu'
 import type { Post, PostVisibility } from '../types/post'
 import type { ReportTargetType } from '../types/report'
 
@@ -176,6 +177,123 @@ function VisibilityDropdown({
 }
 
 // ============================================================
+// MEDIA GRID (limité à 4 avec overlay +N)
+// ============================================================
+function MediaGrid({
+  media,
+  onOpenLightbox,
+}: {
+  media: string[]
+  onOpenLightbox: (index: number) => void
+}) {
+  if (media.length === 0) return null
+
+  const totalImages = media.filter((u) => !isVideoUrl(u))
+  const hasMoreThan4 = media.length > 4
+  const visible = media.slice(0, 4)
+  const remaining = media.length - 4
+
+  // 1 seul média : plein
+  if (media.length === 1) {
+    const url = media[0]
+    if (isVideoUrl(url)) {
+      return (
+        <div className="px-4 pb-3">
+          <video
+            src={url}
+            className="w-full rounded-xl bg-black max-h-[500px] object-contain"
+            controls
+            preload="metadata"
+          />
+        </div>
+      )
+    }
+    return (
+      <div className="px-4 pb-3">
+        <button
+          type="button"
+          onClick={() => onOpenLightbox(0)}
+          className="w-full rounded-xl overflow-hidden cursor-zoom-in"
+        >
+          <img
+            src={url}
+            alt=""
+            className="w-full max-h-[500px] object-cover hover:opacity-95 transition"
+            loading="lazy"
+          />
+        </button>
+      </div>
+    )
+  }
+
+  // 2+ médias : grille 2 cols (max 4 visibles)
+  return (
+    <div className="px-4 pb-3">
+      <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
+        {visible.map((url, i) => {
+          const isLast = i === 3 && hasMoreThan4
+          const isVideo = isVideoUrl(url)
+          const imageIdx = isVideo ? -1 : totalImages.indexOf(url)
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                if (isVideo) {
+                  // Ouvre dans le lightbox ? Non → laisse le lecteur jouer
+                  onOpenLightbox(i)
+                } else {
+                  onOpenLightbox(imageIdx >= 0 ? imageIdx : i)
+                }
+              }}
+              className="relative w-full aspect-square overflow-hidden bg-gray-100"
+            >
+              {isVideo ? (
+                <>
+                  <video
+                    src={url}
+                    className="w-full h-full object-cover"
+                    preload="metadata"
+                    muted
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <Play
+                      size={32}
+                      fill="#ffffff"
+                      className="text-white"
+                      strokeWidth={0}
+                    />
+                  </div>
+                </>
+              ) : (
+                <img
+                  src={url}
+                  alt=""
+                  className="w-full h-full object-cover hover:opacity-95 transition"
+                  loading="lazy"
+                />
+              )}
+
+              {/* Overlay +N sur la 4ème */}
+              {isLast && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
+                  <span className="text-white font-extrabold text-2xl">
+                    +{remaining}
+                  </span>
+                  <span className="text-white/80 text-[10px] font-bold mt-0.5">
+                    Voir plus
+                  </span>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
 // SIDEBAR — Ma carte
 // ============================================================
 function ProfileCard() {
@@ -302,7 +420,7 @@ function FriendsPreview() {
 }
 
 // ============================================================
-// SIDEBAR — Ma boutique (si pro)
+// SIDEBAR — Ma boutique
 // ============================================================
 function MyShopPreview() {
   const auth = useAuthStore()
@@ -435,10 +553,8 @@ function PostCard({
 
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
-  const [commentsOpen, setCommentsOpen] = useState(true)
+  const [commentsOpen, setCommentsOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const [shareText, setShareText] = useState('')
-  const [sharing, setSharing] = useState(false)
 
   const [lightboxIndex, setLightboxIndex] = useState(-1)
   const [reportOpen, setReportOpen] = useState(false)
@@ -457,24 +573,6 @@ function PostCard({
       setLikesCount((c) => (res.liked ? c + 1 : Math.max(0, c - 1)))
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
-    }
-  }
-
-  const submitShare = async () => {
-    setSharing(true)
-    try {
-      await postsApi.share(post.id, {
-        share_comment: shareText.trim() || null,
-        visibility: 'public',
-      })
-      toast.success('Post partagé ✅')
-      setShareOpen(false)
-      setShareText('')
-      onPostUpdated()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erreur')
-    } finally {
-      setSharing(false)
     }
   }
 
@@ -502,8 +600,6 @@ function PostCard({
     setReportTargetLabel('ce commentaire')
     setReportOpen(true)
   }
-
-  const imageIndex = (url: string) => imageOnlyUrls.indexOf(url)
 
   return (
     <>
@@ -567,41 +663,8 @@ function PostCard({
           </div>
         )}
 
-        {/* Media */}
-        {media.length > 0 && (
-          <div
-            className={
-              'grid gap-1 px-4 pb-3 ' +
-              (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
-            }
-          >
-            {media.map((url, i) =>
-              isVideoUrl(url) ? (
-                <video
-                  key={i}
-                  src={url}
-                  className="w-full aspect-video object-cover rounded-lg bg-black"
-                  controls
-                  preload="metadata"
-                />
-              ) : (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setLightboxIndex(imageIndex(url))}
-                  className="w-full aspect-video overflow-hidden rounded-lg cursor-zoom-in bg-gray-100"
-                >
-                  <img
-                    src={url}
-                    alt=""
-                    className="w-full h-full object-cover hover:opacity-95 transition"
-                    loading="lazy"
-                  />
-                </button>
-              )
-            )}
-          </div>
-        )}
+        {/* Media — limité à 4 visibles + overlay +N */}
+        <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
 
         {/* Compteurs */}
         <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
@@ -665,56 +728,6 @@ function PostCard({
             initialLimit={2}
           />
         )}
-
-        {/* Modale partage */}
-        {shareOpen && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-bold text-gray-900">
-                  Partager ce post
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShareOpen(false)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <textarea
-                value={shareText}
-                onChange={(e) => setShareText(e.target.value)}
-                rows={3}
-                placeholder="Ajoute un commentaire (optionnel)…"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white resize-none"
-              />
-              <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShareOpen(false)}
-                  className="flex-1 rounded-full py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={submitShare}
-                  disabled={sharing}
-                  className="flex-1 rounded-full py-2.5 text-xs font-bold text-white inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
-                  style={{ background: ANKU.green }}
-                >
-                  {sharing ? (
-                    <Loader size={14} className="animate-spin" />
-                  ) : (
-                    <Share2 size={14} />
-                  )}
-                  Partager
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </article>
 
       <ReportModal
@@ -731,6 +744,15 @@ function PostCard({
         onClose={() => setLightboxIndex(-1)}
         onNavigate={setLightboxIndex}
       />
+
+      {shareOpen && (
+        <ShareMenu
+          postId={post.id}
+          shareText={post.content?.slice(0, 100) ?? ''}
+          onClose={() => setShareOpen(false)}
+          onShared={onPostUpdated}
+        />
+      )}
     </>
   )
 }
@@ -891,9 +913,8 @@ export default function Feed() {
               })}
             </div>
 
-            {/* ✨ Publier — version moderne */}
+            {/* Publier */}
             <div className="rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
-              {/* Header : avatar + textarea */}
               <div className="p-4 flex items-start gap-3">
                 {user?.avatar_url ? (
                   <img
@@ -920,7 +941,6 @@ export default function Feed() {
                 />
               </div>
 
-              {/* Miniatures (si médias) */}
               {media.length > 0 && (
                 <div className="px-4 pb-3">
                   <MediaUploader
@@ -931,7 +951,6 @@ export default function Feed() {
                 </div>
               )}
 
-              {/* Barre d'actions */}
               <div className="px-3 py-2 flex items-center justify-between flex-wrap gap-2 border-t border-gray-100 bg-gradient-to-t from-gray-50/50 to-white">
                 <div className="flex items-center gap-0.5">
                   <MediaUploader
