@@ -26,8 +26,14 @@ import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground
 import PostActionsMenu from '../components/common/PostActionsMenu'
 import MediaUploader from '../components/common/MediaUploader'
 import type { MediaItem } from '../components/common/MediaUploader'
+import ImageLightbox from '../components/common/ImageLightbox'
+import EmojiPicker from '../components/common/EmojiPicker'
+import CommentsSection from '../components/social/CommentsSection'
+import ShareMenu from '../components/social/ShareMenu'
+import MediaGrid from '../components/social/MediaGrid'
+import VisibilityDropdown from '../components/social/VisibilityDropdown'
 import type { UserMe } from '../types/user'
-import type { Post, PostComment } from '../types/post'
+import type { Post, PostVisibility } from '../types/post'
 
 const ANKU = {
   green: '#6aa84f',
@@ -37,9 +43,6 @@ const ANKU = {
 
 type Tab = 'posts' | 'gallery'
 
-// ============================================================
-// HELPERS
-// ============================================================
 function formatDate(iso: string | null | undefined, short = false) {
   if (!iso) return '—'
   try {
@@ -105,26 +108,28 @@ function isVideoUrl(url: string): boolean {
 }
 
 // ============================================================
-// COMPOSANT : PostCard (simplifié)
+// COMPOSANT : PostCard
 // ============================================================
 function PostCard({
   post,
   onPostUpdated,
   isOwnProfile,
+  currentUserId,
 }: {
   post: Post
   onPostUpdated: () => void
   isOwnProfile: boolean
+  currentUserId: number | undefined
 }) {
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
   const [commentsOpen, setCommentsOpen] = useState(false)
-  const [comments, setComments] = useState<PostComment[]>([])
-  const [loadingComments, setLoadingComments] = useState(false)
-  const [commentInput, setCommentInput] = useState('')
-  const [sendingComment, setSendingComment] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+
+  const [lightboxIndex, setLightboxIndex] = useState(-1)
 
   const media = parseMedia(post)
+  const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
   const toggleLike = async () => {
     try {
@@ -133,35 +138,6 @@ function PostCard({
       setLikesCount((c) => (res.liked ? c + 1 : Math.max(0, c - 1)))
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
-    }
-  }
-
-  const openComments = async () => {
-    setCommentsOpen(true)
-    if (comments.length > 0) return
-    setLoadingComments(true)
-    try {
-      const res = await postsApi.comments(post.id, { limit: 50 })
-      setComments(res.comments)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erreur')
-    } finally {
-      setLoadingComments(false)
-    }
-  }
-
-  const submitComment = async () => {
-    if (!commentInput.trim()) return
-    setSendingComment(true)
-    try {
-      const res = await postsApi.addComment(post.id, commentInput.trim())
-      setComments((c) => [...c, res.comment])
-      setCommentInput('')
-      onPostUpdated()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erreur')
-    } finally {
-      setSendingComment(false)
     }
   }
 
@@ -177,179 +153,125 @@ function PostCard({
   }
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-start gap-3 p-4">
-        <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-500">
-            {formatDate(post.created_at, true)}
-            {post.visibility === 'private' && (
-              <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500">
-                <Lock size={9} /> Privé
-              </span>
-            )}
-            {post.visibility === 'friends' && (
-              <span className="ml-2 text-[10px] font-bold text-blue-600">
-                👥 Amis
-              </span>
-            )}
-          </p>
+    <>
+      <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4">
+          <div className="w-11 h-11 rounded-full bg-gray-100 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-500">
+              {formatDate(post.created_at, true)}
+              {post.visibility === 'private' && (
+                <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500">
+                  <Lock size={9} /> Privé
+                </span>
+              )}
+              {post.visibility === 'friends' && (
+                <span className="ml-2 text-[10px] font-bold text-blue-600">
+                  👥 Amis
+                </span>
+              )}
+            </p>
+          </div>
+          {isOwnProfile && (
+            <PostActionsMenu
+              isOwn={true}
+              onReport={() => {}}
+              onDelete={deletePost}
+            />
+          )}
         </div>
-        {isOwnProfile && (
-          <PostActionsMenu
-            isOwn={true}
-            onReport={() => {}}
-            onDelete={deletePost}
+
+        {/* Content */}
+        {post.content && (
+          <div className="px-4 pb-3">
+            <p className="text-sm text-gray-800 whitespace-pre-line">
+              {post.content}
+            </p>
+          </div>
+        )}
+
+        {/* Media (grille limitée 4 + overlay +N) */}
+        <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
+
+        {/* Compteurs */}
+        <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
+          <span className="flex items-center gap-1">
+            <Heart
+              size={12}
+              className={liked ? 'fill-red-500 text-red-500' : ''}
+            />
+            {likesCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageCircle size={12} />
+            {post.comments_count ?? 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 size={12} />
+            {post.shares_count ?? 0}
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="px-2 py-1 flex border-t border-gray-100">
+          <button
+            type="button"
+            onClick={toggleLike}
+            className={
+              'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
+              (liked
+                ? 'text-red-500 bg-red-50'
+                : 'text-gray-600 hover:bg-gray-50')
+            }
+          >
+            <Heart size={14} className={liked ? 'fill-red-500' : ''} />
+            J'aime
+          </button>
+          <button
+            type="button"
+            onClick={() => setCommentsOpen((v) => !v)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <MessageCircle size={14} />
+            Commenter
+          </button>
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <Share2 size={14} />
+            Partager
+          </button>
+        </div>
+
+        {commentsOpen && (
+          <CommentsSection
+            postId={post.id}
+            currentUserId={currentUserId}
+            onCommentAdded={onPostUpdated}
+            initialLimit={2}
           />
         )}
-      </div>
+      </article>
 
-      {post.content && (
-        <div className="px-4 pb-3">
-          <p className="text-sm text-gray-800 whitespace-pre-line">
-            {post.content}
-          </p>
-        </div>
+      <ImageLightbox
+        images={imageOnlyUrls}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(-1)}
+        onNavigate={setLightboxIndex}
+      />
+
+      {shareOpen && (
+        <ShareMenu
+          postId={post.id}
+          shareText={post.content?.slice(0, 100) ?? ''}
+          onClose={() => setShareOpen(false)}
+          onShared={onPostUpdated}
+        />
       )}
-
-      {media.length > 0 && (
-        <div
-          className={
-            'grid gap-1 px-4 pb-3 ' +
-            (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
-          }
-        >
-          {media.slice(0, 4).map((url, i) =>
-            isVideoUrl(url) ? (
-              <video
-                key={i}
-                src={url}
-                className="w-full aspect-video object-cover rounded-lg bg-black"
-                controls
-                preload="metadata"
-              />
-            ) : (
-              <img
-                key={i}
-                src={url}
-                alt=""
-                className="w-full aspect-video object-cover rounded-lg"
-                loading="lazy"
-              />
-            )
-          )}
-        </div>
-      )}
-
-      <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
-        <span className="flex items-center gap-1">
-          <Heart
-            size={12}
-            className={liked ? 'fill-red-500 text-red-500' : ''}
-          />
-          {likesCount}
-        </span>
-        <span className="flex items-center gap-1">
-          <MessageCircle size={12} />
-          {post.comments_count ?? 0}
-        </span>
-        <span className="flex items-center gap-1">
-          <Share2 size={12} />
-          {post.shares_count ?? 0}
-        </span>
-      </div>
-
-      <div className="px-2 py-1 flex border-t border-gray-100">
-        <button
-          type="button"
-          onClick={toggleLike}
-          className={
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
-            (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')
-          }
-        >
-          <Heart size={14} className={liked ? 'fill-red-500' : ''} />
-          J'aime
-        </button>
-        <button
-          type="button"
-          onClick={openComments}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
-        >
-          <MessageCircle size={14} />
-          Commenter
-        </button>
-      </div>
-
-      {commentsOpen && (
-        <div className="border-t border-gray-100 bg-gray-50/50 p-4 space-y-3">
-          {loadingComments ? (
-            <Loader size={18} className="animate-spin text-gray-400 mx-auto" />
-          ) : comments.length === 0 ? (
-            <p className="text-xs text-gray-500 italic text-center">
-              Aucun commentaire
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2">
-                  {c.author?.avatar_url ? (
-                    <img
-                      src={c.author.avatar_url}
-                      alt=""
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ background: ANKU.greenDark }}
-                    >
-                      {(c.author?.first_name?.[0] ?? '') +
-                        (c.author?.last_name?.[0] ?? '')}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 bg-white rounded-xl px-3 py-2 border border-gray-100">
-                    <p className="text-xs font-bold text-gray-900">
-                      {c.author?.first_name} {c.author?.last_name}
-                    </p>
-                    <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">
-                      {c.content}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              placeholder="Écris un commentaire…"
-              className="flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs placeholder-gray-400 focus:outline-none focus:border-emerald-400"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitComment()
-              }}
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={sendingComment || !commentInput.trim()}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white disabled:opacity-50"
-              style={{ background: ANKU.green }}
-            >
-              {sendingComment ? (
-                <Loader size={12} className="animate-spin" />
-              ) : (
-                <Send size={12} />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-    </article>
+    </>
   )
 }
 
@@ -374,12 +296,10 @@ export default function Profile() {
   // Publier
   const [content, setContent] = useState('')
   const [publishToFeed, setPublishToFeed] = useState(true)
+  const [visibility, setVisibility] = useState<PostVisibility>('public')
   const [media, setMedia] = useState<MediaItem[]>([])
   const [publishing, setPublishing] = useState(false)
 
-  // ==========================================================
-  // Charger profil
-  // ==========================================================
   const loadProfile = useCallback(async () => {
     try {
       const res = await usersApi.getMe()
@@ -404,9 +324,6 @@ export default function Profile() {
     }
   }, [])
 
-  // ==========================================================
-  // Charger mes posts
-  // ==========================================================
   const loadPosts = useCallback(async () => {
     setLoadingPosts(true)
     try {
@@ -427,9 +344,6 @@ export default function Profile() {
     })()
   }, [loadProfile, loadPosts])
 
-  // ==========================================================
-  // Publier
-  // ==========================================================
   const handlePublish = async () => {
     if (!content.trim() && media.length === 0) {
       toast.error('Écris quelque chose ou ajoute un média')
@@ -437,15 +351,16 @@ export default function Profile() {
     }
     setPublishing(true)
     try {
+      // La checkbox pilote la visibilité (publishToFeed = public, sinon amis)
       await postsApi.create({
         content: content.trim() || null,
-        visibility: publishToFeed ? 'public' : 'friends',
+        visibility: publishToFeed ? 'public' : visibility,
         media_urls: media.map((m) => m.url),
       })
       toast.success(
         publishToFeed
           ? 'Publié sur ton mur et le fil ✅'
-          : 'Publié sur ton mur (visible par tes amis) ✅'
+          : 'Publié sur ton mur ✅'
       )
       setContent('')
       setMedia([])
@@ -458,12 +373,8 @@ export default function Profile() {
     }
   }
 
-  // Galerie : médias extraits des posts
   const galleryItems = posts.flatMap((p) => parseMedia(p)).filter(Boolean)
 
-  // ==========================================================
-  // Rendu : chargement
-  // ==========================================================
   if (loading) {
     return (
       <div className="relative min-h-screen">
@@ -667,18 +578,18 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Publier sur mon mur */}
-        <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-4">
-          <div className="flex items-start gap-3">
+        {/* ✨ Publier sur mon mur — version moderne */}
+        <div className="rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
+          <div className="p-4 flex items-start gap-3">
             {me.avatar_url ? (
               <img
                 src={me.avatar_url}
                 alt=""
-                className="w-10 h-10 rounded-full object-cover shrink-0"
+                className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-white shadow-sm"
               />
             ) : (
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ring-2 ring-white shadow-sm"
                 style={{ background: ANKU.greenDark }}
               >
                 {(me.first_name?.[0] ?? '') + (me.last_name?.[0] ?? '')}
@@ -688,14 +599,14 @@ export default function Profile() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={`Quoi de neuf, ${me.first_name} ?`}
-              rows={3}
+              rows={content.length > 60 ? 5 : 2}
               maxLength={5000}
-              className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
+              className="flex-1 bg-transparent outline-none text-[15px] placeholder-gray-400 resize-none pt-2 leading-relaxed"
             />
           </div>
 
-          {/* Options */}
-          <div className="mt-3 flex items-center gap-3 flex-wrap">
+          {/* Checkbox "Publier aussi sur le fil" */}
+          <div className="px-4 pb-2 flex items-center gap-3 flex-wrap">
             <label className="inline-flex items-center gap-2 text-[11px] font-bold text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
@@ -712,26 +623,55 @@ export default function Profile() {
             )}
           </div>
 
-          {/* MediaUploader */}
-          <div className="mt-3">
-            <MediaUploader media={media} onChange={setMedia} />
-          </div>
+          {/* Miniatures */}
+          {media.length > 0 && (
+            <div className="px-4 pb-3">
+              <MediaUploader
+                media={media}
+                onChange={setMedia}
+                variant="preview"
+              />
+            </div>
+          )}
 
-          <div className="mt-3 flex items-center justify-end gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={publishing || (!content.trim() && media.length === 0)}
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
-              style={{ background: ANKU.green }}
-            >
-              {publishing ? (
-                <Loader size={14} className="animate-spin" />
-              ) : (
-                <Send size={14} />
-              )}
-              Publier
-            </button>
+          {/* Barre d'actions */}
+          <div className="px-3 py-2 flex items-center justify-between flex-wrap gap-2 border-t border-gray-100 bg-gradient-to-t from-gray-50/50 to-white">
+            <div className="flex items-center gap-0.5">
+              <MediaUploader
+                media={media}
+                onChange={setMedia}
+                variant="buttons"
+              />
+              <EmojiPicker
+                align="left"
+                onSelect={(emoji) => setContent((c) => c + emoji)}
+              />
+              <VisibilityDropdown
+                value={visibility}
+                onChange={setVisibility}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-gray-400 hidden sm:inline">
+                {content.length}/5000
+              </span>
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={
+                  publishing || (!content.trim() && media.length === 0)
+                }
+                className="inline-flex items-center gap-2 rounded-full px-6 py-2 text-xs font-bold text-white transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                style={{ background: ANKU.green }}
+              >
+                {publishing ? (
+                  <Loader size={14} className="animate-spin" />
+                ) : (
+                  <Send size={14} />
+                )}
+                Publier
+              </button>
+            </div>
           </div>
         </div>
 
@@ -771,7 +711,6 @@ export default function Profile() {
           </button>
         </div>
 
-        {/* Contenu selon l'onglet */}
         {tab === 'posts' ? (
           loadingPosts ? (
             <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
@@ -795,6 +734,7 @@ export default function Profile() {
                   post={p}
                   onPostUpdated={loadPosts}
                   isOwnProfile
+                  currentUserId={me.id}
                 />
               ))}
             </div>

@@ -19,7 +19,7 @@ import {
   Clock,
   Grid3x3,
   FileText,
-  Send,
+  Flag,
   MessageSquare,
 } from 'lucide-react'
 import usersApi from '../service/api/users.api'
@@ -28,8 +28,15 @@ import httpClient from '../service/api/httpClient'
 import { startDirectConversation } from '../service/api/messages.api'
 import { useAuthStore } from '../context/AuthContext'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
+import PostActionsMenu from '../components/common/PostActionsMenu'
+import ReportModal from '../components/common/ReportModal'
+import ImageLightbox from '../components/common/ImageLightbox'
+import CommentsSection from '../components/social/CommentsSection'
+import ShareMenu from '../components/social/ShareMenu'
+import MediaGrid from '../components/social/MediaGrid'
 import type { User } from '../types/user'
-import type { Post, PostComment } from '../types/post'
+import type { Post } from '../types/post'
+import type { ReportTargetType } from '../types/report'
 
 const ANKU = {
   green: '#6aa84f',
@@ -40,9 +47,6 @@ const ANKU = {
 type Tab = 'posts' | 'gallery'
 type FriendStatus = 'none' | 'pending' | 'accepted' | 'self' | 'loading'
 
-// ============================================================
-// HELPERS
-// ============================================================
 function formatDate(iso: string | null | undefined, short = false) {
   if (!iso) return '—'
   try {
@@ -98,19 +102,43 @@ function parseMedia(p: Post): string[] {
   return []
 }
 
+function isVideoUrl(url: string): boolean {
+  return (
+    url.includes('/video/') ||
+    url.endsWith('.mp4') ||
+    url.endsWith('.webm') ||
+    url.endsWith('.mov')
+  )
+}
+
 // ============================================================
 // COMPOSANT : PostCard
 // ============================================================
-function PostCard({ post }: { post: Post }) {
+function PostCard({
+  post,
+  currentUserId,
+  onPostUpdated,
+}: {
+  post: Post
+  currentUserId: number | undefined
+  onPostUpdated: () => void
+}) {
+  const isOwn = post.author_id === currentUserId
+
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
   const [commentsOpen, setCommentsOpen] = useState(false)
-  const [comments, setComments] = useState<PostComment[]>([])
-  const [loadingComments, setLoadingComments] = useState(false)
-  const [commentInput, setCommentInput] = useState('')
-  const [sendingComment, setSendingComment] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(-1)
+
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportTargetType, setReportTargetType] =
+    useState<ReportTargetType>('post')
+  const [reportTargetId, setReportTargetId] = useState<number>(0)
+  const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
 
   const media = parseMedia(post)
+  const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
   const toggleLike = async () => {
     try {
@@ -122,190 +150,159 @@ function PostCard({ post }: { post: Post }) {
     }
   }
 
-  const openComments = async () => {
-    setCommentsOpen(true)
-    if (comments.length > 0) return
-    setLoadingComments(true)
+  const deletePost = async () => {
+    if (!confirm('Supprimer ce post ?')) return
     try {
-      const res = await postsApi.comments(post.id, { limit: 50 })
-      setComments(res.comments)
+      await postsApi.remove(post.id)
+      toast.success('Post supprimé')
+      onPostUpdated()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
-    } finally {
-      setLoadingComments(false)
     }
   }
 
-  const submitComment = async () => {
-    if (!commentInput.trim()) return
-    setSendingComment(true)
-    try {
-      const res = await postsApi.addComment(post.id, commentInput.trim())
-      setComments((c) => [...c, res.comment])
-      setCommentInput('')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erreur')
-    } finally {
-      setSendingComment(false)
-    }
+  const openReportPost = () => {
+    setReportTargetType('post')
+    setReportTargetId(post.id)
+    setReportTargetLabel('ce post')
+    setReportOpen(true)
+  }
+
+  const openReportComment = (commentId: number) => {
+    setReportTargetType('comment')
+    setReportTargetId(commentId)
+    setReportTargetLabel('ce commentaire')
+    setReportOpen(true)
   }
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
-      <div className="flex items-start gap-3 p-4">
-        <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-500">
-            {formatDate(post.created_at, true)}
-            {post.visibility === 'private' && (
-              <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500">
-                <Lock size={9} /> Privé
-              </span>
-            )}
-            {post.visibility === 'friends' && (
-              <span className="ml-2 text-[10px] font-bold text-blue-600">
-                👥 Amis
-              </span>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {post.content && (
-        <div className="px-4 pb-3">
-          <p className="text-sm text-gray-800 whitespace-pre-line">
-            {post.content}
-          </p>
-        </div>
-      )}
-
-      {media.length > 0 && (
-        <div
-          className={
-            'grid gap-1 px-4 pb-3 ' +
-            (media.length === 1 ? 'grid-cols-1' : 'grid-cols-2')
-          }
-        >
-          {media.slice(0, 4).map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              className="w-full aspect-video object-cover rounded-lg"
-              loading="lazy"
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
-        <span className="flex items-center gap-1">
-          <Heart
-            size={12}
-            className={liked ? 'fill-red-500 text-red-500' : ''}
-          />
-          {likesCount}
-        </span>
-        <span className="flex items-center gap-1">
-          <MessageCircle size={12} />
-          {post.comments_count ?? 0}
-        </span>
-        <span className="flex items-center gap-1">
-          <Share2 size={12} />
-          {post.shares_count ?? 0}
-        </span>
-      </div>
-
-      <div className="px-2 py-1 flex border-t border-gray-100">
-        <button
-          type="button"
-          onClick={toggleLike}
-          className={
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
-            (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')
-          }
-        >
-          <Heart size={14} className={liked ? 'fill-red-500' : ''} />
-          J'aime
-        </button>
-        <button
-          type="button"
-          onClick={openComments}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
-        >
-          <MessageCircle size={14} />
-          Commenter
-        </button>
-      </div>
-
-      {commentsOpen && (
-        <div className="border-t border-gray-100 bg-gray-50/50 p-4 space-y-3">
-          {loadingComments ? (
-            <Loader size={18} className="animate-spin text-gray-400 mx-auto" />
-          ) : comments.length === 0 ? (
-            <p className="text-xs text-gray-500 italic text-center">
-              Aucun commentaire
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2">
-                  {c.author?.avatar_url ? (
-                    <img
-                      src={c.author.avatar_url}
-                      alt=""
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ background: ANKU.greenDark }}
-                    >
-                      {(c.author?.first_name?.[0] ?? '') +
-                        (c.author?.last_name?.[0] ?? '')}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 bg-white rounded-xl px-3 py-2 border border-gray-100">
-                    <p className="text-xs font-bold text-gray-900">
-                      {c.author?.first_name} {c.author?.last_name}
-                    </p>
-                    <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">
-                      {c.content}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              placeholder="Écris un commentaire…"
-              className="flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs placeholder-gray-400 focus:outline-none focus:border-emerald-400"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitComment()
-              }}
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={sendingComment || !commentInput.trim()}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white disabled:opacity-50"
-              style={{ background: ANKU.green }}
-            >
-              {sendingComment ? (
-                <Loader size={12} className="animate-spin" />
-              ) : (
-                <Send size={12} />
+    <>
+      <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
+        <div className="flex items-start gap-3 p-4">
+          <div className="w-11 h-11 rounded-full bg-gray-100 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-500">
+              {formatDate(post.created_at, true)}
+              {post.visibility === 'private' && (
+                <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500">
+                  <Lock size={9} /> Privé
+                </span>
               )}
-            </button>
+              {post.visibility === 'friends' && (
+                <span className="ml-2 text-[10px] font-bold text-blue-600">
+                  👥 Amis
+                </span>
+              )}
+            </p>
           </div>
+          <PostActionsMenu
+            isOwn={isOwn}
+            onReport={openReportPost}
+            onDelete={isOwn ? deletePost : undefined}
+            onCopyLink={() => {
+              navigator.clipboard.writeText(
+                `${window.location.origin}/feed#post-${post.id}`
+              )
+              toast.success('Lien copié')
+            }}
+          />
         </div>
+
+        {post.content && (
+          <div className="px-4 pb-3">
+            <p className="text-sm text-gray-800 whitespace-pre-line">
+              {post.content}
+            </p>
+          </div>
+        )}
+
+        <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
+
+        <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
+          <span className="flex items-center gap-1">
+            <Heart
+              size={12}
+              className={liked ? 'fill-red-500 text-red-500' : ''}
+            />
+            {likesCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageCircle size={12} />
+            {post.comments_count ?? 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 size={12} />
+            {post.shares_count ?? 0}
+          </span>
+        </div>
+
+        <div className="px-2 py-1 flex border-t border-gray-100">
+          <button
+            type="button"
+            onClick={toggleLike}
+            className={
+              'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' +
+              (liked
+                ? 'text-red-500 bg-red-50'
+                : 'text-gray-600 hover:bg-gray-50')
+            }
+          >
+            <Heart size={14} className={liked ? 'fill-red-500' : ''} />
+            J'aime
+          </button>
+          <button
+            type="button"
+            onClick={() => setCommentsOpen((v) => !v)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <MessageCircle size={14} />
+            Commenter
+          </button>
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <Share2 size={14} />
+            Partager
+          </button>
+        </div>
+
+        {commentsOpen && (
+          <CommentsSection
+            postId={post.id}
+            currentUserId={currentUserId}
+            onCommentAdded={onPostUpdated}
+            onReport={openReportComment}
+            initialLimit={2}
+          />
+        )}
+      </article>
+
+      <ReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType={reportTargetType}
+        targetId={reportTargetId}
+        targetLabel={reportTargetLabel}
+      />
+
+      <ImageLightbox
+        images={imageOnlyUrls}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(-1)}
+        onNavigate={setLightboxIndex}
+      />
+
+      {shareOpen && (
+        <ShareMenu
+          postId={post.id}
+          shareText={post.content?.slice(0, 100) ?? ''}
+          onClose={() => setShareOpen(false)}
+          onShared={onPostUpdated}
+        />
       )}
-    </article>
+    </>
   )
 }
 
@@ -334,9 +331,8 @@ export default function UserProfile() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
 
-  // ==========================================================
-  // Charger le profil public
-  // ==========================================================
+  const [userReportOpen, setUserReportOpen] = useState(false)
+
   const loadProfile = useCallback(async () => {
     if (!username) {
       toast.error('Utilisateur introuvable')
@@ -352,9 +348,7 @@ export default function UserProfile() {
         httpClient.get<{ shops: any[] }>('/shops', {
           params: { owner_id: res.user.id },
         }),
-        httpClient.get<{ status: string }>(
-          `/friends/status/${res.user.id}`
-        ),
+        httpClient.get<{ status: string }>(`/friends/status/${res.user.id}`),
       ])
 
       if (statsRes.status === 'fulfilled') {
@@ -367,7 +361,6 @@ export default function UserProfile() {
         if (mine) setShop(mine)
       }
 
-      // Statut ami
       if (res.user.id === authUserId) {
         setFriendStatus('self')
       } else if (statusRes.status === 'fulfilled') {
@@ -388,9 +381,6 @@ export default function UserProfile() {
     }
   }, [username, authUserId, navigate])
 
-  // ==========================================================
-  // Charger les posts du user
-  // ==========================================================
   const loadPosts = useCallback(async () => {
     if (!user) return
     setLoadingPosts(true)
@@ -416,15 +406,12 @@ export default function UserProfile() {
     if (user) loadPosts()
   }, [user, loadPosts])
 
-  // ==========================================================
-  // Actions
-  // ==========================================================
   const handleSendFriendRequest = async () => {
     if (!user) return
     try {
       await httpClient.post(`/friends/request/${user.id}`)
       setFriendStatus('pending')
-      toast.success('Demande d\'ami envoyée ✅')
+      toast.success("Demande d'ami envoyée ✅")
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
     }
@@ -443,12 +430,8 @@ export default function UserProfile() {
     }
   }
 
-  // Galerie
   const galleryItems = posts.flatMap((p) => parseMedia(p)).filter(Boolean)
 
-  // ==========================================================
-  // Rendu : chargement
-  // ==========================================================
   if (loading) {
     return (
       <div className="relative min-h-screen">
@@ -477,7 +460,7 @@ export default function UserProfile() {
 
   const isPro = user.role === 'professionnel'
   const isVerified = user.verification_status === 'verified'
-  const isMe = user.id === authUser?.id
+  const isMe = user.id === authUserId
 
   return (
     <div className="relative min-h-screen">
@@ -502,6 +485,17 @@ export default function UserProfile() {
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+            {!isMe && (
+              <button
+                type="button"
+                onClick={() => setUserReportOpen(true)}
+                className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center bg-white/90 hover:bg-white text-gray-500 hover:text-red-600 shadow-md transition"
+                title="Signaler ce profil"
+              >
+                <Flag size={14} />
+              </button>
+            )}
           </div>
 
           <div className="px-5 sm:px-7 pb-5 pt-3 relative">
@@ -565,7 +559,8 @@ export default function UserProfile() {
                     rel="noreferrer"
                     className="flex items-center gap-1 hover:text-emerald-600 transition"
                   >
-                    <Globe size={12} /> {user.website.replace(/^https?:\/\//, '')}
+                    <Globe size={12} />{' '}
+                    {user.website.replace(/^https?:\/\//, '')}
                   </a>
                 )}
                 <span className="flex items-center gap-1 text-gray-500">
@@ -574,7 +569,6 @@ export default function UserProfile() {
                 </span>
               </div>
 
-              {/* Actions */}
               {!isMe && (
                 <div className="flex flex-wrap items-center gap-2 mt-4">
                   {friendStatus === 'accepted' && (
@@ -618,6 +612,14 @@ export default function UserProfile() {
                       <Store size={14} /> Sa boutique
                     </Link>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setUserReportOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
+                    title="Signaler ce profil"
+                  >
+                    <Flag size={14} />
+                  </button>
                 </div>
               )}
               {isMe && (
@@ -710,7 +712,10 @@ export default function UserProfile() {
         {tab === 'posts' ? (
           loadingPosts ? (
             <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
-              <Loader size={24} className="animate-spin text-gray-400 mx-auto" />
+              <Loader
+                size={24}
+                className="animate-spin text-gray-400 mx-auto"
+              />
             </div>
           ) : posts.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
@@ -722,7 +727,12 @@ export default function UserProfile() {
           ) : (
             <div className="space-y-4">
               {posts.map((p) => (
-                <PostCard key={p.id} post={p} />
+                <PostCard
+                  key={p.id}
+                  post={p}
+                  currentUserId={authUserId}
+                  onPostUpdated={loadPosts}
+                />
               ))}
             </div>
           )
@@ -739,18 +749,39 @@ export default function UserProfile() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {galleryItems.map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt=""
-                className="w-full aspect-square object-cover rounded-xl border border-gray-200"
-                loading="lazy"
-              />
-            ))}
+            {galleryItems.map((url, i) =>
+              isVideoUrl(url) ? (
+                <video
+                  key={i}
+                  src={url}
+                  className="w-full aspect-square object-cover rounded-xl border border-gray-200 bg-black"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  className="w-full aspect-square object-cover rounded-xl border border-gray-200"
+                  loading="lazy"
+                />
+              )
+            )}
           </div>
         )}
       </div>
+
+      {/* Modal : signaler le profil */}
+      {user && (
+        <ReportModal
+          open={userReportOpen}
+          onClose={() => setUserReportOpen(false)}
+          targetType="user"
+          targetId={user.id}
+          targetLabel={`le profil de @${user.username}`}
+        />
+      )}
     </div>
   )
-}// TODO: coller le contenu de UserProfile
+}
