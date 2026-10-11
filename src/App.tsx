@@ -52,6 +52,7 @@ import Friends from './pages/Friends'
 import UserProfile from './pages/UserProfile'
 import Feed from './pages/Feed'
 import Messages from './pages/Messages'
+import Notifications from './pages/Notifications'
 import Follows from './pages/Follows'
 import Cart from './pages/Cart'
 import Orders from './pages/Orders'
@@ -126,6 +127,7 @@ function App() {
       <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
       <Route path="/u/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
       <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/follows" element={<ProtectedRoute><Follows /></ProtectedRoute>} />
       <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
