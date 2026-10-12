@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
@@ -450,10 +451,20 @@ function OrderDetailModal({
 // PAGE
 // ============================================================
 export default function BuyerOrders() {
+  const [searchParams] = useSearchParams()
+  const statusParam = searchParams.get('status') as OrderStatus | null
+  const orderParam = searchParams.get('order')
+
+  const initialFilter: OrderStatus | 'all' =
+    statusParam && STATUS_FILTERS.some((f) => f.value === statusParam)
+      ? statusParam
+      : 'all'
+
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[]>([])
-  const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
+  const [filter, setFilter] = useState<OrderStatus | 'all'>(initialFilter)
   const [selected, setSelected] = useState<Order | null>(null)
+  const [autoOpened, setAutoOpened] = useState(false)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -470,6 +481,26 @@ export default function BuyerOrders() {
   useEffect(() => {
     fetchAll()
   }, [])
+
+  // 🔔 Auto-ouverture du modal + scroll si ?order=XX
+  useEffect(() => {
+    if (!orderParam || autoOpened || orders.length === 0) return
+    const id = Number(orderParam)
+    if (!Number.isFinite(id)) return
+    const found = orders.find((o) => o.id === id)
+    if (found) {
+      setSelected(found)
+      setAutoOpened(true)
+      setTimeout(() => {
+        const el = document.getElementById(`order-${id}`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el?.classList.add('ring-4', 'ring-emerald-400', 'ring-offset-2')
+        setTimeout(() => {
+          el?.classList.remove('ring-4', 'ring-emerald-400', 'ring-offset-2')
+        }, 2500)
+      }, 300)
+    }
+  }, [orderParam, orders, autoOpened])
 
   const filtered = useMemo(() => {
     if (filter === 'all') return orders
@@ -553,9 +584,10 @@ export default function BuyerOrders() {
             return (
               <button
                 key={order.id}
+                id={`order-${order.id}`}
                 type="button"
                 onClick={() => setSelected(order)}
-                className="w-full text-left flex items-center gap-3 p-4 hover:bg-gray-50 transition"
+                className="w-full text-left flex items-center gap-3 p-4 hover:bg-gray-50 transition-all duration-500"
               >
                 {/* Logo boutique */}
                 {order.shop?.logo_url ? (
