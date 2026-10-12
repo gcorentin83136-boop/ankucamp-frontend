@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Users,
@@ -544,16 +544,18 @@ function PostCard({
   post,
   currentUserId,
   onPostUpdated,
+  autoOpenComments,
 }: {
   post: Post
   currentUserId: number | undefined
   onPostUpdated: () => void
+  autoOpenComments?: boolean
 }) {
   const isOwn = post.author_id === currentUserId
 
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
-  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(autoOpenComments ?? false)
   const [shareOpen, setShareOpen] = useState(false)
 
   const [lightboxIndex, setLightboxIndex] = useState(-1)
@@ -603,7 +605,7 @@ function PostCard({
 
   return (
     <>
-      <article className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
+      <article id={`post-${post.id}`} className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden transition-all duration-500">
         {/* Header */}
         <div className="flex items-start gap-3 p-4">
           <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
@@ -770,6 +772,10 @@ export default function Feed() {
   const [hasMore, setHasMore] = useState(true)
   const LIMIT = 10
 
+  const [searchParams] = useSearchParams()
+  const targetPostId = searchParams.get('post')
+  const targetLoadedRef = useRef(false)
+
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<PostVisibility>('public')
   const [media, setMedia] = useState<MediaItem[]>([])
@@ -796,6 +802,30 @@ export default function Feed() {
     loadPosts(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 🔔 Scroll auto vers le post ciblé par ?post=XX (clic notif)
+  useEffect(() => {
+    if (!targetPostId || targetLoadedRef.current) return
+    const id = Number(targetPostId)
+    if (!Number.isFinite(id)) return
+
+    const el = document.getElementById(`post-${id}`)
+    if (el) {
+      targetLoadedRef.current = true
+      const t = setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-4', 'ring-emerald-400', 'ring-offset-2')
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-emerald-400', 'ring-offset-2')
+        }, 2500)
+      }, 200)
+      return () => clearTimeout(t)
+    }
+    // Post pas encore chargé → charger la suite
+    if (!loading && hasMore) {
+      loadPosts(false)
+    }
+  }, [targetPostId, posts.length, loading, hasMore, loadPosts])
 
   const handlePublish = async () => {
     if (!content.trim() && media.length === 0) {
@@ -1025,6 +1055,7 @@ export default function Feed() {
                     post={p}
                     currentUserId={user?.id}
                     onPostUpdated={() => loadPosts(true)}
+                    autoOpenComments={String(p.id) === targetPostId}
                   />
                 ))}
 
