@@ -680,19 +680,7 @@ export default function UserProfile() {
                       borderColor: ANKU.green,
                     }}
                   >
-                    <MessageSquare size={14} />
-
-                    {/* Menu ⋯ actions profil (Bloquer / Restreindre / Signaler) */}
-                    <UserActionsMenu
-                      isBlocked={blockStatus.is_blocked}
-                      isRestricted={blockStatus.is_restricted}
-                      busy={blockBusy}
-                      onBlock={handleBlock}
-                      onUnblock={handleUnblock}
-                      onRestrict={handleRestrict}
-                      onUnrestrict={handleUnrestrict}
-                      onReport={() => setUserReportOpen(true)}
-                    /> Message
+                    <MessageSquare size={14} /> Message
                   </button>
                   {shop && (
                     <Link
@@ -703,14 +691,22 @@ export default function UserProfile() {
                       <Store size={14} /> Sa boutique
                     </Link>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setUserReportOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
-                    title="Signaler ce profil"
-                  >
-                    <Flag size={14} />
-                  </button>
+                  
+                  <div className="flex items-center gap-0.5">
+
+                  {/* Menu ⋯ actions profil (Bloquer / Restreindre) */}
+                  <UserActionsMenu
+                    isBlocked={blockStatus.is_blocked}
+                    isRestricted={blockStatus.is_restricted}
+                    busy={blockBusy}
+                    onBlock={handleBlock}
+                    onUnblock={handleUnblock}
+                    onRestrict={handleRestrict}
+                    onUnrestrict={handleUnrestrict}
+                    onReport={() => setUserReportOpen(true)}
+                  />
+                  </div>
+
                 </div>
               )}
               {isMe && (
