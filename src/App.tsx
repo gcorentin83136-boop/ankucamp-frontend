@@ -22,6 +22,7 @@ import SecuritySettings from './pages/Settings/SecuritySettings'
 import SessionsSettings from './pages/Settings/SessionsSettings'
 import PrivacySettings from './pages/Settings/PrivacySettings'
 import NotificationsSettings from './pages/Settings/NotificationsSettings'
+import BlockedUsers from './pages/Settings/BlockedUsers'
 import DangerZone from './pages/Settings/DangerZone'
 
 import AdminGuard from './components/admin/AdminGuard'
@@ -120,6 +121,7 @@ function App() {
         <Route path="sessions" element={<SessionsSettings />} />
         <Route path="privacy" element={<PrivacySettings />} />
         <Route path="notifications" element={<NotificationsSettings />} />
+        <Route path="blocked" element={<BlockedUsers />} />
         <Route path="danger" element={<DangerZone />} />
       </Route>
 

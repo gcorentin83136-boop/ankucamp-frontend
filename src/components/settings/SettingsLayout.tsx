@@ -7,6 +7,7 @@ import {
   Eye,
   Bell,
   AlertTriangle,
+  UserX,
   ArrowLeft,
 } from 'lucide-react'
 
@@ -23,6 +24,7 @@ const links = [
   { to: '/settings/sessions', label: 'Sessions', icon: Monitor },
   { to: '/settings/privacy', label: 'Confidentialité', icon: Eye },
   { to: '/settings/notifications', label: 'Notifications', icon: Bell },
+  { to: '/settings/blocked', label: 'Comptes bloqués', icon: UserX },
   { to: '/settings/danger', label: 'Gérer mon compte', icon: AlertTriangle },
 ]
 
