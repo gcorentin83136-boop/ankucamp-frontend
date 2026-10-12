@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../context/AuthContext'
 import notificationsApi from '../../service/api/notifications.api'
+import { resolveNotificationLink } from '../../utils/notificationLink'
 import type { Notification, NotificationType } from '../../types/notification'
 
 const ANKU = {
@@ -174,7 +175,8 @@ export default function NotificationBell() {
         // ignore
       }
     }
-    if (notif.link) navigate(notif.link)
+    const target = resolveNotificationLink(notif)
+    if (target) navigate(target)
   }
 
   const handleMarkAllAsRead = async () => {

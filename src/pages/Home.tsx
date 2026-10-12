@@ -100,7 +100,7 @@ export default function Home() {
                   <UserMenu />
                   <div className="flex items-center gap-2">
                     <CartIcon />
-                    <NotificationBell count={0} />
+                    <NotificationBell />
                   </div>
                 </>
               ) : (

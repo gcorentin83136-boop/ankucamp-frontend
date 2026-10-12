@@ -16,6 +16,7 @@ import {
   Filter,
 } from 'lucide-react'
 import notificationsApi from '../service/api/notifications.api'
+import { resolveNotificationLink } from '../utils/notificationLink'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import type { Notification, NotificationType } from '../types/notification'
 
@@ -112,7 +113,8 @@ export default function Notifications() {
         // ignore
       }
     }
-    if (notif.link) navigate(notif.link)
+    const target = resolveNotificationLink(notif)
+    if (target) navigate(target)
   }
 
   const handleMarkAllAsRead = async () => {
