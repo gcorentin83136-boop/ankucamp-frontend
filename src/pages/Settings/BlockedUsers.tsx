@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ShieldOff, Ban, Loader, UserMinus } from 'lucide-react'
 import blocksApi, { type BlockedUser } from '../../service/api/blocks.api'
@@ -89,7 +89,9 @@ function UserRow({
 }
 
 export default function BlockedUsers() {
-  const [tab, setTab] = useState<Tab>('blocked')
+  const [searchParams] = useSearchParams()
+  const initialTab: Tab = searchParams.get('tab') === 'restricted' ? 'restricted' : 'blocked'
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [loading, setLoading] = useState(true)
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
   const [restricted, setRestricted] = useState<BlockedUser[]>([])

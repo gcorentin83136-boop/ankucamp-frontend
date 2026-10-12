@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
+import blocksApi from '../service/api/blocks.api'
 import httpClient from '../service/api/httpClient'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
@@ -589,6 +590,30 @@ function PostCard({
     }
   }
 
+  const handleBlockAuthor = async () => {
+    if (!post.author_id) return
+    const name = authorName(post)
+    if (!confirm(`Bloquer ${name} ? Tu ne verras plus ses posts et il ne pourra plus t'écrire.`)) return
+    try {
+      await blocksApi.block(post.author_id)
+      toast.success(`${name} bloqué`)
+      onPostUpdated()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    }
+  }
+
+  const handleRestrictAuthor = async () => {
+    if (!post.author_id) return
+    const name = authorName(post)
+    try {
+      await blocksApi.restrict(post.author_id)
+      toast.success(`${name} restreint`)
+      onPostUpdated()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    }
+  }
   const openReportPost = () => {
     setReportTargetType('post')
     setReportTargetId(post.id)
@@ -653,6 +678,8 @@ function PostCard({
             isOwn={isOwn}
             onReport={openReportPost}
             onDelete={isOwn ? deletePost : undefined}
+            onBlock={!isOwn ? handleBlockAuthor : undefined}
+            onRestrict={!isOwn ? handleRestrictAuthor : undefined}
           />
         </div>
 

@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Eye, MessageSquare, Search } from 'lucide-react'
+import { Eye, MessageSquare, Search, Ban, ShieldOff, ChevronRight } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsToggle from '../../components/settings/SettingsToggle'
 import privacyApi from '../../service/api/settings/privacy.api'
@@ -130,6 +131,68 @@ export default function PrivacySettings() {
           onChange={(v) => update({ search_indexable: v })}
           disabled={saving}
         />
+      </SettingsSection>
+
+      {/* ============================================================ */}
+      {/* GESTION DES COMPTES BLOQUÉS / RESTREINTS                     */}
+      {/* ============================================================ */}
+
+      <SettingsSection
+        title="Comptes bloqués"
+        description="Gère les utilisateurs que tu ne veux plus voir."
+        icon={<Ban size={18} />}
+      >
+        <Link
+          to="/settings/blocked?tab=blocked"
+          className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50 transition group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0">
+              <Ban size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-gray-900">
+                Voir les personnes bloquées
+              </p>
+              <p className="text-xs text-gray-500">
+                Bloque ou débloque des utilisateurs
+              </p>
+            </div>
+          </div>
+          <ChevronRight
+            size={16}
+            className="text-gray-400 group-hover:text-gray-700 transition shrink-0"
+          />
+        </Link>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Comptes restreints"
+        description="Gère les utilisateurs qui ne peuvent plus interagir avec toi."
+        icon={<ShieldOff size={18} />}
+      >
+        <Link
+          to="/settings/blocked?tab=restricted"
+          className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50 transition group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-700 shrink-0">
+              <ShieldOff size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-gray-900">
+                Voir les personnes restreintes
+              </p>
+              <p className="text-xs text-gray-500">
+                Restreins ou retire des restrictions
+              </p>
+            </div>
+          </div>
+          <ChevronRight
+            size={16}
+            className="text-gray-400 group-hover:text-gray-700 transition shrink-0"
+          />
+        </Link>
       </SettingsSection>
     </div>
   )
