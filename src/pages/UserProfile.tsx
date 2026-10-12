@@ -27,8 +27,10 @@ import postsApi from '../service/api/posts.api'
 import httpClient from '../service/api/httpClient'
 import { startDirectConversation } from '../service/api/messages.api'
 import { useAuthStore } from '../context/AuthContext'
+import blocksApi from '../service/api/blocks.api'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
+import UserActionsMenu from '../components/common/UserActionsMenu'
 import ReportModal from '../components/common/ReportModal'
 import ImageLightbox from '../components/common/ImageLightbox'
 import CommentsSection from '../components/social/CommentsSection'
@@ -326,6 +328,11 @@ export default function UserProfile() {
   })
   const [shop, setShop] = useState<any>(null)
   const [friendStatus, setFriendStatus] = useState<FriendStatus>('loading')
+  const [blockStatus, setBlockStatus] = useState<{
+    is_blocked: boolean
+    is_restricted: boolean
+  }>({ is_blocked: false, is_restricted: false })
+  const [blockBusy, setBlockBusy] = useState(false)
 
   const [tab, setTab] = useState<Tab>('posts')
   const [posts, setPosts] = useState<Post[]>([])
@@ -406,6 +413,21 @@ export default function UserProfile() {
     if (user) loadPosts()
   }, [user, loadPosts])
 
+  // Charger le status blocage / restriction
+  useEffect(() => {
+    if (!user) return
+    const isMe = user.id === (useAuthStore.getState() as any)?.user?.id
+    if (isMe) return
+    ;(async () => {
+      try {
+        const s = await blocksApi.status(user.id)
+        setBlockStatus(s)
+      } catch {
+        // ignore
+      }
+    })()
+  }, [user])
+
   const handleSendFriendRequest = async () => {
     if (!user) return
     try {
@@ -417,7 +439,64 @@ export default function UserProfile() {
     }
   }
 
-  const handleMessage = async () => {
+  const handleBlock = async () => {
+    if (!user || blockBusy) return
+    if (!confirm(`Bloquer ${user.first_name} ? Tu ne verras plus ses posts et il ne pourra plus t'écrire.`)) return
+    setBlockBusy(true)
+    try {
+      await blocksApi.block(user.id)
+      setBlockStatus((s) => ({ ...s, is_blocked: true, is_restricted: false }))
+      toast.success('Utilisateur bloqué')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setBlockBusy(false)
+    }
+  }
+
+  const handleUnblock = async () => {
+    if (!user || blockBusy) return
+    setBlockBusy(true)
+    try {
+      await blocksApi.unblock(user.id)
+      setBlockStatus((s) => ({ ...s, is_blocked: false }))
+      toast.success('Utilisateur débloqué')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setBlockBusy(false)
+    }
+  }
+
+  const handleRestrict = async () => {
+    if (!user || blockBusy) return
+    setBlockBusy(true)
+    try {
+      await blocksApi.restrict(user.id)
+      setBlockStatus((s) => ({ ...s, is_restricted: true }))
+      toast.success('Utilisateur restreint')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setBlockBusy(false)
+    }
+  }
+
+  const handleUnrestrict = async () => {
+    if (!user || blockBusy) return
+    setBlockBusy(true)
+    try {
+      await blocksApi.unrestrict(user.id)
+      setBlockStatus((s) => ({ ...s, is_restricted: false }))
+      toast.success('Restriction levée')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setBlockBusy(false)
+    }
+  }
+
+    const handleMessage = async () => {
     if (!user) return
     try {
       const convId = await startDirectConversation(
@@ -601,7 +680,19 @@ export default function UserProfile() {
                       borderColor: ANKU.green,
                     }}
                   >
-                    <MessageSquare size={14} /> Message
+                    <MessageSquare size={14} />
+
+                    {/* Menu ⋯ actions profil (Bloquer / Restreindre / Signaler) */}
+                    <UserActionsMenu
+                      isBlocked={blockStatus.is_blocked}
+                      isRestricted={blockStatus.is_restricted}
+                      busy={blockBusy}
+                      onBlock={handleBlock}
+                      onUnblock={handleUnblock}
+                      onRestrict={handleRestrict}
+                      onUnrestrict={handleUnrestrict}
+                      onReport={() => setUserReportOpen(true)}
+                    /> Message
                   </button>
                   {shop && (
                     <Link

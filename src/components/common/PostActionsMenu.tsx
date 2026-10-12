@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreHorizontal, Flag, Link2, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Flag, Link2, Trash2, Ban, ShieldOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PostActionsMenu({
@@ -7,11 +7,15 @@ export default function PostActionsMenu({
   onReport,
   onDelete,
   onCopyLink,
+  onBlock,
+  onRestrict,
 }: {
   isOwn: boolean
   onReport: () => void
   onDelete?: () => void
   onCopyLink?: () => void
+  onBlock?: () => void
+  onRestrict?: () => void
 }) {
   const [open, setOpen] = useState(false)
 
@@ -51,6 +55,34 @@ export default function PostActionsMenu({
               <Link2 size={12} />
               Copier le lien
             </button>
+
+            {!isOwn && onBlock && (
+              <button
+                type="button"
+                onClick={() => {
+                  onBlock()
+                  setOpen(false)
+                }}
+                className="w-full text-left rounded-lg px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+              >
+                <Ban size={12} />
+                Bloquer l'auteur
+              </button>
+            )}
+
+            {!isOwn && onRestrict && (
+              <button
+                type="button"
+                onClick={() => {
+                  onRestrict()
+                  setOpen(false)
+                }}
+                className="w-full text-left rounded-lg px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition flex items-center gap-2"
+              >
+                <ShieldOff size={12} />
+                Restreindre l'auteur
+              </button>
+            )}
 
             {!isOwn && (
               <button
