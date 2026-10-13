@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Types TypeScript (miroir exact du backend Drizzle)
 // ============================================================
 
@@ -27,6 +27,7 @@ export interface User {
   website: string | null
   location: string | null
   is_private: number
+  profile_completed: number
   provider: UserProvider
   role: UserRole
   email_verified: number

@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — API Users (profil, stats, amis)
 // Routes : /users/me, /users/:id, /users/u/:username
 // ============================================================
@@ -162,6 +162,17 @@ export const usersApi = {
     const { data } = await httpClient.post<BecomeProResponse>(
       '/users/me/become-pro',
       payload
+    )
+    return data
+  },
+
+  /**
+   * POST /users/me/profile/skip
+   * Marque le profil comme "vu" sans le compléter (skip onboarding).
+   */
+  skipProfileCompletion: async (): Promise<{ success: boolean }> => {
+    const { data } = await httpClient.post<{ success: boolean }>(
+      '/users/me/profile/skip'
     )
     return data
   },

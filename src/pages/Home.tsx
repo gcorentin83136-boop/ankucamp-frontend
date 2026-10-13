@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../context/AuthContext'
 import UserMenu from '../components/layout/UserMenu'
@@ -5,9 +6,28 @@ import CartIcon from '../components/layout/CartIcon'
 import NotificationBell from '../components/layout/NotificationBell'
 import { LogOut, Store, Users, LayoutDashboard, ChevronRight } from 'lucide-react'
 import BadgePopup from '../components/BadgePopup'
+import CompleteProfileModal from '../components/auth/CompleteProfileModal'
 
 export default function Home() {
   const { isAuthenticated, user, logout } = useAuthStore()
+
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false)
+
+  // 🔔 Ouvre la modale "Compléter mon profil" si pas encore complété
+  // (le KYC est géré en priorité — voir showKycBanner plus bas)
+  useEffect(() => {
+    if (!isAuthenticated || !user) return
+    // Si le profil est déjà complété ou skippé → rien
+    if (user.profile_completed === 1) return
+    // Si c'est un pro avec KYC non validé → on attend que le KYC soit fait
+    const isPro = user.role === 'professionnel'
+    const kycDone = user.verification_status === 'verified'
+    if (isPro && !kycDone) return
+
+    // Petite pause pour laisser la page se charger
+    const timer = setTimeout(() => setShowCompleteProfile(true), 800)
+    return () => clearTimeout(timer)
+  }, [isAuthenticated, user])
 
   const showKycBanner =
     isAuthenticated &&
@@ -379,7 +399,12 @@ export default function Home() {
       </div>
 
       <BadgePopup />
-    </div>
+    
+      {/* 🎯 Modale "Compléter mon profil" */}
+      <CompleteProfileModal
+        open={showCompleteProfile}
+        onClose={() => setShowCompleteProfile(false)}
+      /></div>
   )
 }
 
