@@ -269,6 +269,16 @@ export default function AppHeader() {
                         ))}
                       </div>
                     )}
+
+                    {/* Voir tous les résultats */}
+                    <button
+                      type="button"
+                      onClick={() => goTo(`/search?q=${encodeURIComponent(q)}`)}
+                      className="w-full border-t border-gray-100 py-3 text-xs font-bold transition hover:bg-emerald-50 flex items-center justify-center gap-1.5"
+                      style={{ color: '#4a7a35' }}
+                    >
+                      Voir tous les résultats pour « {q} » →
+                    </button>
                   </>
                 )}
               </div>
