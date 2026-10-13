@@ -56,6 +56,9 @@ const ANKU = {
 type Tab = 'posts' | 'gallery'
 type FriendStatus = 'none' | 'pending' | 'accepted' | 'self' | 'loading'
 
+const inputEditCls =
+  'w-full rounded-xl border-2 border-emerald-100 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 transition'
+
 function formatDate(iso: string | null | undefined, short = false) {
   if (!iso) return '—'
   try {
@@ -345,6 +348,12 @@ export default function UserProfile() {
   const [editAvatar, setEditAvatar] = useState<string | null>(null)
   const [editCover, setEditCover] = useState<string | null>(null)
   const [editBio, setEditBio] = useState('')
+  const [editFirstName, setEditFirstName] = useState('')
+  const [editLastName, setEditLastName] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [editCountry, setEditCountry] = useState('')
+  const [editWebsite, setEditWebsite] = useState('')
+  const [editLocation, setEditLocation] = useState('')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -531,11 +540,18 @@ export default function UserProfile() {
     }
   }
 
+  // ============= HANDLERS MODE ÉDITION =============
   const handleStartEdit = () => {
     if (!user) return
     setEditAvatar(user.avatar_url ?? null)
     setEditCover(user.cover_url ?? null)
     setEditBio(user.bio ?? '')
+    setEditFirstName(user.first_name ?? '')
+    setEditLastName(user.last_name ?? '')
+    setEditCity(user.city ?? '')
+    setEditCountry(user.country ?? '')
+    setEditWebsite(user.website ?? '')
+    setEditLocation(user.location ?? '')
     setIsEditing(true)
   }
 
@@ -544,6 +560,12 @@ export default function UserProfile() {
     setEditAvatar(null)
     setEditCover(null)
     setEditBio('')
+    setEditFirstName('')
+    setEditLastName('')
+    setEditCity('')
+    setEditCountry('')
+    setEditWebsite('')
+    setEditLocation('')
   }
 
   const handleAvatarEditUpload = async (
@@ -592,12 +614,22 @@ export default function UserProfile() {
 
   const handleSaveProfile = async () => {
     if (!user) return
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      toast.error('Prénom et nom sont requis')
+      return
+    }
     setSavingProfile(true)
     try {
       const payload: any = {
+        first_name: editFirstName.trim(),
+        last_name: editLastName.trim(),
         avatar_url: editAvatar,
         cover_url: editCover,
         bio: editBio.trim() || null,
+        city: editCity.trim() || null,
+        country: editCountry.trim() || null,
+        website: editWebsite.trim() || null,
+        location: editLocation.trim() || null,
       }
       const res = await usersApi.updateMe(payload)
       setUser(res.user as any)
@@ -774,39 +806,76 @@ export default function UserProfile() {
             </div>
 
             <div className="mt-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-                  {user.first_name} {user.last_name}
-                </h1>
-                {isVerified && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 size={11} /> Vérifié
-                  </span>
-                )}
-                {isPro && (
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-                    style={{ background: ANKU.green }}
-                  >
-                    PRO
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 mt-0.5">
+              {/* Nom + badges */}
+              {isEditing && isMe ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Prénom
+                    </label>
+                    <input
+                      type="text"
+                      value={editFirstName}
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      maxLength={100}
+                      placeholder="Ton prénom"
+                      className={inputEditCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Nom
+                    </label>
+                    <input
+                      type="text"
+                      value={editLastName}
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      maxLength={100}
+                      placeholder="Ton nom"
+                      className={inputEditCls}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+                    {user.first_name} {user.last_name}
+                  </h1>
+                  {isVerified && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                      <CheckCircle2 size={11} /> Vérifié
+                    </span>
+                  )}
+                  {isPro && (
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ background: ANKU.green }}
+                    >
+                      PRO
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <p className="text-sm text-gray-500 mt-1">
                 @{user.username}
               </p>
 
               {isEditing && isMe && (
                 <div className="mt-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-4 py-3 flex items-center gap-2 text-xs font-semibold text-emerald-800">
                   <Pencil size={12} />
-                  Mode édition actif — clique sur la photo, la couverture ou
-                  la bio pour les modifier
+                  Mode édition actif — modifie tes infos, ta bio, ta photo ou
+                  ta couverture
                 </div>
               )}
 
+              {/* Bio */}
               {isEditing && isMe ? (
                 <div className="mt-3">
-                  <div className="relative rounded-2xl border-2 border-emerald-100 bg-gray-50/70 focus-within:border-emerald-300 focus-within:bg-white transition overflow-hidden">
+                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                    Bio
+                  </label>
+                  <div className="relative rounded-2xl border-2 border-emerald-100 bg-white focus-within:border-emerald-400 transition overflow-hidden">
                     <textarea
                       value={editBio}
                       onChange={(e) => setEditBio(e.target.value)}
@@ -836,29 +905,87 @@ export default function UserProfile() {
                 </p>
               ) : null}
 
-              <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-600">
-                {user.city && (
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} /> {user.city}
-                    {user.country ? `, ${user.country}` : ''}
+              {/* Ville / site / membre depuis */}
+              {isEditing && isMe ? (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                      <MapPin size={10} /> Ville
+                    </label>
+                    <input
+                      type="text"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      maxLength={100}
+                      placeholder="Ex : Lyon"
+                      className={inputEditCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Pays
+                    </label>
+                    <input
+                      type="text"
+                      value={editCountry}
+                      onChange={(e) => setEditCountry(e.target.value)}
+                      maxLength={100}
+                      placeholder="Ex : France"
+                      className={inputEditCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                      <Globe size={10} /> Site web
+                    </label>
+                    <input
+                      type="url"
+                      value={editWebsite}
+                      onChange={(e) => setEditWebsite(e.target.value)}
+                      maxLength={255}
+                      placeholder="https://..."
+                      className={inputEditCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                      Localisation libre
+                    </label>
+                    <input
+                      type="text"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      maxLength={255}
+                      placeholder="Ex : Région lyonnaise"
+                      className={inputEditCls}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-600">
+                  {user.city && (
+                    <span className="flex items-center gap-1">
+                      <MapPin size={12} /> {user.city}
+                      {user.country ? `, ${user.country}` : ''}
+                    </span>
+                  )}
+                  {user.website && (
+                    <a
+                      href={user.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 hover:text-emerald-600 transition"
+                    >
+                      <Globe size={12} />{' '}
+                      {user.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  )}
+                  <span className="flex items-center gap-1 text-gray-500">
+                    <Calendar size={12} /> Membre depuis{' '}
+                    {memberSince(user.created_at)}
                   </span>
-                )}
-                {user.website && (
-                  <a
-                    href={user.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 hover:text-emerald-600 transition"
-                  >
-                    <Globe size={12} />{' '}
-                    {user.website.replace(/^https?:\/\//, '')}
-                  </a>
-                )}
-                <span className="flex items-center gap-1 text-gray-500">
-                  <Calendar size={12} /> Membre depuis{' '}
-                  {memberSince(user.created_at)}
-                </span>
-              </div>
+                </div>
+              )}
 
               {isMe && (
                 <div className="flex flex-wrap items-center gap-2 mt-4">
