@@ -35,6 +35,29 @@ export interface SellerRevenueChartPoint {
   count: number
 }
 
+// ------------------------------------------------------------
+// STATS PAR PÉRIODE (7d / 30d / 6m / 12m)
+// ------------------------------------------------------------
+export type StatsPeriod = '7d' | '30d' | '6m' | '12m'
+
+export interface SellerStatsByPeriod {
+  success: boolean
+  period: StatsPeriod
+  kpis: {
+    revenue: string
+    payments_count: number
+    orders_count: number
+    average_basket: string
+  }
+  chart: Array<{ bucket: string; total: string; count: number }>
+  top_products: Array<{
+    product_id: number
+    product_name: string | null
+    total_sold: number
+    total_revenue: string
+  }>
+}
+
 export interface BuyerSummary {
   success: boolean
   orders: { total: number; pending: number }
@@ -84,6 +107,14 @@ export const dashboardSellerApi = {
 
   topProducts: async (): Promise<{ success: boolean; count: number; products: any[] }> => {
     const { data } = await httpClient.get('/dashboard/seller/top-products')
+    return data
+  },
+
+  statsByPeriod: async (period: StatsPeriod): Promise<SellerStatsByPeriod> => {
+    const { data } = await httpClient.get<SellerStatsByPeriod>(
+      '/dashboard/seller/stats-by-period',
+      { params: { period } }
+    )
     return data
   },
 }
