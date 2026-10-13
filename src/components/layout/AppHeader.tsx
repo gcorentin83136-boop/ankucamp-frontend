@@ -119,6 +119,11 @@ export default function AppHeader() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onFocus={() => q.trim().length >= 2 && setOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && q.trim().length >= 2) {
+                    goTo(`/search?q=${encodeURIComponent(q.trim())}`)
+                  }
+                }}
                 placeholder="Rechercher un membre, une boutique, un produit…"
                 className="w-full rounded-full pl-10 pr-10 py-2 text-sm text-white placeholder-white/90 bg-black/20 border border-white/25 focus:bg-black/30 focus:border-white/50 focus:outline-none transition"
               />

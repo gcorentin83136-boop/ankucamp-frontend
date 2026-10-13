@@ -1,85 +1,69 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — API Search
 // ============================================================
 
 import httpClient from './httpClient'
-import type {
-  ShopsSearchResponse,
-  ProductsSearchResponse,
-  UsersSearchResponse,
-  SearchAllResponse,
-  SuggestResponse,
-  ShopSearchParams,
-  ProductSearchParams,
-} from '../../types/search'
+
+export type SearchSort =
+  | 'relevance'
+  | 'recent'
+  | 'alphabetical'
+  | 'rating'
+  | 'price_asc'
+  | 'price_desc'
+  | 'products_count'
+
+export interface SearchFilters {
+  q?: string
+  limit?: number
+  offset?: number
+  lat?: number
+  lng?: number
+  radius?: number
+  role?: 'particulier' | 'professionnel'
+  city?: string
+  category_id?: number
+  min_rating?: number
+  delivery?: 'pickup' | 'shipping' | 'meeting'
+  has_stock?: boolean
+  shop_id?: number
+  min_price?: number
+  max_price?: number
+  in_stock?: boolean
+  sort?: SearchSort
+}
 
 export const searchApi = {
-  // ----------------------------------------------------------
-  // SHOPS
-  // ----------------------------------------------------------
-  shops: async (params?: ShopSearchParams): Promise<ShopsSearchResponse> => {
-    const { data } = await httpClient.get<ShopsSearchResponse>(
-      '/search/shops',
-      { params }
-    )
-    return data
-  },
-
-  // ----------------------------------------------------------
-  // PRODUCTS
-  // ----------------------------------------------------------
-  products: async (
-    params?: ProductSearchParams
-  ): Promise<ProductsSearchResponse> => {
-    const { data } = await httpClient.get<ProductsSearchResponse>(
-      '/search/products',
-      { params }
-    )
-    return data
-  },
-
-  // ----------------------------------------------------------
-  // USERS
-  // ----------------------------------------------------------
-  users: async (params?: {
-    q?: string
-    role?: string
-    city?: string
-    sort?: 'relevance' | 'alphabetical' | 'recent'
-    limit?: number
-    offset?: number
-  }): Promise<UsersSearchResponse> => {
-    const { data } = await httpClient.get<UsersSearchResponse>(
-      '/search/users',
-      { params }
-    )
-    return data
-  },
-
-  // ----------------------------------------------------------
-  // ALL
-  // ----------------------------------------------------------
   all: async (params: {
     q: string
     limit_per_type?: number
     lat?: number
     lng?: number
     radius?: number
-  }): Promise<SearchAllResponse> => {
-    const { data } = await httpClient.get<SearchAllResponse>('/search/all', {
-      params,
+  }) => {
+    const { data } = await httpClient.get('/search/all', { params })
+    return data
+  },
+
+  users: async (filters: SearchFilters) => {
+    const { data } = await httpClient.get('/search/users', { params: filters })
+    return data
+  },
+
+  shops: async (filters: SearchFilters) => {
+    const { data } = await httpClient.get('/search/shops', { params: filters })
+    return data
+  },
+
+  products: async (filters: SearchFilters) => {
+    const { data } = await httpClient.get('/search/products', {
+      params: filters,
     })
     return data
   },
 
-  // ----------------------------------------------------------
-  // SUGGEST (autocomplete)
-  // ----------------------------------------------------------
-  suggest: async (
-    q: string,
-    limit = 5
-  ): Promise<SuggestResponse> => {
-    const { data } = await httpClient.get<SuggestResponse>('/search/suggest', {
+  suggest: async (q: string, limit = 5) => {
+    const { data } = await httpClient.get('/search/suggest', {
       params: { q, limit },
     })
     return data
