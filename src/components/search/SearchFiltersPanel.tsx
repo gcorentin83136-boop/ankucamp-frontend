@@ -18,6 +18,7 @@ export interface FilterState {
   min_price?: number
   max_price?: number
   in_stock: boolean
+  radius: number
   sort: SearchSort
 }
 
@@ -31,6 +32,7 @@ export const defaultFilters: FilterState = {
   min_price: undefined,
   max_price: undefined,
   in_stock: false,
+  radius: 30,
   sort: 'relevance',
 }
 
@@ -118,6 +120,22 @@ export default function SearchFiltersPanel({
                 ? 'Autour de moi ✓'
                 : 'Autour de moi'}
             </button>
+
+            {geolocated && (
+              <select
+                value={filters.radius}
+                onChange={(e) => onChange({ radius: Number(e.target.value) })}
+                className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-emerald-400"
+              >
+                <option value={5}>5 km</option>
+                <option value={10}>10 km</option>
+                <option value={30}>30 km</option>
+                <option value={50}>50 km</option>
+                <option value={100}>100 km</option>
+                <option value={200}>200 km</option>
+                <option value={500}>500 km</option>
+              </select>
+            )}
 
             <select
               value={filters.sort}
