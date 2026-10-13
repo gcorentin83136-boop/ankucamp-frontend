@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../context/AuthContext'
 import UserMenu from '../components/layout/UserMenu'
@@ -12,8 +12,6 @@ export default function Home() {
   const { isAuthenticated, user, logout } = useAuthStore()
 
   const [showCompleteProfile, setShowCompleteProfile] = useState(false)
-  // 🔒 Empêche la réouverture auto de la modale dans la même session
-  const hasShownOnboardingRef = useRef(false)
 
   // 🔔 Ouvre la modale "Compléter mon profil" si pas encore complété
   // (le KYC est géré en priorité — voir showKycBanner plus bas)
@@ -23,10 +21,6 @@ export default function Home() {
     const isPro = user.role === 'professionnel'
     const kycDone = user.verification_status === 'verified'
     if (isPro && !kycDone) return
-    // Ne montrer qu'une seule fois par session
-    if (hasShownOnboardingRef.current) return
-    hasShownOnboardingRef.current = true
-
     const timer = setTimeout(() => setShowCompleteProfile(true), 800)
     return () => clearTimeout(timer)
   }, [isAuthenticated, user])
