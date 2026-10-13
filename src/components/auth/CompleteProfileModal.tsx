@@ -94,8 +94,10 @@ export default function CompleteProfileModal({
       }
       const res = await usersApi.updateMe(payload)
       if (token) {
-        localStorage.setItem('anku_user', JSON.stringify(res.user))
-        setUser(res.user, token)
+        // On force profile_completed à 1 côté client pour ne pas rouvrir la modale
+        const updatedUser = { ...res.user, profile_completed: 1 }
+        localStorage.setItem('anku_user', JSON.stringify(updatedUser))
+        setUser(updatedUser as any, token)
       }
       toast.success('Profil complété 🎉')
       onClose()
