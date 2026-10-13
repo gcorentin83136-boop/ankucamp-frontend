@@ -1,9 +1,16 @@
 import { useRef, useState } from 'react'
-import { X, Camera, Image as ImageIcon, Loader, Sparkles, Upload } from 'lucide-react'
+import {
+  X,
+  Camera,
+  Image as ImageIcon,
+  Loader,
+  Sparkles,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../context/AuthContext'
 import usersApi from '../../service/api/users.api'
 import uploadsApi from '../../service/api/uploads.api'
+import EmojiPicker from '../common/EmojiPicker'
 
 const ANKU = {
   green: '#6aa84f',
@@ -65,7 +72,12 @@ export default function CompleteProfileModal({
       setCoverUrl(res.url)
       toast.success('Photo de couverture uploadée')
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erreur d'upload")
+      console.error('Cover upload error:', err?.response?.data)
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Erreur d'upload de la couverture"
+      )
     } finally {
       setUploadingCover(false)
       if (coverInputRef.current) coverInputRef.current.value = ''
@@ -98,7 +110,6 @@ export default function CompleteProfileModal({
     setSkipping(true)
     try {
       await usersApi.skipProfileCompletion()
-      // Mise à jour locale du user pour ne plus rafficher la modale
       if (user && token) {
         const updated = { ...user, profile_completed: 1 }
         localStorage.setItem('anku_user', JSON.stringify(updated))
@@ -113,57 +124,96 @@ export default function CompleteProfileModal({
     }
   }
 
+  const bioRemaining = 500 - bio.length
+  const bioIsLong = bio.length > 0 && bioRemaining < 100
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-lg bg-white rounded-[28px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden max-h-[92vh] overflow-y-auto ring-1 ring-black/5">
         {/* Header */}
         <div
-          className="px-5 py-4 flex items-center justify-between gap-3"
-          style={{ background: ANKU.greenPale }}
+          className="relative px-5 py-4 flex items-center justify-between gap-3"
+          style={{
+            background: `linear-gradient(135deg, ${ANKU.greenPale} 0%, #ffffff 100%)`,
+          }}
         >
-          <div className="flex items-center gap-2">
-            <Sparkles size={18} style={{ color: ANKU.greenDark }} />
-            <h2 className="text-base font-bold text-gray-900">
-              Complète ton profil
-            </h2>
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
+              style={{
+                background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
+              }}
+            >
+              <Sparkles size={16} />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-gray-900 leading-tight">
+                Complète ton profil
+              </h2>
+              <p className="text-[11px] text-gray-500">
+                Un profil complet inspire confiance 🌿
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-white/60 transition"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-white/80 transition"
             title="Plus tard"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Bannière couverture */}
+        {/* Bannière couverture (clic = upload) */}
         <div className="relative">
-          <div className="h-32 sm:h-40 bg-gradient-to-br from-emerald-100 to-emerald-50">
-            {coverUrl ? (
-              <img
-                src={coverUrl}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon size={40} className="text-emerald-300" />
-              </div>
-            )}
-          </div>
           <button
             type="button"
             onClick={() => coverInputRef.current?.click()}
             disabled={uploadingCover}
-            className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-full bg-black/60 text-white px-3 py-1.5 text-xs font-bold hover:bg-black/80 transition disabled:opacity-50"
+            className="relative block w-full h-36 sm:h-44 group cursor-pointer overflow-hidden"
+            title="Cliquer pour uploader une couverture"
           >
-            {uploadingCover ? (
-              <Loader size={12} className="animate-spin" />
+            {coverUrl ? (
+              <>
+                <img
+                  src={coverUrl}
+                  alt=""
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1.5 rounded-full bg-white/95 text-gray-800 px-3 py-1.5 text-xs font-bold shadow-lg">
+                    {uploadingCover ? (
+                      <Loader size={12} className="animate-spin" />
+                    ) : (
+                      <Camera size={12} />
+                    )}
+                    Changer
+                  </div>
+                </div>
+              </>
             ) : (
-              <Upload size={12} />
+              <div
+                className="w-full h-full flex flex-col items-center justify-center gap-1.5 transition"
+                style={{
+                  background: `linear-gradient(135deg, #e6f5d8 0%, #c8e6a8 50%, #a9d581 100%)`,
+                }}
+              >
+                <div className="w-12 h-12 rounded-full bg-white/60 backdrop-blur flex items-center justify-center shadow-sm">
+                  {uploadingCover ? (
+                    <Loader size={20} className="animate-spin text-emerald-700" />
+                  ) : (
+                    <ImageIcon size={20} className="text-emerald-700" />
+                  )}
+                </div>
+                <p className="text-xs font-bold text-emerald-800">
+                  {uploadingCover ? 'Upload…' : 'Ajouter une photo de couverture'}
+                </p>
+                <p className="text-[10px] text-emerald-700/70">
+                  JPG, PNG · max 10 Mo
+                </p>
+              </div>
             )}
-            {coverUrl ? 'Changer' : 'Ajouter'} une couverture
           </button>
           <input
             ref={coverInputRef}
@@ -174,10 +224,10 @@ export default function CompleteProfileModal({
           />
         </div>
 
-        {/* Avatar */}
-        <div className="px-5 relative -mt-12">
+        {/* Avatar flottant */}
+        <div className="px-6 relative -mt-14 mb-2">
           <div className="relative inline-block">
-            <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white bg-gray-100 shadow-md">
+            <div className="w-28 h-28 rounded-full overflow-hidden ring-[5px] ring-white bg-gray-100 shadow-xl">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -186,7 +236,7 @@ export default function CompleteProfileModal({
                 />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
+                  className="w-full h-full flex items-center justify-center text-white text-3xl font-bold"
                   style={{ background: ANKU.greenDark }}
                 >
                   {(user.first_name?.[0] ?? '') + (user.last_name?.[0] ?? '')}
@@ -197,13 +247,14 @@ export default function CompleteProfileModal({
               type="button"
               onClick={() => avatarInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-white border-2 flex items-center justify-center shadow-md hover:scale-105 transition disabled:opacity-50"
+              className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-white border-[3px] flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition disabled:opacity-50"
               style={{ borderColor: ANKU.green, color: ANKU.greenDark }}
+              title="Changer la photo de profil"
             >
               {uploadingAvatar ? (
-                <Loader size={14} className="animate-spin" />
+                <Loader size={15} className="animate-spin" />
               ) : (
-                <Camera size={14} />
+                <Camera size={15} />
               )}
             </button>
             <input
@@ -217,32 +268,56 @@ export default function CompleteProfileModal({
         </div>
 
         {/* Bio */}
-        <div className="p-5 space-y-3">
+        <div className="px-6 pt-2 pb-2">
           <label className="block">
-            <span className="text-xs font-bold text-gray-700">
-              Bio <span className="font-normal text-gray-400">(optionnel)</span>
-            </span>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              maxLength={500}
-              placeholder="Parle un peu de toi…"
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition resize-none"
-            />
-            <span className="text-[10px] text-gray-400 mt-0.5 block text-right">
-              {bio.length}/500
-            </span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-extrabold text-gray-800">
+                Bio{' '}
+                <span className="text-[11px] font-medium text-gray-400">
+                  (optionnel)
+                </span>
+              </span>
+              {bioIsLong && (
+                <span
+                  className={
+                    'text-[10px] font-bold ' +
+                    (bioRemaining < 0 ? 'text-red-500' : 'text-amber-600')
+                  }
+                >
+                  {bioRemaining} caractères restants
+                </span>
+              )}
+            </div>
+
+            <div className="relative rounded-2xl border-2 border-gray-100 bg-gray-50/70 focus-within:border-emerald-300 focus-within:bg-white transition overflow-hidden">
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Parle un peu de toi, ce que tu aimes, ton activité…"
+                className="w-full bg-transparent px-4 pt-3 pb-10 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
+              />
+              <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                <EmojiPicker
+                  align="left"
+                  onSelect={(emoji) => setBio((b) => b + emoji)}
+                />
+              </div>
+              <span className="absolute bottom-2.5 right-3 text-[10px] text-gray-400 font-semibold">
+                {bio.length}/500
+              </span>
+            </div>
           </label>
         </div>
 
         {/* Actions */}
-        <div className="px-5 pb-5 flex flex-col sm:flex-row gap-2 sm:justify-end">
+        <div className="px-6 pt-2 pb-5 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end items-stretch sm:items-center">
           <button
             type="button"
             onClick={handleSkip}
             disabled={skipping || saving}
-            className="rounded-full px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 transition disabled:opacity-50"
+            className="rounded-full px-5 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition disabled:opacity-50"
           >
             {skipping ? 'Passage…' : 'Passer pour le moment'}
           </button>
@@ -250,8 +325,10 @@ export default function CompleteProfileModal({
             type="button"
             onClick={handleSave}
             disabled={saving || skipping}
-            className="rounded-full px-6 py-2.5 text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
-            style={{ background: ANKU.green }}
+            className="rounded-full px-7 py-2.5 text-sm font-extrabold text-white transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 duration-200"
+            style={{
+              background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
+            }}
           >
             {saving ? <Loader size={14} className="animate-spin" /> : null}
             {saving ? 'Enregistrement…' : 'Enregistrer'}
