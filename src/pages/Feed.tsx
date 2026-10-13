@@ -24,6 +24,7 @@ import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
 import blocksApi from '../service/api/blocks.api'
 import httpClient from '../service/api/httpClient'
+import AppHeader from '../components/layout/AppHeader'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
 import ReportModal from '../components/common/ReportModal'
@@ -194,7 +195,6 @@ function MediaGrid({
   const visible = media.slice(0, 4)
   const remaining = media.length - 4
 
-  // 1 seul média : plein
   if (media.length === 1) {
     const url = media[0]
     if (isVideoUrl(url)) {
@@ -227,7 +227,6 @@ function MediaGrid({
     )
   }
 
-  // 2+ médias : grille 2 cols (max 4 visibles)
   return (
     <div className="px-4 pb-3">
       <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
@@ -241,7 +240,6 @@ function MediaGrid({
               type="button"
               onClick={() => {
                 if (isVideo) {
-                  // Ouvre dans le lightbox ? Non → laisse le lecteur jouer
                   onOpenLightbox(i)
                 } else {
                   onOpenLightbox(imageIdx >= 0 ? imageIdx : i)
@@ -275,7 +273,6 @@ function MediaGrid({
                 />
               )}
 
-              {/* Overlay +N sur la 4ème */}
               {isLast && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
                   <span className="text-white font-extrabold text-2xl">
@@ -328,7 +325,7 @@ function ProfileCard() {
         </div>
       </div>
       <Link
-        to="/profile"
+        to={user?.username ? `/u/${user.username}` : '#'}
         className="mt-3 block text-center rounded-full py-2 text-xs font-bold transition border-2"
         style={{
           background: '#ffffff',
@@ -614,6 +611,7 @@ function PostCard({
       toast.error(err?.response?.data?.message || 'Erreur')
     }
   }
+
   const openReportPost = () => {
     setReportTargetType('post')
     setReportTargetId(post.id)
@@ -631,7 +629,6 @@ function PostCard({
   return (
     <>
       <article id={`post-${post.id}`} className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden transition-all duration-500">
-        {/* Header */}
         <div className="flex items-start gap-3 p-4">
           <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
             {post.author?.avatar_url ? (
@@ -683,7 +680,6 @@ function PostCard({
           />
         </div>
 
-        {/* Content */}
         {post.content && (
           <div className="px-4 pb-3">
             <p className="text-sm text-gray-800 whitespace-pre-line">
@@ -692,10 +688,8 @@ function PostCard({
           </div>
         )}
 
-        {/* Media — limité à 4 visibles + overlay +N */}
         <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
 
-        {/* Compteurs */}
         <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
           <span className="flex items-center gap-1">
             <Heart
@@ -714,7 +708,6 @@ function PostCard({
           </span>
         </div>
 
-        {/* Actions */}
         <div className="px-2 py-1 flex border-t border-gray-100">
           <button
             type="button"
@@ -747,7 +740,6 @@ function PostCard({
           </button>
         </div>
 
-        {/* Commentaires */}
         {commentsOpen && (
           <CommentsSection
             postId={post.id}
@@ -830,7 +822,6 @@ export default function Feed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 🔔 Scroll auto vers le post ciblé par ?post=XX (clic notif)
   useEffect(() => {
     if (!targetPostId || targetLoadedRef.current) return
     const id = Number(targetPostId)
@@ -848,7 +839,6 @@ export default function Feed() {
       }, 200)
       return () => clearTimeout(t)
     }
-    // Post pas encore chargé → charger la suite
     if (!loading && hasMore) {
       loadPosts(false)
     }
@@ -879,12 +869,13 @@ export default function Feed() {
 
   return (
     <div className="relative min-h-screen">
+      <AppHeader />
       <AnimatedShopsBackground />
 
       <div className="relative max-w-7xl mx-auto px-3 sm:px-5 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
           <aside className="hidden lg:block">
-            <div className="sticky top-6 space-y-4">
+            <div className="sticky top-20 space-y-4">
               <ProfileCard />
               <FriendsPreview />
               <MyShopPreview />
@@ -893,59 +884,6 @@ export default function Feed() {
           </aside>
 
           <main className="space-y-4 min-w-0">
-            {/* Bannière */}
-            <div
-              className="rounded-3xl p-6 sm:p-8 relative overflow-hidden backdrop-blur-sm"
-              style={{
-                background: `linear-gradient(135deg, ${ANKU.greenPale}cc 0%, #ffffffcc 100%)`,
-                border: `1px solid ${ANKU.green}22`,
-              }}
-            >
-              <span
-                className="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full mb-3"
-                style={{ background: ANKU.green, color: '#fff' }}
-              >
-                ● RÉSEAU SOCIAL ENGAGÉ
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
-                Bonjour {user?.first_name ?? 'toi'} 👋
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Explore, partage, échange — ta communauté t'attend.
-              </p>
-
-              <div className="flex items-center gap-2 mt-4 flex-wrap">
-                <Link
-                  to="/profile"
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition border-2 lg:hidden"
-                  style={{
-                    background: '#ffffff',
-                    color: ANKU.greenDark,
-                    borderColor: ANKU.green,
-                  }}
-                >
-                  {user?.avatar_url ? (
-                    <img
-                      src={user.avatar_url}
-                      alt=""
-                      className="w-5 h-5 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Users size={14} />
-                  )}
-                  Mon profil
-                </Link>
-                <Link
-                  to="/messages"
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition"
-                  style={{ background: ANKU.green }}
-                >
-                  <MessageSquare size={14} />
-                  Messagerie
-                </Link>
-              </div>
-            </div>
-
             {/* Raccourcis mobile */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
               {SHORTCUTS.map((s) => {

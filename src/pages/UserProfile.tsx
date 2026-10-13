@@ -34,6 +34,7 @@ import { useAuthStore } from '../context/AuthContext'
 import blocksApi from '../service/api/blocks.api'
 import uploadsApi from '../service/api/uploads.api'
 import EmojiPicker from '../components/common/EmojiPicker'
+import AppHeader from '../components/layout/AppHeader'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
 import UserActionsMenu from '../components/common/UserActionsMenu'
@@ -340,7 +341,6 @@ export default function UserProfile() {
   }>({ is_blocked: false, is_restricted: false })
   const [blockBusy, setBlockBusy] = useState(false)
 
-  // ============= MODE ÉDITION IN-PLACE =============
   const [isEditing, setIsEditing] = useState(false)
   const [editAvatar, setEditAvatar] = useState<string | null>(null)
   const [editCover, setEditCover] = useState<string | null>(null)
@@ -431,7 +431,6 @@ export default function UserProfile() {
     if (user) loadPosts()
   }, [user, loadPosts])
 
-  // Charger le status blocage / restriction
   useEffect(() => {
     if (!user) return
     const isMe = user.id === (useAuthStore.getState() as any)?.user?.id
@@ -532,7 +531,6 @@ export default function UserProfile() {
     }
   }
 
-  // ============= HANDLERS MODE ÉDITION =============
   const handleStartEdit = () => {
     if (!user) return
     setEditAvatar(user.avatar_url ?? null)
@@ -622,6 +620,7 @@ export default function UserProfile() {
   if (loading) {
     return (
       <div className="relative min-h-screen">
+        <AppHeader />
         <AnimatedShopsBackground />
         <div className="relative max-w-5xl mx-auto py-20 text-center">
           <Loader size={28} className="animate-spin text-gray-400 mx-auto" />
@@ -634,6 +633,7 @@ export default function UserProfile() {
   if (!user) {
     return (
       <div className="relative min-h-screen">
+        <AppHeader />
         <AnimatedShopsBackground />
         <div className="relative max-w-3xl mx-auto py-20 text-center">
           <Users size={48} className="mx-auto text-gray-300 mb-4" />
@@ -651,12 +651,13 @@ export default function UserProfile() {
 
   return (
     <div className="relative min-h-screen">
+      <AppHeader />
       <AnimatedShopsBackground />
 
       <div className="relative max-w-5xl mx-auto py-6 px-3 sm:px-5 space-y-5">
         {/* Bannière + avatar */}
         <div className="rounded-3xl overflow-hidden border border-white/60 shadow-sm bg-white/95 backdrop-blur">
-          {/* ============ COVER ============ */}
+          {/* COVER */}
           <div
             className={
               'h-40 sm:h-52 relative group ' +
@@ -724,7 +725,7 @@ export default function UserProfile() {
           </div>
 
           <div className="px-5 sm:px-7 pb-5 pt-3 relative">
-            {/* ============ AVATAR ============ */}
+            {/* AVATAR */}
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-14 sm:-mt-16">
               <div
                 className={
@@ -773,7 +774,6 @@ export default function UserProfile() {
             </div>
 
             <div className="mt-4">
-              {/* Nom + badges */}
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
                   {user.first_name} {user.last_name}
@@ -796,7 +796,6 @@ export default function UserProfile() {
                 @{user.username}
               </p>
 
-              {/* Bandeau mode édition */}
               {isEditing && isMe && (
                 <div className="mt-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-4 py-3 flex items-center gap-2 text-xs font-semibold text-emerald-800">
                   <Pencil size={12} />
@@ -805,7 +804,6 @@ export default function UserProfile() {
                 </div>
               )}
 
-              {/* Bio éditable */}
               {isEditing && isMe ? (
                 <div className="mt-3">
                   <div className="relative rounded-2xl border-2 border-emerald-100 bg-gray-50/70 focus-within:border-emerald-300 focus-within:bg-white transition overflow-hidden">
@@ -838,7 +836,6 @@ export default function UserProfile() {
                 </p>
               ) : null}
 
-              {/* Ville / site / membre depuis */}
               <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-600">
                 {user.city && (
                   <span className="flex items-center gap-1">
@@ -863,7 +860,6 @@ export default function UserProfile() {
                 </span>
               </div>
 
-              {/* ============ BOUTONS isMe (Modifier / Enregistrer / Annuler) ============ */}
               {isMe && (
                 <div className="flex flex-wrap items-center gap-2 mt-4">
                   {!isEditing ? (
@@ -914,7 +910,6 @@ export default function UserProfile() {
                 </div>
               )}
 
-              {/* ============ BOUTONS !isMe (Amis / Message / Bloquer) ============ */}
               {!isMe && (
                 <div className="flex flex-wrap items-center gap-2 mt-4">
                   {friendStatus === 'accepted' && (
@@ -1112,7 +1107,6 @@ export default function UserProfile() {
         )}
       </div>
 
-      {/* Modal : signaler le profil */}
       {user && (
         <ReportModal
           open={userReportOpen}
