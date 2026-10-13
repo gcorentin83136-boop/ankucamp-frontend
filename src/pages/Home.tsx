@@ -18,6 +18,10 @@ export default function Home() {
   useEffect(() => {
     if (!isAuthenticated || !user) return
     if (user.profile_completed === 1) return
+
+    // 🎯 Bypass : si l'user a déjà un avatar ET une bio, on considère son profil complet
+    if (user.avatar_url && user.bio) return
+
     const isPro = user.role === 'professionnel'
     const kycDone = user.verification_status === 'verified'
     if (isPro && !kycDone) return

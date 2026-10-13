@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuthStore } from './context/AuthContext'
 import './index.css'
 
 import Home from './pages/Home'
@@ -48,7 +49,6 @@ import BuyerFollows from './pages/Buyer/Follows'
 
 import ProtectedRoute from './components/ProtectedRoute'
 
-import Profile from './pages/Profile'
 import Friends from './pages/Friends'
 import UserProfile from './pages/UserProfile'
 import Feed from './pages/Feed'
@@ -74,6 +74,14 @@ import SellerArticles from './pages/Seller/Articles'
 import SellerReviews from './pages/Seller/Reviews'
 import SellerInvoices from './pages/Seller/Invoices'
 
+function MyProfileRedirect() {
+  const user = useAuthStore((s: any) => s.user)
+  const isAuthenticated = useAuthStore((s: any) => s.isAuthenticated)
+  if (!isAuthenticated || !user?.username) {
+    return <Navigate to="/login" replace />
+  }
+  return <Navigate to={`/u/${user.username}`} replace />
+}
 function App() {
   return (
     <Routes>
@@ -125,7 +133,7 @@ function App() {
         <Route path="danger" element={<DangerZone />} />
       </Route>
 
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><MyProfileRedirect /></ProtectedRoute>} />
       <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
       <Route path="/u/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
       <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
