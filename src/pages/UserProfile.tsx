@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -21,6 +21,10 @@ import {
   FileText,
   Flag,
   MessageSquare,
+  Camera,
+  Save,
+  X,
+  Pencil,
 } from 'lucide-react'
 import usersApi from '../service/api/users.api'
 import postsApi from '../service/api/posts.api'
@@ -28,6 +32,8 @@ import httpClient from '../service/api/httpClient'
 import { startDirectConversation } from '../service/api/messages.api'
 import { useAuthStore } from '../context/AuthContext'
 import blocksApi from '../service/api/blocks.api'
+import uploadsApi from '../service/api/uploads.api'
+import EmojiPicker from '../components/common/EmojiPicker'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostActionsMenu from '../components/common/PostActionsMenu'
 import UserActionsMenu from '../components/common/UserActionsMenu'
@@ -334,6 +340,18 @@ export default function UserProfile() {
   }>({ is_blocked: false, is_restricted: false })
   const [blockBusy, setBlockBusy] = useState(false)
 
+  // ============= MODE ÉDITION IN-PLACE =============
+  const [isEditing, setIsEditing] = useState(false)
+  const [editAvatar, setEditAvatar] = useState<string | null>(null)
+  const [editCover, setEditCover] = useState<string | null>(null)
+  const [editBio, setEditBio] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+
   const [tab, setTab] = useState<Tab>('posts')
   const [posts, setPosts] = useState<Post[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
@@ -441,7 +459,12 @@ export default function UserProfile() {
 
   const handleBlock = async () => {
     if (!user || blockBusy) return
-    if (!confirm(`Bloquer ${user.first_name} ? Tu ne verras plus ses posts et il ne pourra plus t'écrire.`)) return
+    if (
+      !confirm(
+        `Bloquer ${user.first_name} ? Tu ne verras plus ses posts et il ne pourra plus t'écrire.`
+      )
+    )
+      return
     setBlockBusy(true)
     try {
       await blocksApi.block(user.id)
@@ -496,7 +519,7 @@ export default function UserProfile() {
     }
   }
 
-    const handleMessage = async () => {
+  const handleMessage = async () => {
     if (!user) return
     try {
       const convId = await startDirectConversation(
@@ -506,6 +529,91 @@ export default function UserProfile() {
       navigate(`/messages/${convId}`)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
+    }
+  }
+
+  // ============= HANDLERS MODE ÉDITION =============
+  const handleStartEdit = () => {
+    if (!user) return
+    setEditAvatar(user.avatar_url ?? null)
+    setEditCover(user.cover_url ?? null)
+    setEditBio(user.bio ?? '')
+    setIsEditing(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditAvatar(null)
+    setEditCover(null)
+    setEditBio('')
+  }
+
+  const handleAvatarEditUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image trop lourde (max 5 Mo)')
+      return
+    }
+    setUploadingAvatar(true)
+    try {
+      const res = await uploadsApi.uploadAvatar(file)
+      setEditAvatar(res.url)
+      toast.success('Photo de profil prête ✨')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur d'upload")
+    } finally {
+      setUploadingAvatar(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
+  }
+
+  const handleCoverEditUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image trop lourde (max 10 Mo)')
+      return
+    }
+    setUploadingCover(true)
+    try {
+      const res = await uploadsApi.uploadCover(file)
+      setEditCover(res.url)
+      toast.success('Couverture prête ✨')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur d'upload")
+    } finally {
+      setUploadingCover(false)
+      if (coverInputRef.current) coverInputRef.current.value = ''
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    if (!user) return
+    setSavingProfile(true)
+    try {
+      const payload: any = {
+        avatar_url: editAvatar,
+        cover_url: editCover,
+        bio: editBio.trim() || null,
+      }
+      const res = await usersApi.updateMe(payload)
+      setUser(res.user as any)
+      const authState = useAuthStore.getState()
+      if (authState.token) {
+        localStorage.setItem('anku_user', JSON.stringify(res.user))
+        authState.setUser(res.user as any, authState.token)
+      }
+      toast.success('Profil mis à jour 🎉')
+      setIsEditing(false)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setSavingProfile(false)
     }
   }
 
@@ -548,56 +656,124 @@ export default function UserProfile() {
       <div className="relative max-w-5xl mx-auto py-6 px-3 sm:px-5 space-y-5">
         {/* Bannière + avatar */}
         <div className="rounded-3xl overflow-hidden border border-white/60 shadow-sm bg-white/95 backdrop-blur">
+          {/* ============ COVER ============ */}
           <div
-            className="h-40 sm:h-52 relative"
+            className={
+              'h-40 sm:h-52 relative group ' +
+              (isEditing ? 'cursor-pointer' : '')
+            }
             style={{
-              background: user.cover_url
+              background: (isEditing ? editCover : user.cover_url)
                 ? undefined
                 : `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
             }}
+            onClick={
+              isEditing && !uploadingCover
+                ? () => coverInputRef.current?.click()
+                : undefined
+            }
           >
-            {user.cover_url && (
+            {(isEditing ? editCover : user.cover_url) && (
               <img
-                src={user.cover_url}
+                src={(isEditing ? editCover : user.cover_url) as string}
                 alt=""
                 className="w-full h-full object-cover"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
-            {!isMe && (
+            {isEditing && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-gray-800 shadow-lg">
+                  {uploadingCover ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                  {uploadingCover
+                    ? 'Upload…'
+                    : editCover
+                    ? 'Changer la couverture'
+                    : 'Ajouter une couverture'}
+                </div>
+              </div>
+            )}
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
+            {!isMe && !isEditing && (
               <button
                 type="button"
-                onClick={() => setUserReportOpen(true)}
-                className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center bg-white/90 hover:bg-white text-gray-500 hover:text-red-600 shadow-md transition"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setUserReportOpen(true)
+                }}
+                className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center bg-white/90 hover:bg-white text-gray-500 hover:text-red-600 shadow-md transition z-10"
                 title="Signaler ce profil"
               >
                 <Flag size={14} />
               </button>
             )}
+
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverEditUpload}
+            />
           </div>
 
           <div className="px-5 sm:px-7 pb-5 pt-3 relative">
+            {/* ============ AVATAR ============ */}
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-14 sm:-mt-16">
-              {user.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt=""
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white shadow-lg"
-                />
-              ) : (
-                <div
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl flex items-center justify-center text-3xl font-extrabold text-white border-4 border-white shadow-lg"
-                  style={{
-                    background: `linear-gradient(135deg, #8bc34a 0%, ${ANKU.greenDark} 100%)`,
-                  }}
-                >
-                  {(user.first_name?.[0] ?? '') + (user.last_name?.[0] ?? '')}
-                </div>
-              )}
+              <div
+                className={
+                  'relative group ' + (isEditing ? 'cursor-pointer' : '')
+                }
+                onClick={
+                  isEditing && !uploadingAvatar
+                    ? () => avatarInputRef.current?.click()
+                    : undefined
+                }
+              >
+                {(isEditing ? editAvatar : user.avatar_url) ? (
+                  <img
+                    src={(isEditing ? editAvatar : user.avatar_url) as string}
+                    alt=""
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white shadow-lg"
+                  />
+                ) : (
+                  <div
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl flex items-center justify-center text-3xl font-extrabold text-white border-4 border-white shadow-lg"
+                    style={{
+                      background: `linear-gradient(135deg, #8bc34a 0%, ${ANKU.greenDark} 100%)`,
+                    }}
+                  >
+                    {(user.first_name?.[0] ?? '') +
+                      (user.last_name?.[0] ?? '')}
+                  </div>
+                )}
+                {isEditing && (
+                  <div className="absolute inset-0 rounded-3xl flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                    {uploadingAvatar ? (
+                      <Loader size={20} className="animate-spin text-white" />
+                    ) : (
+                      <Camera size={20} className="text-white" />
+                    )}
+                  </div>
+                )}
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarEditUpload}
+              />
             </div>
 
             <div className="mt-4">
+              {/* Nom + badges */}
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
                   {user.first_name} {user.last_name}
@@ -616,14 +792,53 @@ export default function UserProfile() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 mt-0.5">@{user.username}</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                @{user.username}
+              </p>
 
-              {user.bio && (
+              {/* Bandeau mode édition */}
+              {isEditing && isMe && (
+                <div className="mt-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 px-4 py-3 flex items-center gap-2 text-xs font-semibold text-emerald-800">
+                  <Pencil size={12} />
+                  Mode édition actif — clique sur la photo, la couverture ou
+                  la bio pour les modifier
+                </div>
+              )}
+
+              {/* Bio éditable */}
+              {isEditing && isMe ? (
+                <div className="mt-3">
+                  <div className="relative rounded-2xl border-2 border-emerald-100 bg-gray-50/70 focus-within:border-emerald-300 focus-within:bg-white transition overflow-hidden">
+                    <textarea
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      rows={3}
+                      maxLength={500}
+                      placeholder="Parle un peu de toi…"
+                      className="w-full bg-transparent px-4 pt-3 pb-10 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
+                    />
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                      <EmojiPicker
+                        align="left"
+                        onSelect={(emoji) => setEditBio((b) => b + emoji)}
+                      />
+                    </div>
+                    <span className="absolute bottom-2.5 right-3 text-[10px] text-gray-400 font-semibold">
+                      {editBio.length}/500
+                    </span>
+                  </div>
+                </div>
+              ) : user.bio ? (
                 <p className="text-sm text-gray-700 mt-3 leading-relaxed">
                   {user.bio}
                 </p>
-              )}
+              ) : isMe ? (
+                <p className="text-sm text-gray-400 italic mt-3">
+                  Ajoute une bio pour te présenter…
+                </p>
+              ) : null}
 
+              {/* Ville / site / membre depuis */}
               <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-600">
                 {user.city && (
                   <span className="flex items-center gap-1">
@@ -648,6 +863,58 @@ export default function UserProfile() {
                 </span>
               </div>
 
+              {/* ============ BOUTONS isMe (Modifier / Enregistrer / Annuler) ============ */}
+              {isMe && (
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  {!isEditing ? (
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition shadow-md hover:shadow-lg"
+                      style={{
+                        background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
+                      }}
+                    >
+                      <Pencil size={14} />
+                      Modifier mon profil
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSaveProfile}
+                        disabled={
+                          savingProfile ||
+                          uploadingAvatar ||
+                          uploadingCover
+                        }
+                        className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition shadow-md hover:shadow-lg disabled:opacity-50"
+                        style={{
+                          background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
+                        }}
+                      >
+                        {savingProfile ? (
+                          <Loader size={14} className="animate-spin" />
+                        ) : (
+                          <Save size={14} />
+                        )}
+                        {savingProfile ? 'Enregistrement…' : 'Enregistrer'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        disabled={savingProfile}
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-50"
+                      >
+                        <X size={14} />
+                        Annuler
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ============ BOUTONS !isMe (Amis / Message / Bloquer) ============ */}
               {!isMe && (
                 <div className="flex flex-wrap items-center gap-2 mt-4">
                   {friendStatus === 'accepted' && (
@@ -691,33 +958,19 @@ export default function UserProfile() {
                       <Store size={14} /> Sa boutique
                     </Link>
                   )}
-                  
+
                   <div className="flex items-center gap-0.5">
-
-                  {/* Menu ⋯ actions profil (Bloquer / Restreindre) */}
-                  <UserActionsMenu
-                    isBlocked={blockStatus.is_blocked}
-                    isRestricted={blockStatus.is_restricted}
-                    busy={blockBusy}
-                    onBlock={handleBlock}
-                    onUnblock={handleUnblock}
-                    onRestrict={handleRestrict}
-                    onUnrestrict={handleUnrestrict}
-                    onReport={() => setUserReportOpen(true)}
-                  />
+                    <UserActionsMenu
+                      isBlocked={blockStatus.is_blocked}
+                      isRestricted={blockStatus.is_restricted}
+                      busy={blockBusy}
+                      onBlock={handleBlock}
+                      onUnblock={handleUnblock}
+                      onRestrict={handleRestrict}
+                      onUnrestrict={handleUnrestrict}
+                      onReport={() => setUserReportOpen(true)}
+                    />
                   </div>
-
-                </div>
-              )}
-              {isMe && (
-                <div className="flex flex-wrap items-center gap-2 mt-4">
-                  <Link
-                    to="/profile"
-                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition"
-                    style={{ background: ANKU.green }}
-                  >
-                    Voir mon profil
-                  </Link>
                 </div>
               )}
             </div>
