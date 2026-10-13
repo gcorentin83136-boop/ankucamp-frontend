@@ -17,6 +17,8 @@ import {
   MapPin,
   AlertTriangle,
   Mail,
+  Navigation,
+  CheckCircle2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import shopsApi from '../../service/api/shops.api'
@@ -324,6 +326,12 @@ export default function SellerSettings() {
   const [savingReturns, setSavingReturns] = useState(false)
   const [savedReturns, setSavedReturns] = useState(false)
   const [savedContact, setSavedContact] = useState(false)
+  const [geocoding, setGeocoding] = useState(false)
+  const [geocodingResult, setGeocodingResult] = useState<{
+    latitude: number
+    longitude: number
+    label: string
+  } | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -439,6 +447,44 @@ export default function SellerSettings() {
   const handleCancelEdit = () => {
     if (shop) fillForm(shop)
     setEditing(false)
+  }
+
+  // ============================================================
+  // GÉOLOCALISATION DE LA BOUTIQUE
+  // ============================================================
+  const handleGeocode = async () => {
+    if (!shop) return
+    const query =
+      form.address.trim() ||
+      [form.postal_code, form.city].filter(Boolean).join(' ').trim()
+
+    if (!query) {
+      toast.error(
+        'Renseigne au moins une ville, un code postal ou une adresse'
+      )
+      return
+    }
+
+    setGeocoding(true)
+    try {
+      const res = await shopsApi.geocode(shop.id)
+      setGeocodingResult({
+        latitude: res.latitude,
+        longitude: res.longitude,
+        label: res.label,
+      })
+      const shopsRes = await shopsApi.listMine()
+      const mine = shopsRes.shops?.[0] ?? null
+      if (mine) setShop(mine)
+      toast.success(`Position détectée : ${res.label} 📍`)
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+          'Impossible de géolocaliser cette adresse'
+      )
+    } finally {
+      setGeocoding(false)
+    }
   }
 
   const handleUploadLogo = async (file: File) => {
@@ -706,7 +752,57 @@ export default function SellerSettings() {
                 className={inputCls}
               />
             </div>
-          </form>
+                        {/* === BLOC GÉOLOCALISATION === */}
+              <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Navigation
+                    size={16}
+                    className="text-emerald-700 shrink-0 mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-emerald-900">
+                      Géolocalisation de la boutique
+                    </p>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      {shop?.latitude && shop?.longitude
+                        ? `Position actuelle : ${Number(shop.latitude).toFixed(4)}, ${Number(shop.longitude).toFixed(4)}`
+                        : 'Aucune position enregistrée'}
+                    </p>
+                  </div>
+                  {shop?.latitude && shop?.longitude ? (
+                    <CheckCircle2
+                      size={16}
+                      className="text-emerald-600 shrink-0"
+                    />
+                  ) : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGeocode}
+                  disabled={geocoding || !form.city.trim()}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
+                  style={{ background: ANKU.green }}
+                >
+                  {geocoding ? (
+                    <Loader size={12} className="animate-spin" />
+                  ) : (
+                    <Navigation size={12} />
+                  )}
+                  {geocoding
+                    ? 'Recherche en cours…'
+                    : shop?.latitude && shop?.longitude
+                    ? 'Mettre à jour ma position'
+                    : 'Activer la géolocalisation'}
+                </button>
+
+                {geocodingResult && (
+                  <p className="text-[10px] text-emerald-700 text-center">
+                    ✅ {geocodingResult.label}
+                  </p>
+                )}
+              </div>
+</form>
         ) : (
           <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
             {shop.logo_url ? (

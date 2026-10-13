@@ -70,6 +70,26 @@ export const shopsApi = {
     return data
   },
 
+  /**
+   * POST /shops/:id/geocode
+   * Force le géocodage de la boutique (via adresse / ville / CP)
+   */
+  geocode: async (
+    shopId: number
+  ): Promise<{
+    success: boolean
+    latitude: number
+    longitude: number
+    label: string
+    city: string
+    postal_code: string
+  }> => {
+    const { data } = await httpClient.post(
+      `/shops/${shopId}/geocode`
+    )
+    return data
+  },
+
   delete: async (shopId: number): Promise<void> => {
     await httpClient.delete(`/shops/${shopId}`)
   },
