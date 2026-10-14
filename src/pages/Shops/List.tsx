@@ -169,9 +169,8 @@ export default function ShopsList() {
     return () => clearTimeout(t)
   }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock, geoLat, geoLng, geoRadius])
 
-  // -------- Produits (fetch uniquement en mode products) --------
+  // -------- Produits (fetch en parallèle des boutiques) --------
   useEffect(() => {
-    if (viewMode !== 'products') return
     const t = setTimeout(async () => {
       setLoadingProducts(true)
       try {
@@ -198,7 +197,7 @@ export default function ShopsList() {
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [viewMode, search, selectedCategory, sort, filterCity, filterMinRating, filterHasStock, geoLat, geoLng, geoRadius])
+  }, [search, selectedCategory, sort, filterCity, filterMinRating, filterHasStock, geoLat, geoLng, geoRadius])
 
   // -------- Synchronise les filtres vers l'URL (pour persistance) --------
   useEffect(() => {
