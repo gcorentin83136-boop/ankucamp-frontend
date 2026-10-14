@@ -26,6 +26,8 @@ export interface User {
   bio: string | null
   website: string | null
   location: string | null
+  latitude: string | null
+  longitude: string | null
   is_private: number
   profile_completed: number
   provider: UserProvider

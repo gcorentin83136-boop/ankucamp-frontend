@@ -1,14 +1,15 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { User, Mail, AtSign, KeyRound, Info, CheckCircle2 } from 'lucide-react'
+import { User, Mail, AtSign, KeyRound, Info, CheckCircle2, MapPin, Loader, Trash2 } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import ConfirmPasswordModal from '../../components/settings/ConfirmPasswordModal'
 import { useAuthStore } from '../../context/AuthContext'
 import accountApi from '../../service/api/settings/account.api'
+import usersApi from '../../service/api/users.api'
 
 const inputCls =
   'w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition'
@@ -101,6 +102,7 @@ export default function AccountSettings() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deactivateReason, setDeactivateReason] = useState('')
   const [deactivateLoading, setDeactivateLoading] = useState(false)
+    const [locationLoading, setLocationLoading] = useState(false)
 
   const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema) })
   const usernameForm = useForm<UsernameForm>({
@@ -152,6 +154,60 @@ export default function AccountSettings() {
   // ----------------------------------------------------------
   // EMAIL
   // ----------------------------------------------------------
+  // ============================================================
+  // GÉOLOCALISATION
+  // ============================================================
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('La géolocalisation n’est pas supportée par ton navigateur')
+      return
+    }
+    setLocationLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await usersApi.updateMe({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          } as any)
+          mergeUser({
+            latitude: String(pos.coords.latitude),
+            longitude: String(pos.coords.longitude),
+          } as any)
+          toast.success('Position enregistrée 📍')
+        } catch (err: any) {
+          toast.error(err?.response?.data?.message || 'Erreur')
+        } finally {
+          setLocationLoading(false)
+        }
+      },
+      (err) => {
+        console.error(err)
+        setLocationLoading(false)
+        toast.error(
+          'Accès refusé. Autorise la géolocalisation dans ton navigateur.'
+        )
+      },
+      { enableHighAccuracy: false, timeout: 10000 }
+    )
+  }
+
+  const handleClearLocation = async () => {
+    if (!confirm('Effacer ta position ?')) return
+    setLocationLoading(true)
+    try {
+      await usersApi.updateMe({
+        latitude: null,
+        longitude: null,
+      } as any)
+      mergeUser({ latitude: null, longitude: null } as any)
+      toast.success('Position effacée')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setLocationLoading(false)
+    }
+  }
   const handleEmail = async (data: EmailForm) => {
     setEmailLoading(true)
     try {
@@ -296,6 +352,60 @@ export default function AccountSettings() {
         </form>
       </SettingsSection>
 
+        {/* Ma position */}
+        <SettingsSection
+          title="Ma position"
+          description="Utilisée pour te montrer les boutiques et produits près de toi"
+          icon={<MapPin size={18} />}
+        >
+          {user?.latitude && user?.longitude ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 flex items-center gap-3">
+              <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-emerald-900">
+                  Position enregistrée
+                </p>
+                <p className="text-xs text-emerald-700 font-mono">
+                  {Number(user.latitude).toFixed(4)},{' '}
+                  {Number(user.longitude).toFixed(4)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearLocation}
+                disabled={locationLoading}
+                className="rounded-full p-2 text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+                title="Effacer ma position"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              Aucune position enregistrée. Active la géolocalisation pour
+              améliorer tes recherches (boutiques et produits proches de toi).
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleUseLocation}
+            disabled={locationLoading}
+            className="w-full rounded-full py-2.5 text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2 mt-3"
+            style={{ background: '#6aa84f' }}
+          >
+            {locationLoading ? (
+              <Loader size={14} className="animate-spin" />
+            ) : (
+              <MapPin size={14} />
+            )}
+            {locationLoading
+              ? 'Détection en cours…'
+              : user?.latitude
+              ? 'Mettre à jour ma position'
+              : '📍 Utiliser ma position actuelle'}
+          </button>
+        </SettingsSection>
       {/* Email */}
       <SettingsSection
         title="Adresse email"
