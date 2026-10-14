@@ -141,6 +141,8 @@ export interface RegisterPayload {
   country?: string
   password: string
   role: 'particulier' | 'professionnel'
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface LoginPayload {

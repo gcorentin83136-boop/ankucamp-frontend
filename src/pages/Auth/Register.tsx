@@ -7,11 +7,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, Link } from 'react-router-dom'
-import { Eye, EyeOff, CheckCircle, Shield, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle, Shield, AlertCircle, ArrowLeft , MapPin, Loader } from 'lucide-react'
 import AuthLayout from '../../components/auth/AuthLayout'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import { useAuthStore } from '../../context/AuthContext'
+import toast from 'react-hot-toast'
 import { authApi } from '../../service/api/auth.api'
 
 const registerSchema = z
@@ -73,6 +74,8 @@ export default function Register() {
     'particulier' | 'professionnel'
   >('particulier')
   const [showPassword, setShowPassword] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   const {
     register,
@@ -96,6 +99,52 @@ export default function Register() {
     setValue('role', role, { shouldValidate: true })
   }
 
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('La géolocalisation n’est pas supportée')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords
+          setCoords({ lat: latitude, lng: longitude })
+
+          // Reverse geocoding
+          try {
+            const res = await fetch(
+              `https://api-adresse.data.gouv.fr/reverse/?lon=${longitude}&lat=${latitude}&limit=1`
+            )
+            if (res.ok) {
+              const data = await res.json()
+              const props = data.features?.[0]?.properties
+              if (props) {
+                const name = props.name ?? props.street ?? ''
+                const full = name ? `${name} ${props.postcode ?? ''} ${props.city ?? ''}`.trim() : props.label
+                setValue('address', full || props.label || '')
+                setValue('city', props.city ?? '')
+                setValue('postal_code', props.postcode ?? '')
+                toast.success(`Position détectée : ${props.city} 📍`)
+                return
+              }
+            }
+          } catch {
+            // silencieux
+          }
+          toast.success('Position détectée 📍')
+        } finally {
+          setLocating(false)
+        }
+      },
+      (err) => {
+        console.error(err)
+        setLocating(false)
+        toast.error('Accès refusé. Autorise la géolocalisation.')
+      },
+      { enableHighAccuracy: false, timeout: 10000 }
+    )
+  }
   const handleGoogleLogin = () => {
     window.location.href = authApi.googleOAuthUrl()
   }
@@ -103,7 +152,11 @@ export default function Register() {
   const onSubmit = async (data: RegisterFormOutput) => {
     setServerError('')
     const { confirm_password: _confirm_password, accept_terms: _accept_terms, ...payload } = data
-    const ok = await registerUser(payload)
+    // 📍 Ajoute la position GPS si détectée
+    const fullPayload = coords
+      ? { ...payload, latitude: coords.lat, longitude: coords.lng }
+      : payload
+    const ok = await registerUser(fullPayload)
     if (ok) {
       setRegisteredRole(data.role)
       setSuccess(true)
@@ -284,6 +337,26 @@ export default function Register() {
             {...register('address')}
             error={errors.address?.message}
           />
+
+            {/* Bouton géolocalisation */}
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              disabled={locating}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition border-2 disabled:opacity-50"
+              style={{
+                background: coords ? '#f0f9e8' : '#ffffff',
+                color: '#4a7a35',
+                borderColor: coords ? '#6aa84f' : '#e5e7eb',
+              }}
+            >
+              {locating ? (
+                <Loader size={14} className="animate-spin" />
+              ) : (
+                <MapPin size={14} />
+              )}
+              {locating ? 'Détection en cours…' : coords ? '✓ Position détectée' : '📍 Utiliser ma position actuelle'}
+            </button>
 
           {/* Ville + CP */}
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
