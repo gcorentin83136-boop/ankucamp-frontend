@@ -78,8 +78,43 @@ export default function ShopsList() {
     return (v as DeliveryValue) || null
   })
   const [filterHasStock, setFilterHasStock]     = useState(() => searchParams.get('has_stock') === 'true')
+
+  // ============= GÉOLOCALISATION =============
+  const [geoLat, setGeoLat]                     = useState<number | null>(null)
+  const [geoLng, setGeoLng]                     = useState<number | null>(null)
+  const [geoRadius, setGeoRadius]               = useState<number>(30)
+  const [geoLoading, setGeoLoading]             = useState(false)
   const [followingIds, setFollowingIds]         = useState<Set<number>>(new Set())
   const [pendingIds, setPendingIds]             = useState<Set<number>>(new Set())
+
+  // ============= GÉOLOCALISATION =============
+  const handleGeolocate = () => {
+    if (geoLat && geoLng) {
+      setGeoLat(null)
+      setGeoLng(null)
+      toast.success('Géolocalisation désactivée')
+      return
+    }
+    if (!navigator.geolocation) {
+      toast.error('La géolocalisation n’est pas supportée')
+      return
+    }
+    setGeoLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLat(pos.coords.latitude)
+        setGeoLng(pos.coords.longitude)
+        setGeoLoading(false)
+        toast.success('Position détectée 📍')
+      },
+      (err) => {
+        console.error(err)
+        setGeoLoading(false)
+        toast.error('Accès à la position refusé')
+      },
+      { enableHighAccuracy: false, timeout: 10000 }
+    )
+  }
 
   const carouselRef = useRef<HTMLDivElement>(null)
 
@@ -102,7 +137,7 @@ export default function ShopsList() {
     const t = setTimeout(async () => {
       setLoadingShops(true)
       try {
-        const res = await searchApi.shops({
+        const res: any = await searchApi.shops({
           q: search.trim() || undefined,
           category_id: selectedCategory ?? undefined,
           city: filterCity.trim() || undefined,
@@ -111,8 +146,15 @@ export default function ShopsList() {
           has_stock: filterHasStock ? true : undefined,
           sort,
           limit: 50,
+          lat: geoLat ?? undefined,
+          lng: geoLng ?? undefined,
+          radius: geoRadius,
         })
-        setShops(res.results)
+        // API peut renvoyer soit directement l'array, soit { shops }, soit { results }
+        const list = Array.isArray(res)
+          ? res
+          : res.shops ?? res.results ?? []
+        setShops(list)
       } catch (err: any) {
         toast.error(err?.response?.data?.message || 'Erreur de chargement')
       } finally {
@@ -120,7 +162,7 @@ export default function ShopsList() {
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock])
+  }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock, geoLat, geoLng, geoRadius])
 
   // -------- Synchronise les filtres vers l'URL (pour persistance) --------
   useEffect(() => {
@@ -195,6 +237,9 @@ export default function ShopsList() {
     setFilterMinRating(0)
     setFilterDelivery(null)
     setFilterHasStock(false)
+    setGeoLat(null)
+    setGeoLng(null)
+    setGeoRadius(30)
   }
 
   const resetAdvancedFilters = () => {
@@ -572,6 +617,44 @@ export default function ShopsList() {
             )}
           </div>
 
+            {/* === GÉOLOCALISATION === */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleGeolocate}
+                disabled={geoLoading}
+                className={
+                  'rounded-full px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50 ' +
+                  (geoLat
+                    ? 'text-white shadow-sm'
+                    : 'text-gray-700 bg-gray-100 hover:bg-gray-200')
+                }
+                style={geoLat ? { background: ANKU.green } : undefined}
+              >
+                <MapPin size={12} />
+                {geoLoading
+                  ? 'Localisation…'
+                  : geoLat
+                  ? 'Autour de moi ✓'
+                  : 'Autour de moi'}
+              </button>
+
+              {geoLat && (
+                <select
+                  value={geoRadius}
+                  onChange={(e) => setGeoRadius(Number(e.target.value))}
+                  className="rounded-full px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition focus:outline-none cursor-pointer"
+                >
+                  <option value={5}>5 km</option>
+                  <option value={10}>10 km</option>
+                  <option value={30}>30 km</option>
+                  <option value={50}>50 km</option>
+                  <option value={100}>100 km</option>
+                  <option value={200}>200 km</option>
+                  <option value={500}>500 km</option>
+                </select>
+              )}
+            </div>
           {/* Tri */}
           <div className="relative shrink-0">
             <button

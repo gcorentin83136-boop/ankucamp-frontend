@@ -45,6 +45,13 @@ export default function Search() {
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
 
   const [loading, setLoading] = useState(false)
+
+  const [counts, setCounts] = useState({
+    users: 0,
+    shops: 0,
+    products: 0,
+  })
+
   const [data, setData] = useState<{
     users: any[]
     shops: any[]
@@ -106,20 +113,41 @@ export default function Search() {
           lng: geo.lng,
           radius: geo.radius,
         })
+        const usersList = res.users ?? []
+        const shopsList = res.shops ?? []
+        const productsList = res.products ?? []
         setData({
-          users: res.users ?? [],
-          shops: res.shops ?? [],
-          products: res.products ?? [],
+          users: usersList,
+          shops: shopsList,
+          products: productsList,
         })
+        // 🎯 Utiliser les VRAIS counts du backend (pas la taille du preview)
+        if (res.counts) {
+          setCounts({
+            users: res.counts.users ?? 0,
+            shops: res.counts.shops ?? 0,
+            products: res.counts.products ?? 0,
+          })
+        }
+
       } else if (tab === 'users') {
-        const res = await searchApi.users({ ...f, q: term })
-        setData({ users: res ?? [], shops: [], products: [] })
+        const res: any = await searchApi.users({ ...f, q: term })
+        const list = Array.isArray(res)
+          ? res
+          : res.users ?? res.results ?? []
+        setData({ users: list, shops: [], products: [] })
       } else if (tab === 'shops') {
-        const res = await searchApi.shops({ ...f, q: term })
-        setData({ users: [], shops: res ?? [], products: [] })
+        const res: any = await searchApi.shops({ ...f, q: term })
+        const list = Array.isArray(res)
+          ? res
+          : res.shops ?? res.results ?? []
+        setData({ users: [], shops: list, products: [] })
       } else {
-        const res = await searchApi.products({ ...f, q: term })
-        setData({ users: [], shops: [], products: res ?? [] })
+        const res: any = await searchApi.products({ ...f, q: term })
+        const list = Array.isArray(res)
+          ? res
+          : res.products ?? res.results ?? []
+        setData({ users: [], shops: [], products: list })
       }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur de recherche')
@@ -180,10 +208,14 @@ export default function Search() {
     data.users.length + data.shops.length + data.products.length
 
   const TABS: { value: Tab; label: string; count: number }[] = [
-    { value: 'all', label: 'Tout', count: totalCount },
-    { value: 'users', label: 'Membres', count: data.users.length },
-    { value: 'shops', label: 'Boutiques', count: data.shops.length },
-    { value: 'products', label: 'Produits', count: data.products.length },
+    {
+      value: 'all',
+      label: 'Tout',
+      count: counts.users + counts.shops + counts.products,
+    },
+    { value: 'users', label: 'Membres', count: counts.users },
+    { value: 'shops', label: 'Boutiques', count: counts.shops },
+    { value: 'products', label: 'Produits', count: counts.products },
   ]
 
   const hasFilters =
@@ -253,13 +285,11 @@ export default function Search() {
         <div className="rounded-2xl border border-gray-200 bg-white p-2 flex gap-1 flex-wrap">
           {TABS.map((t) => {
             const active = tab === t.value
-            const disabled = t.value !== 'all' && t.count === 0 && !loading
             return (
               <button
                 key={t.value}
                 type="button"
                 onClick={() => setTab(t.value)}
-                disabled={disabled}
                 className={
                   'flex-1 min-w-[80px] rounded-xl px-3 py-2 text-xs font-bold transition disabled:opacity-40 ' +
                   (active
