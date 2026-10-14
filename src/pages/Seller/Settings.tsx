@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import shopsApi from '../../service/api/shops.api'
+import usersApi from '../../service/api/users.api'
 import type { Shop, ShopSettings } from '../../types/shop'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsToggle from '../../components/settings/SettingsToggle'
@@ -522,20 +523,34 @@ export default function SellerSettings() {
             address: label || prev.address,
           }))
           
-          // Ensuite forcer le géocodage côté backend pour persister lat/lng
-          await new Promise((r) => setTimeout(r, 100))
-          
-          const geoRes = await shopsApi.geocode(shop.id)
-          setGeocodingResult({
-            latitude: geoRes.latitude,
-            longitude: geoRes.longitude,
-            label: geoRes.label,
+          // 🎯 Update DIRECT de la boutique (sans regéocodage)
+          await shopsApi.updateLocation(shop.id, {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            city,
+            postal_code: postcode,
+            address: label,
           })
-          
+
+          // 🔄 Sync user aussi (position cohérente partout)
+          await usersApi
+            .updateMe({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              city,
+              postal_code: postcode,
+            } as any)
+            .catch(() => {})
+
           const shopsRes = await shopsApi.listMine()
           const mine = shopsRes.shops?.[0] ?? null
           if (mine) setShop(mine)
-          
+
+          setGeocodingResult({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            label,
+          })
           toast.success(`Position détectée : ${label} 📍`)
         } catch (err: any) {
           console.error(err)

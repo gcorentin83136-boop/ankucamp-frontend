@@ -74,6 +74,23 @@ export const shopsApi = {
    * POST /shops/:id/geocode
    * Force le géocodage de la boutique (via adresse / ville / CP)
    */
+  /**
+   * PUT /shops/:id/location
+   * Met à jour directement la position (sans géocodage)
+   */
+  updateLocation: async (
+    shopId: number,
+    payload: {
+      latitude: number
+      longitude: number
+      city?: string
+      postal_code?: string
+      address?: string
+    }
+  ): Promise<{ success: boolean; shop: any }> => {
+    const { data } = await httpClient.put(`/shops/${shopId}/location`, payload)
+    return data
+  },
   geocode: async (
     shopId: number
   ): Promise<{
