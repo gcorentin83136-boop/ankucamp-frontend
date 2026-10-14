@@ -84,6 +84,11 @@ export default function ShopsList() {
   const [geoLng, setGeoLng]                     = useState<number | null>(null)
   const [geoRadius, setGeoRadius]               = useState<number>(30)
   const [geoLoading, setGeoLoading]             = useState(false)
+
+  // ============= VUE BOUTIQUES / PRODUITS =============
+  const [viewMode, setViewMode]                 = useState<'shops' | 'products'>('shops')
+  const [products, setProducts]                 = useState<any[]>([])
+  const [loadingProducts, setLoadingProducts]   = useState(false)
   const [followingIds, setFollowingIds]         = useState<Set<number>>(new Set())
   const [pendingIds, setPendingIds]             = useState<Set<number>>(new Set())
 
@@ -163,6 +168,37 @@ export default function ShopsList() {
     }, 300)
     return () => clearTimeout(t)
   }, [search, selectedCategory, sort, filterCity, filterMinRating, filterDelivery, filterHasStock, geoLat, geoLng, geoRadius])
+
+  // -------- Produits (debounce 300ms, uniquement en mode products) --------
+  useEffect(() => {
+    if (viewMode !== 'products') return
+    const t = setTimeout(async () => {
+      setLoadingProducts(true)
+      try {
+        const res: any = await searchApi.products({
+          q: search.trim() || undefined,
+          category_id: selectedCategory ?? undefined,
+          city: filterCity.trim() || undefined,
+          min_rating: filterMinRating > 0 ? filterMinRating : undefined,
+          in_stock: filterHasStock ? true : undefined,
+          sort: (sort === 'products_count' ? 'relevance' : sort) as any,
+          limit: 50,
+          lat: geoLat ?? undefined,
+          lng: geoLng ?? undefined,
+          radius: geoRadius,
+        })
+        const list = Array.isArray(res)
+          ? res
+          : res.products ?? res.results ?? []
+        setProducts(list)
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Erreur de chargement')
+      } finally {
+        setLoadingProducts(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [viewMode, search, selectedCategory, sort, filterCity, filterMinRating, filterHasStock, geoLat, geoLng, geoRadius])
 
   // -------- Synchronise les filtres vers l'URL (pour persistance) --------
   useEffect(() => {
@@ -726,7 +762,39 @@ export default function ShopsList() {
         </div>
 
         {/* ================= Grille boutiques ================= */}
-        {loadingShops ? (
+          {/* ================= Toggle Boutiques / Produits ================= */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-2 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('shops')}
+              className={
+                'flex-1 rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-2 ' +
+                (viewMode === 'shops'
+                  ? 'text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100')
+              }
+              style={viewMode === 'shops' ? { background: ANKU.green } : undefined}
+            >
+              <Store size={14} />
+              Boutiques ({shops.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('products')}
+              className={
+                'flex-1 rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-2 ' +
+                (viewMode === 'products'
+                  ? 'text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100')
+              }
+              style={viewMode === 'products' ? { background: ANKU.green } : undefined}
+            >
+              <Package size={14} />
+              Produits ({products.length})
+            </button>
+          </div>
+        {viewMode === 'shops' && (
+            <>{loadingShops ? (
           <div className="rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl p-10 text-center shadow-sm">
             <Loader size={24} className="animate-spin text-gray-400 mx-auto" />
           </div>
@@ -766,7 +834,83 @@ export default function ShopsList() {
                           alt=""
                           className="w-full h-full object-cover"
                         />
-                      )}
+                      )}            </>
+          )}
+
+          {viewMode === 'products' && (
+            <>
+              {loadingProducts ? (
+                <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
+                  <Loader size={24} className="animate-spin text-gray-400 mx-auto" />
+                </div>
+              ) : products.length === 0 ? (
+                <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
+                  <Package size={40} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-sm font-bold text-gray-800">
+                    Aucun produit trouvé
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {geoLat
+                      ? `Aucun résultat dans un rayon de ${geoRadius} km`
+                      : "Essaie d'autres filtres ou une autre recherche"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {products.map((p: any) => (
+                    <Link
+                      key={p.id}
+                      to={`/products/${p.id}`}
+                      className="group flex flex-col rounded-2xl border border-white/50 bg-white/85 backdrop-blur-xl overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                    >
+                      <div className="relative">
+                        {p.image_url ? (
+                          <img
+                            src={p.image_url}
+                            alt=""
+                            className="w-full aspect-square object-cover group-hover:scale-105 transition"
+                          />
+                        ) : (
+                          <div
+                            className="w-full aspect-square flex items-center justify-center"
+                            style={{ background: ANKU.greenPale }}
+                          >
+                            <Package size={32} style={{ color: ANKU.greenDark }} />
+                          </div>
+                        )}
+                        {p.distance_km !== undefined && (
+                          <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/95 text-emerald-700 shadow-sm">
+                            {Number(p.distance_km).toFixed(0)} km
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3 flex-1 flex flex-col">
+                        <p className="text-sm font-bold text-gray-900 truncate">
+                          {p.name}
+                        </p>
+                        {p.shop_name && (
+                          <p className="text-[10px] text-gray-500 truncate mt-0.5 flex items-center gap-1">
+                            <Store size={9} /> {p.shop_name}
+                          </p>
+                        )}
+                        <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+                          <p className="text-sm font-extrabold text-emerald-700">
+                            {p.price} €
+                          </p>
+                          {p.average_rating > 0 && (
+                            <span className="text-[10px] font-bold flex items-center gap-0.5 text-amber-600">
+                              <Star size={9} fill="currentColor" />
+                              {Number(p.average_rating).toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                     </div>
 
