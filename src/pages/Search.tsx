@@ -211,11 +211,26 @@ export default function Search() {
     {
       value: 'all',
       label: 'Tout',
-      count: counts.users + counts.shops + counts.products,
+      count: Math.max(
+        counts.users + counts.shops + counts.products,
+        data.users.length + data.shops.length + data.products.length
+      ),
     },
-    { value: 'users', label: 'Membres', count: counts.users },
-    { value: 'shops', label: 'Boutiques', count: counts.shops },
-    { value: 'products', label: 'Produits', count: counts.products },
+    {
+      value: 'users',
+      label: 'Membres',
+      count: Math.max(counts.users, data.users.length),
+    },
+    {
+      value: 'shops',
+      label: 'Boutiques',
+      count: Math.max(counts.shops, data.shops.length),
+    },
+    {
+      value: 'products',
+      label: 'Produits',
+      count: Math.max(counts.products, data.products.length),
+    },
   ]
 
   const hasFilters =
