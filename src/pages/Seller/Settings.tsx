@@ -487,6 +487,74 @@ export default function SellerSettings() {
     }
   }
 
+  // ============================================================
+  // GÉOLOCALISATION VIA NAVIGATEUR (position réelle)
+  // ============================================================
+  const handleUseMyLocation = () => {
+    if (!shop) return
+    if (!navigator.geolocation) {
+      toast.error('La géolocalisation n’est pas supportée')
+      return
+    }
+    setGeocoding(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          // Convertir lat/lng en adresse (reverse geocoding via API gouv)
+          const url = `https://api-adresse.data.gouv.fr/reverse/?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}&limit=1`
+          const res = await fetch(url)
+          const data = await res.json()
+          const feature = data.features?.[0]
+          
+          if (!feature) {
+            toast.error('Impossible de convertir ta position en adresse')
+            setGeocoding(false)
+            return
+          }
+          
+          const { city, postcode, label } = feature.properties
+          
+          // Mettre à jour le form avec les infos détectées
+          setForm((prev) => ({
+            ...prev,
+            city: city || prev.city,
+            postal_code: postcode || prev.postal_code,
+            address: label || prev.address,
+          }))
+          
+          // Ensuite forcer le géocodage côté backend pour persister lat/lng
+          await new Promise((r) => setTimeout(r, 100))
+          
+          const geoRes = await shopsApi.geocode(shop.id)
+          setGeocodingResult({
+            latitude: geoRes.latitude,
+            longitude: geoRes.longitude,
+            label: geoRes.label,
+          })
+          
+          const shopsRes = await shopsApi.listMine()
+          const mine = shopsRes.shops?.[0] ?? null
+          if (mine) setShop(mine)
+          
+          toast.success(`Position détectée : ${label} 📍`)
+        } catch (err: any) {
+          console.error(err)
+          toast.error('Impossible de détecter ta position')
+        } finally {
+          setGeocoding(false)
+        }
+      },
+      (err) => {
+        console.error(err)
+        setGeocoding(false)
+        toast.error(
+          'Accès à la position refusé. Autorise la géolocalisation dans ton navigateur.'
+        )
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    )
+  }
+
   const handleUploadLogo = async (file: File) => {
     if (!shop) return
     setUploadingLogo(true)
@@ -777,24 +845,36 @@ export default function SellerSettings() {
                   ) : null}
                 </div>
 
+                {/* Bouton 1 : utiliser la position GPS du navigateur */}
                 <button
                   type="button"
-                  onClick={handleGeocode}
-                  disabled={geocoding || !form.city.trim()}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
-                  style={{ background: ANKU.green }}
+                  onClick={handleUseMyLocation}
+                  disabled={geocoding}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50 shadow-sm hover:shadow-md"
+                  style={{
+                    background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
+                  }}
                 >
                   {geocoding ? (
                     <Loader size={12} className="animate-spin" />
                   ) : (
                     <Navigation size={12} />
                   )}
-                  {geocoding
-                    ? 'Recherche en cours…'
-                    : shop?.latitude && shop?.longitude
-                    ? 'Mettre à jour ma position'
-                    : 'Activer la géolocalisation'}
+                  {geocoding ? 'Détection…' : '📍 Utiliser ma position actuelle'}
                 </button>
+
+                {/* Bouton 2 : géocoder via l'adresse saisie */}
+                {form.city.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleGeocode}
+                    disabled={geocoding}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition disabled:opacity-50 border border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50"
+                  >
+                    <MapPin size={12} />
+                    Ou géocoder l'adresse saisie
+                  </button>
+                )}
 
                 {geocodingResult && (
                   <p className="text-[10px] text-emerald-700 text-center">
