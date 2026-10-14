@@ -108,7 +108,7 @@ export default function Search() {
         // Utilise search/all (limité mais rapide)
         const res = await searchApi.all({
           q: term || ' ',
-          limit_per_type: 10,
+          limit_per_type: 50,
           lat: geo.lat,
           lng: geo.lng,
           radius: geo.radius,
