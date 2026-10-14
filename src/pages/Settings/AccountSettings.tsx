@@ -166,15 +166,49 @@ export default function AccountSettings() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          await usersApi.updateMe({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          } as any)
+          const { latitude, longitude } = pos.coords
+
+          // 🎯 Reverse geocoding → récupérer ville + CP
+          let city: string | undefined
+          let postal_code: string | undefined
+          let country: string | undefined
+          try {
+            const res = await fetch(
+              `https://api-adresse.data.gouv.fr/reverse/?lon=${longitude}&lat=${latitude}&limit=1`
+            )
+            if (res.ok) {
+              const data = await res.json()
+              const props = data.features?.[0]?.properties
+              if (props) {
+                city = props.city
+                postal_code = props.postcode
+                country = 'France'
+              }
+            }
+          } catch {
+            // Silencieux : on garde juste lat/lng
+          }
+
+          const payload: any = {
+            latitude,
+            longitude,
+          }
+          if (city) payload.city = city
+          if (postal_code) payload.postal_code = postal_code
+          if (country) payload.country = country
+
+          await usersApi.updateMe(payload)
+
           mergeUser({
-            latitude: String(pos.coords.latitude),
-            longitude: String(pos.coords.longitude),
+            latitude: String(latitude),
+            longitude: String(longitude),
+            ...(city ? { city } : {}),
+            ...(postal_code ? { postal_code } : {}),
           } as any)
-          toast.success('Position enregistrée 📍')
+
+          toast.success(
+            city ? `Position enregistrée : ${city} 📍` : 'Position enregistrée 📍'
+          )
         } catch (err: any) {
           toast.error(err?.response?.data?.message || 'Erreur')
         } finally {
