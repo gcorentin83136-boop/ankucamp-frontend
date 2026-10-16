@@ -70,7 +70,6 @@ const STATUS_CONFIG: Record<
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Toutes' },
-  { value: 'pending', label: 'En attente' },
   { value: 'confirmed', label: 'Confirmées' },
   { value: 'shipped', label: 'Expédiées' },
   { value: 'delivered', label: 'Livrées' },
@@ -470,7 +469,9 @@ export default function BuyerOrders() {
     setLoading(true)
     try {
       const res = await ordersApi.listMine()
-      setOrders(res.orders)
+      // Le webhook Stripe passe les commandes en 'confirmed' en <5s.
+      // On masque l'état 'pending' (transitoire) pour ne jamais l'afficher.
+      setOrders(res.orders.filter((o) => o.status !== 'pending'))
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
     } finally {
@@ -510,7 +511,6 @@ export default function BuyerOrders() {
   const stats = useMemo(
     () => ({
       total: orders.length,
-      pending: orders.filter((o) => o.status === 'pending').length,
       delivered: orders.filter((o) => o.status === 'delivered').length,
     }),
     [orders]
@@ -531,7 +531,7 @@ export default function BuyerOrders() {
           <h2 className="text-lg font-bold text-gray-900">Mes commandes</h2>
         </div>
         <p className="text-sm text-gray-600 mt-1">
-          {stats.total} commande{stats.total > 1 ? 's' : ''} · {stats.pending} en attente ·{' '}
+          {stats.total} commande{stats.total > 1 ? 's' : ''} ·{' '}
           {stats.delivered} livrée{stats.delivered > 1 ? 's' : ''}
         </p>
       </div>

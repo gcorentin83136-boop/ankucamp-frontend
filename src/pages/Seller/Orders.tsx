@@ -96,7 +96,6 @@ const STATUS_CONFIG: Record<
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Toutes' },
-  { value: 'pending', label: 'En attente' },
   { value: 'confirmed', label: 'Confirmées' },
   { value: 'shipped', label: 'Expédiées' },
   { value: 'delivered', label: 'Livrées' },
@@ -597,7 +596,9 @@ export default function SellerOrders() {
     setLoading(true)
     try {
       const res = await ordersApi.listSeller()
-      setOrders(res.orders)
+      // Le webhook Stripe passe les commandes en 'confirmed' en <5s.
+      // On masque l'état 'pending' (transitoire) pour ne jamais l'afficher.
+      setOrders(res.orders.filter((o) => o.status !== 'pending'))
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
     } finally {
@@ -665,14 +666,8 @@ export default function SellerOrders() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard
-          label="À confirmer"
-          value={stats.pending}
-          icon={<Clock size={18} />}
-          danger={stats.pending > 0}
-          onClick={() => setFilter('pending')}
-        />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+
         <StatCard
           label="À expédier"
           value={stats.confirmed}

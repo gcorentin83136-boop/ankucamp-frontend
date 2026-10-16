@@ -31,6 +31,9 @@ import {
   type StatsPeriod,
 } from '../../service/api/dashboard.api'
 import StatCard from '../../components/seller/StatCard'
+import StripeRequiredBanner from '../../components/seller/StripeRequiredBanner'
+import { useAuthStore } from '../../context/AuthContext'
+import usersApi from '../../service/api/users.api'
 
 const ANKU = {
   green: '#6aa84f',
@@ -96,6 +99,15 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export default function SellerDashboard() {
+  const auth = useAuthStore()
+  const user = (auth as any)?.user
+  // Fail-safe : si le champ n'est pas encore chargé dans le store, on
+  // n'affiche PAS la bannière (évite un faux positif pendant le bootstrap).
+  const needsStripe =
+    user?.role === 'professionnel' &&
+    typeof user?.stripe_account_status === 'string' &&
+    user.stripe_account_status !== 'active'
+
   const [loading, setLoading] = useState(true)
   const [summary, setSummary] = useState<SellerSummary | null>(null)
   const [period, setPeriod] = useState<StatsPeriod>('30d')
@@ -124,6 +136,22 @@ export default function SellerDashboard() {
       setStatsLoading(false)
     }
   }
+
+  // Rafraîchit le user depuis /users/me (contient stripe_account_status).
+  // Le login peut renvoyer un user partiel selon le select backend.
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await usersApi.getMe()
+        if (res.user && auth.mergeUser) {
+          auth.mergeUser(res.user)
+        }
+      } catch {
+        /* silencieux : on garde le user en cache */
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     fetchSummary()
@@ -169,6 +197,9 @@ export default function SellerDashboard() {
           Suis ton activité, gère tes commandes et développe ta boutique.
         </p>
       </div>
+
+      {/* P6 — Banniere Stripe si pro non connecte */}
+      {needsStripe && <StripeRequiredBanner />}
 
       {/* Tabs période */}
       <div className="rounded-2xl border border-gray-200 bg-white p-2 flex gap-1 flex-wrap">
