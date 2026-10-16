@@ -596,9 +596,9 @@ export default function SellerOrders() {
     setLoading(true)
     try {
       const res = await ordersApi.listSeller()
-      // Le webhook Stripe passe les commandes en 'confirmed' en <5s.
-      // On masque l'état 'pending' (transitoire) pour ne jamais l'afficher.
-      setOrders(res.orders.filter((o) => o.status !== 'pending'))
+      // ⚠️  On garde les 'pending' dans le state (le webhook Stripe peut
+      // arriver en retard). Le filtrage visuel se fait à l'affichage.
+      setOrders(res.orders)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
     } finally {
@@ -609,6 +609,28 @@ export default function SellerOrders() {
   useEffect(() => {
     fetchAll()
   }, [])
+
+  // 🔄 Refetch au focus de l'onglet (retour d'un autre onglet / Stripe)
+  useEffect(() => {
+    const onFocus = () => fetchAll()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ⏱️  Si des pending trainent, refetch auto après 3s et 8s
+  // (le temps que le webhook Stripe arrive)
+  useEffect(() => {
+    const hasPending = orders.some((o) => o.status === 'pending')
+    if (!hasPending) return
+    const t1 = setTimeout(fetchAll, 3000)
+    const t2 = setTimeout(fetchAll, 8000)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders])
 
   // 🔔 Auto-ouverture du modal + scroll si ?order=XX
   useEffect(() => {
@@ -630,12 +652,11 @@ export default function SellerOrders() {
     }
   }, [orderParam, orders, autoOpened])
 
-  const filtered = orders.filter((o) =>
-    filter === 'all' ? true : o.status === filter
-  )
+  const filtered = orders
+    .filter((o) => o.status !== 'pending') // masquer les pending (transitoires)
+    .filter((o) => (filter === 'all' ? true : o.status === filter))
 
   const stats = {
-    pending: orders.filter((o) => o.status === 'pending').length,
     confirmed: orders.filter((o) => o.status === 'confirmed').length,
     shipped: orders.filter((o) => o.status === 'shipped').length,
     delivered: orders.filter((o) => o.status === 'delivered').length,
