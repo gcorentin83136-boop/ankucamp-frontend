@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import ordersApi from '../../service/api/orders.api'
 import reviewsApi from '../../service/api/reviews.api'
+import RefundRequestModal from '../../components/buyer/RefundRequestModal'
 import type { Order, OrderStatus } from '../../types/order'
 
 const ANKU = {
@@ -96,6 +97,7 @@ function OrderDetailModal({
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [showRefundForm, setShowRefundForm] = useState(false)
 
   if (!order) return null
 
@@ -103,11 +105,19 @@ function OrderDetailModal({
   const StatusIcon = config.icon
 
   const handleCancel = async () => {
-    if (!confirm('Annuler cette commande ?')) return
+    const isPaidOrder = order.status === 'confirmed'
+    const msg = isPaidOrder
+      ? "Cette commande a déjà été payée.\n\nEn l'annulant, une demande de remboursement sera envoyée à l'équipe ANKU, qui la validera sous 24-48h.\n\nConfirmer l'annulation ?"
+      : 'Annuler cette commande ?'
+    if (!confirm(msg)) return
     setLoading(true)
     try {
       await ordersApi.updateStatus(order.id, { status: 'cancelled' })
-      toast.success('Commande annulée')
+      toast.success(
+        isPaidOrder
+          ? 'Commande annulée — demande de remboursement envoyée ✅'
+          : 'Commande annulée'
+      )
       onRefresh()
       onClose()
     } catch (err: any) {
@@ -324,6 +334,16 @@ function OrderDetailModal({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
+            {/* Demander un remboursement — commandes expédiées ou livrées */}
+            {(order.status === 'shipped' || order.status === 'delivered') && (
+              <button
+                type="button"
+                onClick={() => setShowRefundForm(true)}
+                className="rounded-full px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition flex items-center gap-2"
+              >
+                <RotateCcw size={14} /> Demander un remboursement
+              </button>
+            )}
             {(order.status === 'pending' || order.status === 'confirmed') && (
               <button
                 type="button"
@@ -331,7 +351,10 @@ function OrderDetailModal({
                 disabled={loading}
                 className="rounded-full px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition disabled:opacity-50 flex items-center gap-2"
               >
-                <XCircle size={14} /> Annuler la commande
+                <XCircle size={14} />{' '}
+                  {order.status === 'confirmed'
+                    ? 'Annuler et demander remboursement'
+                    : 'Annuler la commande'}
               </button>
             )}
 
@@ -442,6 +465,11 @@ function OrderDetailModal({
     <>
       {createPortal(modal, document.body)}
       {reviewModal && createPortal(reviewModal, document.body)}
+      <RefundRequestModal
+        order={showRefundForm ? order : null}
+        onClose={() => setShowRefundForm(false)}
+        onSuccess={onRefresh}
+      />
     </>
   ) : null
 }
