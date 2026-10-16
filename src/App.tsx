@@ -25,6 +25,7 @@ import PrivacySettings from './pages/Settings/PrivacySettings'
 import NotificationsSettings from './pages/Settings/NotificationsSettings'
 import BlockedUsers from './pages/Settings/BlockedUsers'
 import DangerZone from './pages/Settings/DangerZone'
+import PaymentSettings from './pages/Settings/PaymentSettings'
 
 import AdminGuard from './components/admin/AdminGuard'
 import AdminLayout from './components/admin/AdminLayout'
@@ -133,7 +134,8 @@ function App() {
         <Route path="privacy" element={<PrivacySettings />} />
         <Route path="notifications" element={<NotificationsSettings />} />
         <Route path="blocked" element={<BlockedUsers />} />
-        <Route path="danger" element={<DangerZone />} />
+        <Route path="payment" element={<PaymentSettings />} />
+          <Route path="danger" element={<DangerZone />} />
       </Route>
 
       <Route path="/profile" element={<ProtectedRoute><MyProfileRedirect /></ProtectedRoute>} />
@@ -214,6 +216,8 @@ function App() {
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/payment/cancel" element={<PaymentCancel />} />
 
+      <Route path="/dashboard/stripe/return" element={<Navigate to="/settings/payment?stripe=return" replace />} />
+      <Route path="/dashboard/stripe/refresh" element={<Navigate to="/settings/payment?stripe=refresh" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

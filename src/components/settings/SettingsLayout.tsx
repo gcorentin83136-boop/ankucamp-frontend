@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   UserX,
   ArrowLeft,
+  CreditCard,
 } from 'lucide-react'
 
 const ANKU = {
@@ -24,6 +25,7 @@ const links = [
   { to: '/settings/sessions', label: 'Sessions', icon: Monitor },
   { to: '/settings/privacy', label: 'Confidentialité', icon: Eye },
   { to: '/settings/notifications', label: 'Notifications', icon: Bell },
+  { to: '/settings/payment', label: 'Paiement', icon: CreditCard },
   { to: '/settings/blocked', label: 'Comptes bloqués', icon: UserX },
   { to: '/settings/danger', label: 'Gérer mon compte', icon: AlertTriangle },
 ]

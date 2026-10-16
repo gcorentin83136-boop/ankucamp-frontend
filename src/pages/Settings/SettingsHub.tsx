@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   User as UserIcon,
   Shield,
@@ -6,6 +6,7 @@ import {
   Eye,
   Bell,
   AlertTriangle,
+  CreditCard,
   ChevronRight,
 } from 'lucide-react'
 
@@ -45,6 +46,12 @@ const cards = [
     icon: Bell,
     title: 'Notifications',
     description: 'Préférences email et push',
+  },
+  {
+    to: '/settings/payment',
+    icon: CreditCard,
+    title: 'Paiement',
+    description: 'Cartes bancaires, compte Stripe, commissions',
   },
   {
     to: '/settings/danger',
