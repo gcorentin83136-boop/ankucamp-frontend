@@ -12,6 +12,8 @@ import {
   Loader,
   Plus,
   ArrowRight,
+  Unlink,
+  AlertTriangle,
 } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import paymentsApi from '../../service/api/payments.api'
@@ -97,6 +99,8 @@ export default function PaymentSettings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
   const [status, setStatus] = useState<ConnectStatusResponse | null>(null)
 
   const loadStatus = async () => {
@@ -170,6 +174,22 @@ export default function PaymentSettings() {
     }
   }
 
+  const handleDisconnect = async () => {
+    setDisconnecting(true)
+    try {
+      await paymentsApi.disconnectStripe()
+      toast.success('Compte Stripe déconnecté ✅')
+      setShowDisconnectConfirm(false)
+      await loadStatus()
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Erreur lors de la déconnexion'
+      )
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -226,6 +246,16 @@ export default function PaymentSettings() {
             >
               Ouvrir mon dashboard Stripe <ExternalLink size={14} />
             </a>
+          )}
+
+          {isActive && (
+            <button
+              type="button"
+              onClick={() => setShowDisconnectConfirm(true)}
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition ml-2"
+            >
+              <Unlink size={12} /> Déconnecter Stripe
+            </button>
           )}
 
           {isPending && (
@@ -353,6 +383,75 @@ export default function PaymentSettings() {
           </Link>
         )}
       </SettingsSection>
+      {/* Modal confirmation déconnexion Stripe */}
+      {showDisconnectConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+            <header
+              className="px-5 py-4 border-b flex items-start gap-3"
+              style={{ borderColor: '#fee2e2', background: '#fef2f2' }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: '#fee2e2', color: '#dc2626' }}
+              >
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-red-900">
+                  Déconnecter ton compte Stripe ?
+                </h3>
+                <p className="text-xs text-red-700 mt-0.5">
+                  Cette action peut être annulée à tout moment.
+                </p>
+              </div>
+            </header>
+
+            <div className="p-5 space-y-3 text-sm text-gray-700">
+              <p>
+                Tu ne pourras plus recevoir de paiements tant que tu n'auras
+                pas relié un nouveau compte Stripe.
+              </p>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                ⚠️  Les commandes en cours et les remboursements éventuels
+                continueront d'être traités par Stripe normalement.
+                Tu pourras te reconnecter à tout moment.
+              </p>
+            </div>
+
+            <footer
+              className="px-5 py-4 border-t flex justify-end gap-2"
+              style={{ borderColor: '#f3f4f6' }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowDisconnectConfirm(false)}
+                disabled={disconnecting}
+                className="rounded-full px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                className="rounded-full px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50 flex items-center gap-2"
+                style={{ background: '#dc2626' }}
+              >
+                {disconnecting ? (
+                  <>
+                    <Loader size={14} className="animate-spin" /> Déconnexion…
+                  </>
+                ) : (
+                  <>
+                    <Unlink size={14} /> Déconnecter
+                  </>
+                )}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

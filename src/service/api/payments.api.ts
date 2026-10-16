@@ -69,6 +69,18 @@ export const paymentsApi = {
     return data
   },
 
+  /**
+   * POST /payments/connect/disconnect
+   * Déconnecte le compte Stripe Connect du pro (retire la référence locale).
+   */
+  disconnectStripe: async (): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    const { data } = await httpClient.post('/payments/connect/disconnect');
+    return data;
+  },
+
   // Export PDF des factures vendeur
   exportPdf: async (month?: string): Promise<void> => {
     const params = month && month !== 'all' ? { month } : {}
