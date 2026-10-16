@@ -5,6 +5,21 @@
 import httpClient from './httpClient'
 import type { PaymentsListResponse } from '../../types/payment'
 
+
+export interface CheckoutSessionResponse {
+  success: boolean
+  message: string
+  url: string
+  session_id: string
+}
+
+export interface ConnectStatusResponse {
+  success: boolean
+  status: string
+  has_account: boolean
+  charges_enabled?: boolean
+  payouts_enabled?: boolean
+}
 export const paymentsApi = {
   // Mes paiements (buyer)
   listMine: async (): Promise<PaymentsListResponse> => {
@@ -17,6 +32,40 @@ export const paymentsApi = {
     const { data } = await httpClient.get<PaymentsListResponse>(
       '/payments/seller/me'
     )
+    return data
+  },
+
+  /**
+   * POST /payments/checkout
+   * Crée une session Stripe Checkout pour une commande
+   */
+  createCheckout: async (orderId: number): Promise<CheckoutSessionResponse> => {
+    const { data } = await httpClient.post<CheckoutSessionResponse>(
+      '/payments/checkout',
+      { order_id: orderId }
+    )
+    return data
+  },
+
+  /**
+   * GET /payments/connect/status
+   */
+  connectStatus: async (): Promise<ConnectStatusResponse> => {
+    const { data } = await httpClient.get<ConnectStatusResponse>(
+      '/payments/connect/status'
+    )
+    return data
+  },
+
+  /**
+   * POST /payments/connect/onboard
+   */
+  connectOnboard: async (): Promise<{
+    success: boolean
+    onboarding_url: string
+    message: string
+  }> => {
+    const { data } = await httpClient.post('/payments/connect/onboard')
     return data
   },
 

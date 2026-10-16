@@ -55,6 +55,8 @@ import Feed from './pages/Feed'
 import Messages from './pages/Messages'
 import Notifications from './pages/Notifications'
 import Search from './pages/Search'
+import PaymentSuccess from './pages/Payment/Success'
+import PaymentCancel from './pages/Payment/Cancel'
 import Follows from './pages/Follows'
 import Cart from './pages/Cart'
 import Orders from './pages/Orders'
@@ -208,6 +210,9 @@ function App() {
         <Route path="audit" element={<AdminAudit />} />
         <Route path="backup" element={<AdminBackup />} />
       </Route>
+
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/cancel" element={<PaymentCancel />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

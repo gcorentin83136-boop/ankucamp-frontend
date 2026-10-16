@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   ShoppingCart,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useCartStore } from '../context/CartContext'
 import cartApi from '../service/api/cart.api'
+import paymentsApi from '../service/api/payments.api'
 import { useAuthStore } from '../context/AuthContext'
 import BuyerProfileCard from '../components/buyer/BuyerProfileCard'
 import AnimatedCartBackground from '../components/buyer/AnimatedCartBackground'
@@ -45,7 +46,6 @@ const DELIVERY_OPTIONS = [
 ]
 
 export default function Cart() {
-  const navigate = useNavigate()
   const auth = useAuthStore()
   const cart = useCartStore()
 
@@ -109,21 +109,34 @@ export default function Cart() {
 
     setSubmitting(true)
     try {
+      // 1. Créer la/les commande(s) depuis le panier
       const res = await cartApi.checkout({
         delivery_method: deliveryMethod,
         delivery_address: deliveryMethod === 'pickup' ? null : deliveryAddress.trim(),
         promo_code: promoCode.trim() || null,
       })
-      toast.success(
-        res.orders_count > 1
-          ? res.orders_count + ' commandes créées ✅'
-          : 'Commande passée ✅'
-      )
+
+      if (!res.orders || res.orders.length === 0) {
+        toast.error('Aucune commande créée')
+        setSubmitting(false)
+        return
+      }
+
+      // 2. Créer la session Stripe pour la 1ère commande
+      const firstOrder = res.orders[0]
+      const payRes = await paymentsApi.createCheckout(firstOrder.id)
+
+      toast.success('Redirection vers le paiement sécurisé 🔒')
+
+      // 3. Vider le panier
       cart.reset()
-      navigate('/dashboard/user/orders')
+
+      // 4. Rediriger vers Stripe Checkout
+      window.location.href = payRes.url
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Erreur lors du paiement')
-    } finally {
+      toast.error(
+        err?.response?.data?.message || 'Erreur lors de la création du paiement'
+      )
       setSubmitting(false)
     }
   }
