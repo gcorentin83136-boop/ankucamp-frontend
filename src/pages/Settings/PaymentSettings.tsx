@@ -344,7 +344,7 @@ export default function PaymentSettings() {
       )}
 
       {/* ---------- Section Cartes bancaires (buyer) ---------- */}
-      {!isPro && (
+      {true && (
         <SettingsSection
           title="Mes cartes bancaires"
           description="Gère tes moyens de paiement enregistrés"
