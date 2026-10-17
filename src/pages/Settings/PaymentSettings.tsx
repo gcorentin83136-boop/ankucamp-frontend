@@ -13,10 +13,13 @@ import {
   Plus,
   ArrowRight,
   Unlink,
+  Trash2,
   AlertTriangle,
 } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import paymentsApi from '../../service/api/payments.api'
+import type { PaymentMethodInfo } from '../../service/api/payments.api'
+import AddCardModal from '../../components/buyer/AddCardModal'
 import type { ConnectStatusResponse } from '../../service/api/payments.api'
 import { useAuthStore } from '../../context/AuthContext'
 
@@ -101,6 +104,10 @@ export default function PaymentSettings() {
   const [connecting, setConnecting] = useState(false)
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [cards, setCards] = useState<PaymentMethodInfo[]>([])
+  const [cardsLoading, setCardsLoading] = useState(false)
+  const [showAddCardModal, setShowAddCardModal] = useState(false)
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null)
   const [status, setStatus] = useState<ConnectStatusResponse | null>(null)
 
   const loadStatus = async () => {
@@ -122,6 +129,7 @@ export default function PaymentSettings() {
   useEffect(() => {
     if (!isPro) {
       setLoading(false)
+      loadCards()
       return
     }
     loadStatus()
@@ -187,6 +195,34 @@ export default function PaymentSettings() {
       )
     } finally {
       setDisconnecting(false)
+    }
+  }
+
+  const loadCards = async () => {
+    setCardsLoading(true)
+    try {
+      const res = await paymentsApi.listPaymentMethods()
+      setCards(res.payment_methods)
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Impossible de charger les cartes'
+      )
+    } finally {
+      setCardsLoading(false)
+    }
+  }
+
+  const handleDeleteCard = async (id: string) => {
+    if (!confirm('Supprimer cette carte ?')) return
+    setDeletingCardId(id)
+    try {
+      await paymentsApi.deletePaymentMethod(id)
+      toast.success('Carte supprimée ✅')
+      setCards((prev) => prev.filter((c) => c.id !== id))
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setDeletingCardId(null)
     }
   }
 
@@ -314,34 +350,96 @@ export default function PaymentSettings() {
           description="Gère tes moyens de paiement enregistrés"
           icon={<CreditCard size={18} />}
         >
-          <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center"
-              style={{ background: ANKU.greenPale, color: ANKU.greenDark }}
-            >
-              <CreditCard size={24} />
-            </div>
-            <p className="text-sm font-bold text-gray-800">
-              Aucune carte enregistrée
-            </p>
-            <p className="text-xs text-gray-500 max-w-sm">
-              Enregistre une carte pour payer plus vite lors de tes prochains
-              achats.
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                toast(
-                  '💳 Bientôt disponible : tu pourras ajouter une carte depuis cette page.',
-                  { duration: 4000 }
-                )
-              }
-              className="mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition shadow-sm hover:shadow-md"
-              style={{ background: ANKU.green }}
-            >
-              <Plus size={14} /> Ajouter une carte
-            </button>
-          </div>
+            {/* Loader cartes */}
+            {cardsLoading && (
+              <div className="flex items-center justify-center py-6">
+                <Loader size={20} className="animate-spin text-gray-400" />
+              </div>
+            )}
+
+            {/* Aucune carte */}
+            {!cardsLoading && cards.length === 0 && (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center"
+                  style={{ background: ANKU.greenPale, color: ANKU.greenDark }}
+                >
+                  <CreditCard size={24} />
+                </div>
+                <p className="text-sm font-bold text-gray-800">
+                  Aucune carte enregistrée
+                </p>
+                <p className="text-xs text-gray-500 max-w-sm">
+                  Enregistre une carte pour payer plus vite lors de tes prochains achats.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCardModal(true)}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition shadow-sm hover:shadow-md"
+                  style={{ background: ANKU.green }}
+                >
+                  <Plus size={14} /> Ajouter une carte
+                </button>
+              </div>
+            )}
+
+            {/* Liste des cartes */}
+            {!cardsLoading && cards.length > 0 && (
+              <div className="space-y-3">
+                {cards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition"
+                  >
+                    <div
+                      className="w-12 h-8 rounded-md flex items-center justify-center text-white font-bold text-[10px] uppercase tracking-wide shrink-0"
+                      style={{
+                        background:
+                          card.brand === 'visa'
+                            ? '#1a1f71'
+                            : card.brand === 'mastercard'
+                            ? '#eb001b'
+                            : card.brand === 'amex'
+                            ? '#2e77bc'
+                            : '#6b7280',
+                      }}
+                    >
+                      {card.brand === 'mastercard' ? 'MC' : card.brand}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">
+                        •••• •••• •••• {card.last4}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Expire {String(card.exp_month).padStart(2, '0')}/
+                        {String(card.exp_year).slice(-2)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCard(card.id)}
+                      disabled={deletingCardId === card.id}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                      title="Supprimer cette carte"
+                    >
+                      {deletingCardId === card.id ? (
+                        <Loader size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddCardModal(true)}
+                  className="w-full rounded-xl border-2 border-dashed border-gray-300 py-3 text-sm font-semibold text-gray-600 hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50/30 transition flex items-center justify-center gap-2"
+                >
+                  <Plus size={16} /> Ajouter une autre carte
+                </button>
+              </div>
+            )}
         </SettingsSection>
       )}
 
@@ -452,6 +550,13 @@ export default function PaymentSettings() {
           </div>
         </div>
       )}
+
+      {/* Modal ajout carte */}
+      <AddCardModal
+        open={showAddCardModal}
+        onClose={() => setShowAddCardModal(false)}
+        onSuccess={loadCards}
+      />
     </div>
   )
 }

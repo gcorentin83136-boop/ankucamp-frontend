@@ -6,6 +6,25 @@ import httpClient from './httpClient'
 import type { PaymentsListResponse } from '../../types/payment'
 
 
+export interface SetupIntentResponse {
+  success: boolean;
+  client_secret: string;
+  customer_id: string;
+}
+
+export interface PaymentMethodInfo {
+  id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
+export interface PaymentMethodsResponse {
+  success: boolean;
+  payment_methods: PaymentMethodInfo[];
+}
+
 export interface CheckoutSessionResponse {
   success: boolean
   message: string
@@ -79,6 +98,40 @@ export const paymentsApi = {
   }> => {
     const { data } = await httpClient.post('/payments/connect/disconnect');
     return data;
+  },
+
+  // ===== CARTES BANCAIRES (buyer) =====
+
+  /**
+   * POST /payments/customer/setup-intent
+   * Crée un SetupIntent pour enregistrer une carte.
+   */
+  createSetupIntent: async (): Promise<SetupIntentResponse> => {
+    const { data } = await httpClient.post<SetupIntentResponse>(
+      '/payments/customer/setup-intent'
+    )
+    return data
+  },
+
+  /**
+   * GET /payments/customer/payment-methods
+   * Liste les cartes enregistrées du buyer.
+   */
+  listPaymentMethods: async (): Promise<PaymentMethodsResponse> => {
+    const { data } = await httpClient.get<PaymentMethodsResponse>(
+      '/payments/customer/payment-methods'
+    )
+    return data
+  },
+
+  /**
+   * DELETE /payments/customer/payment-methods/:id
+   */
+  deletePaymentMethod: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const { data } = await httpClient.delete(
+      `/payments/customer/payment-methods/${id}`
+    )
+    return data
   },
 
   // Export PDF des factures vendeur
