@@ -127,6 +127,18 @@ export const paymentsApi = {
   /**
    * DELETE /payments/customer/payment-methods/:id
    */
+  updatePaymentMethod: async (id: string, data: any): Promise<{ success: boolean; message: string }> => {
+    const { data: res } = await httpClient.patch(`/payments/customer/payment-methods/${id}`, data)
+    return res
+  },
+
+  setPaymentMethodRedisplay: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const { data } = await httpClient.post(
+      `/payments/customer/payment-methods/${id}/allow-redisplay`
+    )
+    return data
+  },
+
   deletePaymentMethod: async (id: string): Promise<{ success: boolean; message: string }> => {
     const { data } = await httpClient.delete(
       `/payments/customer/payment-methods/${id}`

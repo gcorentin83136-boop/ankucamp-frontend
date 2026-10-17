@@ -10,6 +10,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
 import { CreditCard, X, Loader, CheckCircle2 } from 'lucide-react'
 import paymentsApi from '../../service/api/payments.api'
+import { useAuthStore } from '../../context/AuthContext'
 
 const ANKU = {
   green: '#6aa84f',
@@ -50,6 +51,8 @@ function AddCardForm({
 }) {
   const stripe = useStripe()
   const elements = useElements()
+  const auth = useAuthStore()
+  const user = (auth as any)?.user
   const [submitting, setSubmitting] = useState(false)
   const [cardName, setCardName] = useState('')
 
@@ -78,6 +81,29 @@ function AddCardForm({
       }
 
       if (setupIntent?.status === 'succeeded') {
+        // 🆕 Marque la carte comme "allow_redisplay: always"
+        // ET y attache les informations de facturation pour que
+        // Stripe Checkout puisse la pré-remplir.
+        if (setupIntent.payment_method) {
+          try {
+            await paymentsApi.updatePaymentMethod(
+              setupIntent.payment_method as string,
+              {
+                name: cardName.trim() || undefined,
+                email: user?.email || undefined,
+                address: {
+                  line1: '1 rue de Test', // Adresse de test
+                  city: 'Paris',
+                  postal_code: '75001',
+                  country: 'FR',
+                },
+              }
+            )
+          } catch (err) {
+            console.warn('Impossible de mettre à jour les infos de facturation', err)
+            // pas bloquant
+          }
+        }
         toast.success('Carte enregistrée ✅')
         onSuccess()
         onClose()
