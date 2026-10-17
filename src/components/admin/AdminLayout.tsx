@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — AdminLayout (même design que SettingsLayout)
 // ============================================================
 
@@ -8,6 +8,7 @@ import {
   FileCheck,
   AlertTriangle,
   RotateCcw,
+  MessageSquare,
   Users,
   FolderTree,
   Ticket,
@@ -66,8 +67,7 @@ export default function AdminLayout() {
               <p className="text-xs text-gray-500">
                 Vue globale, validation et modération
               </p>
-            </div>
-          </div>
+            </div><div className="flex items-center gap-2"><Link to="/messages" className="relative w-10 h-10 rounded-full flex items-center justify-center text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm border border-emerald-100" title="Messagerie"><MessageSquare size={20} /></Link></div></div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-5">

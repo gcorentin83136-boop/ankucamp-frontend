@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  User, MessageSquare, ShoppingBag,
+  User, ShoppingBag,
   Store, Calendar, Settings, Shield, FileCheck,
   Sparkles, LogOut, ChevronDown, Home as HomeIcon,
   FileText, LayoutDashboard, Award, Ticket,
@@ -165,22 +165,14 @@ export default function UserMenu() {
     {
       title: 'Mon espace',
       items: [
-        {
-          icon: LayoutDashboard,
-          label: 'Mon tableau de bord',
-          to: '/dashboard/user',
-          highlight: false,
-        },
+        { icon: LayoutDashboard, label: 'Mon tableau de bord', to: '/dashboard/user' },
         { icon: Store, label: 'Boutiques ANKU', to: '/shops' },
         { icon: User, label: 'Mon profil ANKU', to: '/u/' + (user?.username ?? '') },
         { icon: HomeIcon, label: "Mon fil d'actualité", to: '/feed' },
-        { icon: MessageSquare, label: 'Messagerie', to: '/messages' },
       ],
     },
-
   ]
 
-  // ESPACE PRO (pro ou admin)
   if (isPro) {
     sections.push({
       title: 'Ma boutique',
@@ -196,35 +188,22 @@ export default function UserMenu() {
     })
   }
 
-  // Devenir pro (particulier)
   if (!isPro) {
     sections.push({
       title: 'Professionnel',
       items: [
-        {
-          icon: Sparkles,
-          label: 'Devenir Pro',
-          to: '/become-pro',
-          highlight: true,
-        },
+        { icon: Sparkles, label: 'Devenir Pro', to: '/become-pro', highlight: true },
       ],
     })
   }
 
-  // Vérification KYC (pro)
   if (isPro && !isAdmin) {
     sections.push({
       title: 'Vérification',
       items: [
         {
           icon: FileCheck,
-          label: isVerified
-            ? 'Compte vérifié'
-            : isPending
-            ? 'KYC en cours'
-            : isRejected
-            ? 'KYC refusé'
-            : 'Vérifier mon compte Pro',
+          label: isVerified ? 'Compte vérifié' : isPending ? 'KYC en cours' : isRejected ? 'KYC refusé' : 'Vérifier mon compte Pro',
           to: '/kyc',
           badge: isVerified ? '✓' : isPending ? '⏳' : isRejected ? '❌' : undefined,
           highlight: !isVerified,
@@ -233,18 +212,10 @@ export default function UserMenu() {
     })
   }
 
-  // ADMIN
   if (isAdmin) {
     sections.push({
       title: 'Administration',
-      items: [
-        {
-          icon: Shield,
-          label: 'Dashboard Admin',
-          to: '/admin',
-          highlight: true,
-        },
-      ],
+      items: [{ icon: Shield, label: 'Dashboard Admin', to: '/admin', highlight: true }],
     })
   }
 
@@ -266,7 +237,6 @@ export default function UserMenu() {
       }}
     >
       <div ref={scrollRef} className="anku-menu-scroll" onScroll={updateThumb}>
-        {/* Header */}
         <div
           style={{
             padding: '12px 14px',
@@ -277,59 +247,28 @@ export default function UserMenu() {
         >
           <div className="flex items-center gap-3">
             {user.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt={user.first_name}
-                className="w-12 h-12 rounded-full object-cover"
-                style={{ border: `2px solid ${ANKU.green}` }}
-              />
+              <img src={user.avatar_url} alt={user.first_name} className="w-12 h-12 rounded-full object-cover" style={{ border: `2px solid ${ANKU.green}` }} />
             ) : (
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white"
-                style={{
-                  background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
-                }}
-              >
-                {user.first_name?.[0]?.toUpperCase()}
-                {user.last_name?.[0]?.toUpperCase()}
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white" style={{ background: `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)` }}>
+                {user.first_name?.[0]?.toUpperCase()}{user.last_name?.[0]?.toUpperCase()}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate" style={{ color: '#0f1a0f' }}>
-                {user.first_name} {user.last_name}
-              </p>
-              <p className="text-xs truncate" style={{ color: '#6b7280' }}>
-                @{user.username}
-              </p>
+              <p className="text-sm font-bold truncate" style={{ color: '#0f1a0f' }}>{user.first_name} {user.last_name}</p>
+              <p className="text-xs truncate" style={{ color: '#6b7280' }}>@{user.username}</p>
               <div className="flex flex-wrap gap-1.5 mt-1">
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: isPro ? ANKU.green : '#3b82f6', color: '#ffffff' }}
-                >
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: isPro ? ANKU.green : '#3b82f6', color: '#ffffff' }}>
                   {isAdmin ? '👑 Admin' : isPro ? '🏢 Pro' : '👤 Particulier'}
                 </span>
-                {isVerified && (
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: ANKU.greenLight, color: '#ffffff' }}
-                  >
-                    ✓ Vérifié
-                  </span>
-                )}
+                {isVerified && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: ANKU.greenLight, color: '#ffffff' }}>✓ Vérifié</span>}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Sections */}
         {sections.map((section) => (
           <div key={section.title} style={{ padding: '2px 0' }}>
-            <p
-              className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
-              style={{ color: '#9ca3af' }}
-            >
-              {section.title}
-            </p>
+            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9ca3af' }}>{section.title}</p>
             {section.items.map((item) => {
               const Icon = item.icon
               return (
@@ -360,20 +299,10 @@ export default function UserMenu() {
                     }
                   }}
                 >
-                  <Icon
-                    size={16}
-                    className="shrink-0 transition-transform group-hover:scale-110"
-                    style={{ color: item.highlight ? '#ffffff' : ANKU.green }}
-                  />
+                  <Icon size={16} className="shrink-0 transition-transform group-hover:scale-110" style={{ color: item.highlight ? '#ffffff' : ANKU.green }} />
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{
-                        background: item.highlight ? 'rgba(255,255,255,0.25)' : ANKU.greenPale,
-                        color: item.highlight ? '#ffffff' : ANKU.greenDark,
-                      }}
-                    >
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: item.highlight ? 'rgba(255,255,255,0.25)' : ANKU.greenPale, color: item.highlight ? '#ffffff' : ANKU.greenDark }}>
                       {item.badge}
                     </span>
                   )}
@@ -383,21 +312,14 @@ export default function UserMenu() {
           </div>
         ))}
 
-        {/* Paramètres + Logout */}
         <div style={{ paddingTop: '2px', borderTop: `1px solid #e5e7eb`, marginTop: '4px' }}>
           <Link
             to="/settings"
             onClick={() => setOpen(false)}
             className="group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all mx-1.5 mt-1.5"
             style={{ color: '#374151', fontWeight: 500 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = ANKU.greenPale2
-              e.currentTarget.style.color = ANKU.greenDark
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = '#374151'
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = ANKU.greenPale2; e.currentTarget.style.color = ANKU.greenDark }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#374151' }}
           >
             <Settings size={16} className="shrink-0" style={{ color: ANKU.green }} />
             <span>Paramètres du compte</span>
@@ -446,41 +368,21 @@ export default function UserMenu() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:scale-105"
         style={{
-          background: open
-            ? `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`
-            : 'rgba(255,255,255,0.12)',
+          background: open ? `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)` : 'rgba(255,255,255,0.12)',
           border: `1px solid ${open ? ANKU.greenLight : 'rgba(255,255,255,0.25)'}`,
           position: 'relative',
           zIndex: 999998,
         }}
       >
         {user.avatar_url ? (
-          <img
-            src={user.avatar_url}
-            alt={user.first_name}
-            className="w-7 h-7 rounded-full object-cover"
-            style={{ border: `2px solid ${open ? '#ffffff' : ANKU.greenLight}` }}
-          />
+          <img src={user.avatar_url} alt={user.first_name} className="w-7 h-7 rounded-full object-cover" style={{ border: `2px solid ${open ? '#ffffff' : ANKU.greenLight}` }} />
         ) : (
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-            style={{ background: ANKU.green }}
-          >
-            {user.first_name?.[0]?.toUpperCase()}
-            {user.last_name?.[0]?.toUpperCase()}
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: ANKU.green }}>
+            {user.first_name?.[0]?.toUpperCase()}{user.last_name?.[0]?.toUpperCase()}
           </div>
         )}
-        <span className="text-sm font-semibold hidden sm:inline" style={{ color: '#ffffff' }}>
-          {user.first_name}
-        </span>
-        <ChevronDown
-          size={14}
-          style={{
-            color: '#ffffff',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s ease',
-          }}
-        />
+        <span className="text-sm font-semibold hidden sm:inline" style={{ color: '#ffffff' }}>{user.first_name}</span>
+        <ChevronDown size={14} style={{ color: '#ffffff', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
       </button>
 
       {typeof window !== 'undefined' && createPortal(menuContent, document.body)}

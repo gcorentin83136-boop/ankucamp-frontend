@@ -4,6 +4,7 @@ import {
   Store,
   Package,
   ShoppingBag,
+  MessageSquare,
   Ticket,
   Calendar,
   FileText,
@@ -58,8 +59,7 @@ export default function SellerLayout() {
               <p className="text-xs text-gray-500">
                 Gere ta boutique, tes produits et tes commandes
               </p>
-            </div>
-          </div>
+            </div><div className="flex items-center gap-2"><Link to="/messages" className="relative w-10 h-10 rounded-full flex items-center justify-center text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm border border-emerald-100" title="Messagerie"><MessageSquare size={20} /></Link></div></div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-5">
