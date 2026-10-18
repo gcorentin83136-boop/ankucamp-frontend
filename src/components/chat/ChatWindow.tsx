@@ -193,8 +193,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const handleReact = async (msgId: number, emoji: string) => {
     try {
       const res = await messagesApi.reactToMessage(msgId, emoji)
-      socketRef.current?.emit('message:react', { messageId: msgId, emoji })
-      
+        
       setMessages(prev => prev.map(m => {
         if (m.id !== msgId) return m;
         const reactions = JSON.parse(JSON.stringify(m.reactions || {}));
