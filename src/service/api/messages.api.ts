@@ -38,7 +38,8 @@ export const messagesApi = {
     const formData = new FormData()
     formData.append('file', file)
     const { data } = await httpClient.post('/uploads/chat-media', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000 // 🆕 2 minutes pour laisser le temps aux vidéos de s'uploader
     })
     return data
   }
