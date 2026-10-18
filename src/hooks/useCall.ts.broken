@@ -1,0 +1,197 @@
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { io, Socket } from 'socket.io-client'
+import toast from 'react-hot-toast'
+
+const SOCKET_URL = 'http://localhost:3001'
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+}
+
+export type CallType = 'audio' | 'video'
+export type CallStatus = 'idle' | 'calling' | 'incoming' | 'ongoing' | 'ended'
+
+export interface CallState {
+  status: CallStatus
+  callId: string | null
+  callType: CallType
+  conversationId: number | null
+  peerUserId: number | null
+  peerName: string
+  isIncoming: boolean
+  videoEnabled: boolean
+  audioEnabled: boolean
+  startedAt: number | null
+}
+
+const initialCallState: CallState = {
+  status: 'idle',
+  callId: null,
+  callType: 'audio',
+  conversationId: null,
+  peerUserId: null,
+  peerName: '',
+  isIncoming: false,
+  videoEnabled: false,
+  audioEnabled: true,
+  startedAt: null,
+}
+
+export function useCall(currentUserId: number | null) {
+  const [callState, setCallState] = useState<CallState>(initialCallState)
+  const [videoRequest, setVideoRequest] = useState<'incoming' | 'sent' | null>(null)
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+
+  const socketRef = useRef<Socket | null>(null)
+  const pcRef = useRef<RTCPeerConnection | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([])
+  const peerUserIdRef = useRef<number | null>(null)
+  const callIdRef = useRef<string | null>(null)
+
+  // ─────────────────────────────────────────────────
+  // Connexion socket
+  // ─────────────────────────────────────────────────
+  useEffect(() => {
+    const socket = socketRef.current
+    if (!socket) return
+
+    socket.on('call:incoming', (data: any) => {
+      if (callState.status !== 'idle') {
+        socket.emit('call:reject', {
+          callId: data.callId,
+          toUserId: data.fromUser.id,
+          reason: 'busy',
+        })
+        return
+      }
+      setCallState({
+        status: 'incoming',
+        callId: data.callId,
+        callType: data.callType,
+        conversationId: data.conversationId,
+        peerUserId: data.fromUser.id,
+        peerName: data.fromUser.firstName,
+        isIncoming: true,
+        videoEnabled: false,
+        audioEnabled: true,
+        startedAt: null,
+      })
+    })
+
+    socket.on('call:accepted', async (data: { callId: string; fromUserId: number }) => {
+      if (!pcRef.current) {
+        createPeerConnection(data.fromUserId, data.callId)
+      }
+      const pc = pcRef.current!
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      socket.emit('call:offer', {
+        callId: data.callId,
+        toUserId: data.fromUserId,
+        sdp: offer,
+      })
+      setCallState((prev) => ({
+        ...prev,
+        status: 'ongoing',
+        startedAt: Date.now(),
+        callId: data.callId,
+      }))
+    })
+
+    socket.on('call:rejected', () => {
+      toast.error('Appel refusé')
+      cleanup()
+    })
+
+    socket.on('call:offer', async (data: { callId: string; sdp: any; fromUserId: number }) => {
+      const pc = pcRef.current
+      if (!pc) return
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+        const answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        socket.emit('call:answer', {
+          callId: data.callId,
+          toUserId: data.fromUserId,
+          sdp: answer,
+        })
+        for (const c of pendingCandidatesRef.current) {
+          await pc.addIceCandidate(new RTCIceCandidate(c))
+        }
+        pendingCandidatesRef.current = []
+      } catch (err) {
+        console.error('[CALL] error on call:offer', err)
+      }
+    })
+
+    socket.on('call:answer', async (data: { sdp: any }) => {
+      const pc = pcRef.current
+      if (!pc) return
+      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      for (const c of pendingCandidatesRef.current) {
+        await pc.addIceCandidate(new RTCIceCandidate(c))
+      }
+      pendingCandidatesRef.current = []
+    })
+
+    socket.on('call:ice-candidate', async (data: { candidate: RTCIceCandidateInit }) => {
+      const pc = pcRef.current
+      if (!pc) return
+      if (pc.remoteDescription) {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+      } else {
+        pendingCandidatesRef.current.push(data.candidate)
+      }
+    })
+
+    socket.on('call:hangup', () => {
+      toast('Appel terminé', { icon: '📴' })
+      cleanup()
+    })
+
+    socket.on('call:video-requested', () => {
+      setVideoRequest('incoming')
+    })
+
+    socket.on('call:video-accepted', () => {
+      setVideoRequest(null)
+      setCallState((prev) => ({ ...prev, callType: 'video', videoEnabled: true }))
+    })
+
+    socket.on('call:error', (data: { message: string }) => {
+      toast.error(data.message)
+    })
+
+    return () => {
+      socket.off('call:incoming')
+      socket.off('call:accepted')
+      socket.off('call:rejected')
+      socket.off('call:offer')
+      socket.off('call:answer')
+      socket.off('call:ice-candidate')
+      socket.off('call:hangup')
+      socket.off('call:video-requested')
+      socket.off('call:video-accepted')
+      socket.off('call:error')
+    }}, [callState.status, cleanup, createPeerConnection, acceptVideoUpgrade])
+
+  return {
+    callState,
+    videoRequest,
+    remoteStream,
+    localStream,
+    startCall,
+    acceptCall,
+    rejectCall,
+    hangup,
+    toggleAudio,
+    toggleVideo,
+    requestVideoUpgrade,
+    acceptVideoUpgrade,
+    rejectVideoUpgrade,
+  }
+}

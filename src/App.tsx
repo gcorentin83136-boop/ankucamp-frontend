@@ -5,6 +5,8 @@ import { io } from 'socket.io-client'
 import { toast } from 'react-hot-toast'
 import MessageToast from './components/chat/MessageToast'
 import FloatingChatBubble from './components/chat/FloatingChatBubble'
+import { CallProvider } from './context/CallContext'
+import CallUI from './components/chat/CallUI'
 import './index.css'
 
 import Home from './pages/Home'
@@ -151,8 +153,9 @@ function App() {
   }, [user?.id])
 
   return (
-    <>
+    <CallProvider>
     <FloatingChatBubble />
+    <CallUI />
     <Routes>
       <Route path="/" element={<Home />} />
 
@@ -240,7 +243,7 @@ function App() {
       <Route path="/dashboard/stripe/refresh" element={<Navigate to="/settings/payment?stripe=refresh" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    </>
+    </CallProvider>
   )
 }
 
