@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { io, Socket } from 'socket.io-client'
 import { 
   Send, Image as ImageIcon, Mic, MoreVertical, User, Store, 
   Flag, Ban, FolderOpen, X, CheckCheck, ArrowLeft,
-  Smile, Pencil, Trash2, Check, Video, Square
+  Smile, Pencil, Trash2, Check, Video, Square, Reply
 } from 'lucide-react'
 import messagesApi from '../../service/api/messages.api'
 import type { Conversation, Message } from '../../types/message'
@@ -16,6 +16,7 @@ import MediaArchive from './MediaArchive'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
 const SOCKET_URL = 'http://localhost:3001'
+const PAGE_SIZE = 50
 
 export default function ChatWindow({ conversationId, onCloseMobile, hideHeader = false }: { conversationId: number, onCloseMobile?: () => void, hideHeader?: boolean }) {
   const auth = useAuthStore()
@@ -29,6 +30,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const [isTyping, setIsTyping] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null)
   
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
   const [editContent, setEditContent] = useState('')
@@ -57,16 +59,31 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Scroll infini
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const topSentinelRef = useRef<HTMLDivElement>(null)
+  const prevScrollHeightRef = useRef<number>(0)
+  const isLoadingMoreRef = useRef<boolean>(false)
+  const lastMessageIdRef = useRef<number | null>(null)
+  const loadMoreRef = useRef<() => void>(() => {})
+  const observerStateRef = useRef({ hasMore: true, messagesLength: 0 })
+
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
+      setHasMore(true)
+      lastMessageIdRef.current = null
       try {
         const [convRes, msgsRes] = await Promise.all([
           messagesApi.getConversation(conversationId),
-          messagesApi.listMessages(conversationId, { limit: 50 })
+          messagesApi.listMessages(conversationId, { limit: PAGE_SIZE })
         ])
         setConversation(convRes.conversation)
         setMessages(msgsRes.messages)
+        setHasMore(msgsRes.messages.length >= PAGE_SIZE)
         messagesApi.markAsRead(conversationId)
       } catch (err) {
         toast.error('Erreur chargement du chat')
@@ -133,10 +150,82 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     }
   }, [conversationId, currentUser?.id])
 
-  const scrollToBottom = () => {
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior }), 100)
   }
-  useEffect(() => { scrollToBottom() }, [messages, isTyping])
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMoreRef.current || !hasMore) return
+    const oldestId = messages[0]?.id
+    if (!oldestId) return
+
+    isLoadingMoreRef.current = true
+    setIsLoadingMore(true)
+    prevScrollHeightRef.current = scrollContainerRef.current?.scrollHeight ?? 0
+
+    try {
+      const res = await messagesApi.listMessages(conversationId, {
+        limit: PAGE_SIZE,
+        before_message_id: oldestId,
+      })
+      if (res.messages.length < PAGE_SIZE) setHasMore(false)
+      setMessages(prev => [...res.messages, ...prev])
+    } catch {
+      toast.error('Erreur chargement des anciens messages')
+      prevScrollHeightRef.current = 0
+      isLoadingMoreRef.current = false
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [conversationId, hasMore, messages])
+
+  loadMoreRef.current = loadMore
+
+  // Scroll intelligent : preserve la position quand on charge plus de messages,
+  // scrolle en bas quand un nouveau message arrive (ou au chargement initial).
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Cas 1 : on vient de prepend des anciens messages -> préserver la position
+    if (prevScrollHeightRef.current > 0) {
+      const prevHeight = prevScrollHeightRef.current
+      const newHeight = container.scrollHeight
+      container.scrollTop = newHeight - prevHeight
+      prevScrollHeightRef.current = 0
+      isLoadingMoreRef.current = false
+      return
+    }
+
+    // Cas 2 : nouveau message ou initial load -> scroller en bas
+    const lastId = messages[messages.length - 1]?.id ?? null
+    if (lastId !== null && lastId !== lastMessageIdRef.current) {
+      lastMessageIdRef.current = lastId
+      scrollToBottom()
+    }
+  }, [messages, isTyping])
+
+  // IntersectionObserver : charge plus de messages quand on approche du haut
+  observerStateRef.current = { hasMore, messagesLength: messages.length }
+
+  useEffect(() => {
+    const sentinel = topSentinelRef.current
+    const container = scrollContainerRef.current
+    if (!sentinel || !container) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const { hasMore: hm, messagesLength: ml } = observerStateRef.current
+        if (entries[0].isIntersecting && hm && ml > 0) {
+          loadMoreRef.current()
+        }
+      },
+      { root: container, rootMargin: '200px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
 
   const handleSendMessage = async (e?: React.FormEvent, mediaUrl?: string, type: 'text'|'image'|'audio'|'video' = 'text', contentText?: string) => {
     e?.preventDefault()
@@ -145,16 +234,18 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     
     const payload: any = { type, media_url: mediaUrl }
     if (textToSend) payload.content = textToSend
+    if (replyToMessage) payload.reply_to_message_id = replyToMessage.id
 
     const tempId = Date.now()
     const optimisticMsg: Message = {
       id: tempId, conversation_id: conversationId, sender_id: currentUser?.id || 0,
       type, content: payload.content || '', media_url: mediaUrl || null,
-      created_at: new Date().toISOString(), reply_to_message_id: null, edited_at: null, deleted_at: null, author: currentUser,
+      created_at: new Date().toISOString(), reply_to_message_id: replyToMessage?.id ?? null, edited_at: null, deleted_at: null, author: currentUser, reply_to_message: replyToMessage ? { id: replyToMessage.id, content: replyToMessage.content, type: replyToMessage.type, media_url: replyToMessage.media_url, deleted_at: replyToMessage.deleted_at, author: replyToMessage.author } : null,
     }
     
     setMessages(prev => [...prev, optimisticMsg])
     if (contentText === undefined) setInputText('')
+    setReplyToMessage(null)
 
     try {
       const res = await messagesApi.sendMessage(conversationId, payload)
@@ -455,7 +546,17 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         </div>
       </header>)}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Sentinel + loader pour le scroll infini (chargement des anciens messages) */}
+        <div ref={topSentinelRef} className="flex justify-center py-2 min-h-[1px]">
+          {isLoadingMore && (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600"></div>
+          )}
+          {!hasMore && messages.length > 0 && !isLoadingMore && (
+            <p className="text-xs text-gray-400 italic">Début de la conversation</p>
+          )}
+        </div>
+
         {messages.length === 0 && (
           <div className="text-center py-10 text-gray-400 text-sm italic">Aucun message pour le moment. Dis bonjour ! 👋</div>
         )}
@@ -470,6 +571,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
               
               {!isDeleted && !isEditing && (
                 <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-md border border-gray-100 rounded-full px-2 py-1 z-10`}>
+                  <button onClick={() => setReplyToMessage(msg)} className="p-1 text-gray-500 hover:text-emerald-600" title="Répondre"><Reply size={14} /></button>
                   <button onClick={() => setShowReactionPicker(msg.id)} className="p-1 text-gray-500 hover:text-emerald-600"><Smile size={14} /></button>
                   {isMe && (
                     <>
@@ -513,6 +615,16 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
                   </div>
                 ) : (
                   <>
+                    {msg.reply_to_message && (
+                      <div className={`mb-2 pl-2 border-l-2 ${isMe ? 'border-white/40 bg-white/10' : 'border-emerald-400 bg-emerald-50'} rounded-r px-2 py-1 text-xs`}>
+                        <div className={`font-semibold mb-0.5 ${isMe ? 'text-white/90' : 'text-emerald-700'}`}>
+                          {msg.reply_to_message.author?.first_name} {msg.reply_to_message.author?.last_name}
+                        </div>
+                        <div className={`truncate ${isMe ? 'text-white/70' : 'text-gray-600'}`}>
+                          {msg.reply_to_message.deleted_at ? 'Message supprimé' : msg.reply_to_message.type === 'image' ? '📷 Photo' : msg.reply_to_message.type === 'video' ? '🎬 Vidéo' : msg.reply_to_message.type === 'audio' ? '🎤 Vocal' : msg.reply_to_message.content}
+                        </div>
+                      </div>
+                    )}
                     {msg.type === 'image' && msg.media_url && renderImages(msg.media_url)}
                     
                     {msg.type === 'video' && msg.media_url && (
@@ -573,6 +685,22 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       </div>
 
       <footer className="p-3 bg-white/80 backdrop-blur-xl border-t border-emerald-100 shrink-0 relative">
+        {replyToMessage && (
+          <div className="absolute bottom-full left-0 right-0 px-3 py-2 bg-white/95 backdrop-blur-xl border-t border-emerald-100 flex items-center gap-2 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)]">
+            <Reply size={16} className="text-emerald-600 shrink-0" />
+            <div className="flex-1 min-w-0 border-l-2 border-emerald-500 pl-2">
+              <p className="text-xs font-semibold text-emerald-700">
+                {replyToMessage.author?.first_name} {replyToMessage.author?.last_name}
+              </p>
+              <p className="text-xs text-gray-600 truncate">
+                {replyToMessage.deleted_at ? 'Message supprimé' : replyToMessage.type === 'image' ? '📷 Photo' : replyToMessage.type === 'video' ? '🎬 Vidéo' : replyToMessage.type === 'audio' ? '🎤 Vocal' : replyToMessage.content}
+              </p>
+            </div>
+            <button onClick={() => setReplyToMessage(null)} className="p-1 text-gray-400 hover:text-red-500 rounded-full">
+              <X size={16} />
+            </button>
+          </div>
+        )}
         
         {/* Prévisualisation Images */}
         {previewUrls.length > 0 && (

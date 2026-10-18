@@ -14,6 +14,14 @@ export interface Message {
   content: string
   media_url: string | null
   reply_to_message_id: number | null
+  reply_to_message?: {
+    id: number
+    content: string
+    type: 'text' | 'image' | 'audio' | 'video' | 'file'
+    media_url: string | null
+    deleted_at: string | null
+    author?: MessageAuthor | null
+  } | null
   edited_at: string | null
   deleted_at: string | null
   created_at: string
