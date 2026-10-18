@@ -28,12 +28,10 @@ export default function FloatingChatBubble() {
       if (!enabled) return
       if (!msg || !msg.conversation_id) return
 
-      // Met à jour les infos du dernier contact
       setActiveConvId(msg.conversation_id)
       setConvName(`${msg.author?.first_name} ${msg.author?.last_name}`)
       if (msg.author?.avatar_url) setLastAvatar(msg.author.avatar_url)
 
-      // Si la fenêtre est fermée, on incrémente juste le badge
       if (!isOpen) {
         setUnreadCount((prev) => prev + 1)
       }
@@ -60,16 +58,11 @@ export default function FloatingChatBubble() {
   }, [])
 
   if (!enabled) return null
-
-  // 🆕 Si on n'a jamais reçu de message (activeConvId null), on n'affiche rien !
   if (!activeConvId) return null
 
-  const handleMinimize = () => {
-    setIsOpen(false) // Réduit juste la fenêtre, la bulle reste
-  }
+  const handleMinimize = () => setIsOpen(false)
 
   const handleClose = () => {
-    // Ferme tout et fait disparaître la bulle
     setIsOpen(false)
     setActiveConvId(null)
     setLastAvatar(null)
@@ -90,11 +83,12 @@ export default function FloatingChatBubble() {
 
   return (
     <>
-      {/* 🍃 Mini-fenêtre de chat (remontée) */}
+      {/* 🍃 Mini-fenêtre de chat */}
       {isOpen && (
         <div
-          className="fixed bottom-48 right-6 w-[360px] h-[500px] bg-white z-[9999] flex flex-col overflow-hidden shadow-2xl border border-emerald-200"
-          style={{ borderRadius: '24px 8px 24px 8px' }}
+          className="fixed z-[9999] flex flex-col bg-white overflow-hidden shadow-2xl border border-emerald-200 
+                     inset-x-0 bottom-0 w-full h-[85vh] rounded-t-3xl 
+                     md:inset-auto md:bottom-48 md:right-6 md:w-[360px] md:h-[500px] md:rounded-[24px_8px_24px_8px]"
         >
           <header className="h-12 px-3 border-b border-emerald-100 bg-gradient-to-r from-[#6aa84f] to-[#4a7a35] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 text-white font-bold text-sm">
@@ -111,7 +105,7 @@ export default function FloatingChatBubble() {
               </button>
               <button
                 onClick={handleExpand}
-                className="p-1.5 text-white/80 hover:bg-white/20 rounded-md transition"
+                className="p-1.5 text-white/80 hover:bg-white/20 rounded-md transition hidden sm:block"
                 title="Ouvrir en pleine page"
               >
                 <ExternalLink size={16} />
@@ -137,44 +131,43 @@ export default function FloatingChatBubble() {
       )}
 
       {/* 🍃 Bouton flottant : Forme de "Feuille Galet" asymétrique */}
-      <button
-        onClick={isOpen ? () => setIsOpen(false) : handleOpen}
-        className="fixed bottom-28 right-6 w-16 h-16 bg-white z-[9998] flex items-center justify-center shadow-2xl hover:scale-105 transition-transform p-0.5"
-        style={{
-          borderRadius: '60% 40% 70% 30% / 40% 60% 30% 70%',
-          border: '2.5px solid #6aa84f',
-          transform: 'rotate(-6deg)'
-        }}
-        title="Messagerie"
-      >
-        <div
-          className="w-full h-full overflow-hidden bg-gradient-to-br from-[#6aa84f] to-[#4a7a35] flex items-center justify-center text-white"
+      {!isOpen && (
+        <button
+          onClick={handleOpen}
+          className="fixed z-[9998] flex items-center justify-center shadow-2xl hover:scale-105 transition-transform p-0.5 bg-white
+                     bottom-6 right-4 w-14 h-14
+                     md:bottom-28 md:right-6 md:w-16 md:h-16"
           style={{
             borderRadius: '60% 40% 70% 30% / 40% 60% 30% 70%',
-            transform: 'rotate(6deg)'
+            border: '2.5px solid #6aa84f',
+            transform: 'rotate(-6deg)'
           }}
+          title="Messagerie"
         >
-          {lastAvatar ? (
-            <img
-              src={lastAvatar}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <MessageSquare size={28} />
-          )}
-        </div>
-
-        {/* Le petit badge de notification */}
-        {unreadCount > 0 && (
-          <span
-            className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm"
-            style={{ transform: 'rotate(6deg)' }}
+          <div
+            className="w-full h-full overflow-hidden bg-gradient-to-br from-[#6aa84f] to-[#4a7a35] flex items-center justify-center text-white"
+            style={{
+              borderRadius: '60% 40% 70% 30% / 40% 60% 30% 70%',
+              transform: 'rotate(6deg)'
+            }}
           >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
+            {lastAvatar ? (
+              <img src={lastAvatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <MessageSquare size={24} className="md:w-7 md:h-7" />
+            )}
+          </div>
+
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm"
+              style={{ transform: 'rotate(6deg)' }}
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
     </>
   )
 }

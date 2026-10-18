@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { MessageSquare, Search, Loader } from 'lucide-react'
+import { MessageSquare, Search, Loader, Trash2 } from 'lucide-react'
 import messagesApi from '../service/api/messages.api'
 import type { Conversation } from '../types/message'
 import ChatWindow from '../components/chat/ChatWindow'
@@ -30,12 +30,24 @@ export default function Messages() {
 
   useEffect(() => {
     fetchConversations()
-
-    // 🆕 Écouter l'événement de rafraîchissement venant du WebSocket (AppHeader)
     const handler = () => fetchConversations()
     window.addEventListener('refresh-conversations', handler)
     return () => window.removeEventListener('refresh-conversations', handler)
   }, [])
+
+  const handleDeleteConv = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation() // Évite d'ouvrir la conversation en cliquant sur la corbeille
+    if (!confirm('Supprimer cette conversation ? Elle disparaîtra de ta liste.')) return
+    
+    try {
+      await messagesApi.leaveConversation(id)
+      toast.success('Conversation supprimée')
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+      if (activeId === id) setSearchParams({})
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur lors de la suppression')
+    }
+  }
 
   const filtered = conversations.filter((c) => {
     if (!search.trim()) return true
@@ -54,7 +66,7 @@ export default function Messages() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#e6f4e1] via-white to-[#d0e8c6]">
       <AppHeader />
-
+      
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Liste des discussions */}
         <div className={`w-full md:w-96 bg-white/80 backdrop-blur-xl border-r border-emerald-100 flex flex-col h-[calc(100vh-64px)] ${activeId ? 'hidden md:flex' : 'flex'}`}>
@@ -78,13 +90,18 @@ export default function Messages() {
                 const isActive = activeId === conv.id
                 const hasUnread = conv.unread_count > 0
                 return (
-                  <button key={conv.id} onClick={() => openChat(conv.id)} className={`w-full flex items-center gap-3 p-4 transition border-b border-gray-50 ${isActive ? 'bg-emerald-50/80 border-l-4 border-l-emerald-500' : 'hover:bg-emerald-50/50'}`}>
+                  <div
+                    key={conv.id}
+                    onClick={() => openChat(conv.id)}
+                    className={`relative group cursor-pointer w-full flex items-center gap-3 p-4 transition border-b border-gray-50 ${isActive ? 'bg-emerald-50/80 border-l-4 border-l-emerald-500' : 'hover:bg-emerald-50/50'}`}
+                  >
                     {conv.avatar_url ? (
                       <img src={conv.avatar_url} className="w-12 h-12 rounded-full object-cover shrink-0" />
                     ) : (
                       <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shrink-0 text-lg shadow-sm" style={{ background: 'linear-gradient(135deg, #6aa84f, #4a7a35)' }}>{conv.name?.[0]?.toUpperCase()}</div>
                     )}
-                    <div className="flex-1 min-w-0 text-left">
+                    
+                    <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between">
                         <p className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{conv.name}</p>
                         {conv.last_message_at && <span className={`text-[10px] ${hasUnread ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>{new Date(conv.last_message_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
@@ -94,7 +111,16 @@ export default function Messages() {
                         {hasUnread && <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm" style={{ background: ANKU.green }}>{conv.unread_count}</span>}
                       </div>
                     </div>
-                  </button>
+
+                    {/* 🆕 Bouton Supprimer au survol */}
+                    <button
+                      onClick={(e) => handleDeleteConv(e, conv.id)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Supprimer la conversation"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 )
               })
             )}

@@ -26,6 +26,11 @@ export const messagesApi = {
   editMessage: async (messageId: number, content: string): Promise<MessageResponse> => {
     const { data } = await httpClient.put(`/messages/${messageId}`, { content }); return data
   },
+  leaveConversation: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const { data } = await httpClient.post(`/conversations/${id}/leave`)
+    return data
+  },
+
   deleteMessage: async (messageId: number): Promise<void> => {
     await httpClient.delete(`/messages/${messageId}`)
   },

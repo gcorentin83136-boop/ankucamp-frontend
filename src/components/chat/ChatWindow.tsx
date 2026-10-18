@@ -12,6 +12,7 @@ import type { Conversation, Message } from '../../types/message'
 import { useAuthStore } from '../../context/AuthContext'
 import { blocksApi } from '../../service/api/blocks.api'
 import { reportsApi } from '../../service/api/reports.api'
+import MediaArchive from './MediaArchive'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
 const SOCKET_URL = 'http://localhost:3001'
@@ -353,6 +354,19 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     }
   }
 
+  const handleLeave = async () => {
+    if (!confirm('Quitter cette conversation ? Elle disparaîtra de ta liste de messages.')) return
+    try {
+      await messagesApi.leaveConversation(conversationId)
+      toast.success('Conversation quittée')
+      window.dispatchEvent(new Event('refresh-conversations'))
+      if (onCloseMobile) onCloseMobile()
+      else navigate('/messages')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur lors de la suppression')
+    }
+  }
+
   const handleBlock = async () => {
     try {
       const otherUser = conversation?.participants.find(p => p.user_id !== currentUser?.id)
@@ -391,7 +405,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     </div>
   )
 
-  const mediaArchive = messages.filter(m => (m.type === 'image' || m.type === 'audio' || m.type === 'video') && !m.deleted_at)
   const otherUser = conversation.participants.find(p => p.user_id !== currentUser?.id)
 
   const renderImages = (mediaUrl: string) => {
@@ -432,7 +445,10 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </button>
           {showMenu && (
             <div className="absolute right-0 top-12 w-56 bg-white/95 backdrop-blur-xl border border-gray-200 shadow-xl rounded-xl py-2 z-50 text-sm">
-              <button onClick={() => { setShowReportModal(true); setShowMenu(false) }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 text-left transition">
+              <button onClick={handleLeave} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 text-left transition">
+                <Trash2 size={16}/> Supprimer la conversation
+              </button>
+              <button onClick={() => { setShowReportModal(true); setShowMenu(false) }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-orange-50 text-orange-600 text-left transition border-t border-gray-100">
                 <Flag size={16}/> Signaler
               </button>
             </div>
@@ -621,15 +637,15 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </div>
         )}
 
-        <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white border-2 border-emerald-100 rounded-3xl p-1.5 shadow-sm focus-within:border-emerald-400 transition-colors">
+        <form onSubmit={handleSendMessage} className="flex items-center gap-1 bg-white border-2 border-emerald-100 rounded-3xl p-1.5 shadow-sm focus-within:border-emerald-400 transition-colors">
           
-          <label className="p-2 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer des images">
-            <ImageIcon size={20} />
+          <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer des images">
+            <ImageIcon size={18} />
             <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
           </label>
 
-          <label className="p-2 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer une vidéo">
-            <Video size={20} />
+          <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer une vidéo">
+            <Video size={18} />
             <input type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
           </label>
 
@@ -637,16 +653,16 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           <button 
             type="button" 
             onClick={toggleRecording} 
-            className={`p-2 transition flex items-center justify-center rounded-full ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-emerald-600 hover:text-emerald-800'}`}
+            className={`p-1.5 transition flex items-center justify-center rounded-full ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-emerald-600 hover:text-emerald-800'}`}
             title={isRecording ? 'Arrêter l’enregistrement' : 'Enregistrer un vocal'}
           >
             {isRecording ? (
-              <div className="flex items-center gap-1 px-1">
+              <div className="flex items-center gap-1 px-0.5">
                 <Square size={12} fill="currentColor" />
-                <span className="text-xs font-bold">{recordingTime}s</span>
+                <span className="text-[10px] font-bold">{recordingTime}s</span>
               </div>
             ) : (
-              <Mic size={20} />
+              <Mic size={18} />
             )}
           </button>
           
@@ -656,42 +672,15 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
             onChange={handleTyping}
             placeholder={isRecording ? "Enregistrement en cours..." : "Écris ton message..."}
             disabled={isRecording}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-1 outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-2 outline-none disabled:opacity-50"
           />
-          <button type="submit" disabled={!inputText.trim() || isRecording} className="p-2 rounded-xl text-white disabled:opacity-50 transition shadow-md hover:shadow-lg" style={{ background: ANKU.green }}>
-            <Send size={18} />
+          <button type="submit" disabled={!inputText.trim() || isRecording} className="flex items-center justify-center w-9 h-9 rounded-full text-white disabled:opacity-50 transition shadow-md hover:shadow-lg shrink-0" style={{ background: ANKU.green }}>
+            <Send size={16} className="ml-0.5" />
           </button>
         </form>
       </footer>
 
-      {showArchive && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex flex-col justify-end">
-          <div className="bg-white/95 backdrop-blur-xl rounded-t-3xl h-[80%] flex flex-col overflow-hidden">
-            <header className="p-4 border-b border-emerald-100 flex justify-between items-center bg-emerald-50/50">
-              <h3 className="font-bold text-gray-900">Archives des médias</h3>
-              <button onClick={() => setShowArchive(false)} className="p-2 hover:bg-gray-200 rounded-full transition"><X size={20}/></button>
-            </header>
-            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-3 gap-2">
-              {mediaArchive.length === 0 && <p className="col-span-3 text-center text-gray-500 mt-10">Aucun média partagé.</p>}
-              {mediaArchive.map(m => (
-                <div key={m.id} className="aspect-square bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                  {m.type === 'image' && (
-                    (() => {
-                      try {
-                        const urls = JSON.parse(m.media_url!)
-                        if (Array.isArray(urls) && urls.length > 0) return <img src={urls[0]} className="w-full h-full object-cover" />
-                      } catch (e) {}
-                      return <img src={m.media_url!} className="w-full h-full object-cover" />
-                    })()
-                  )}
-                  {m.type === 'video' && <Video size={24} className="text-gray-400" />}
-                  {m.type === 'audio' && <Mic size={24} className="text-gray-400" />}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {showArchive && <MediaArchive messages={messages} onClose={() => setShowArchive(false)} />}
 
       {showReportModal && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
