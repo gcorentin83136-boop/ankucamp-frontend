@@ -5,7 +5,7 @@ import { io, Socket } from 'socket.io-client'
 import { 
   Send, Image as ImageIcon, Mic, MoreVertical, User, Store, 
   Flag, Ban, FolderOpen, X, CheckCheck, ArrowLeft,
-  Smile, Pencil, Trash2, Check, Video, Square, Reply
+  Smile, Pencil, Trash2, Check, Video, Square, Reply, Paperclip, FileText, Download
 } from 'lucide-react'
 import messagesApi from '../../service/api/messages.api'
 import type { Conversation, Message } from '../../types/message'
@@ -47,6 +47,15 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null)
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null)
   const [videoCaption, setVideoCaption] = useState('')
+
+  // 🆕 État pour l'envoi de fichier (PDF, docs, zip...)
+  const [previewFile, setPreviewFile] = useState<File | null>(null)
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `\ B`
+    if (bytes < 1024 * 1024) return `\ KB`
+    return `\ MB`
+  }
 
   // 🆕 États pour l'enregistrement vocal (Toggle)
   const [isRecording, setIsRecording] = useState(false)
@@ -227,7 +236,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     return () => observer.disconnect()
   }, [])
 
-  const handleSendMessage = async (e?: React.FormEvent, mediaUrl?: string, type: 'text'|'image'|'audio'|'video' = 'text', contentText?: string) => {
+  const handleSendMessage = async (e?: React.FormEvent, mediaUrl?: string, type: 'text'|'image'|'audio'|'video'|'file' = 'text', contentText?: string) => {
     e?.preventDefault()
     const textToSend = contentText !== undefined ? contentText : inputText.trim()
     if (!textToSend && !mediaUrl) return
@@ -367,6 +376,39 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     setPreviewVideoFile(null)
     setPreviewVideoUrl(null)
     setVideoCaption('')
+  }
+
+  // 🆕 Envoi de fichiers (PDF, docs, zip...)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+      toast.error('Utilise les boutons Image / Vidéo / Vocal pour ce type de fichier')
+      e.target.value = ''
+      return
+    }
+    if (file.size > 200 * 1024 * 1024) {
+      toast.error('Fichier trop lourd (max 200 MB)')
+      e.target.value = ''
+      return
+    }
+    setPreviewFile(file)
+    e.target.value = ''
+  }
+
+  const cancelFilePreview = () => setPreviewFile(null)
+
+  const confirmFileSend = async () => {
+    if (!previewFile) return
+    toast.loading('Envoi du fichier...', { id: 'file' })
+    try {
+      const res = await messagesApi.uploadChatMedia(previewFile)
+      await handleSendMessage(undefined, res.url, 'file', previewFile.name)
+      setPreviewFile(null)
+      toast.success('Fichier envoyé !', { id: 'file' })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur d'envoi du fichier", { id: 'file' })
+    }
   }
 
   const confirmVideoSend = async () => {
@@ -639,6 +681,25 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
                       </audio>
                     )}
 
+                    {msg.type === 'file' && msg.media_url && (
+                      <a
+                        href={msg.media_url}
+                        download={msg.content || 'fichier'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 mb-2 p-2 rounded-lg transition ${isMe ? 'bg-white/15 hover:bg-white/25' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'}`}
+                      >
+                        <div className={`w-9 h-9 rounded flex items-center justify-center shrink-0 ${isMe ? 'bg-white/20' : 'bg-emerald-100 text-emerald-600'}`}>
+                          <FileText size={18} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{msg.content || 'Fichier'}</p>
+                          <p className={`text-[10px] ${isMe ? 'opacity-70' : 'text-gray-500'}`}>Cliquer pour télécharger</p>
+                        </div>
+                        <Download size={16} className="shrink-0 opacity-70" />
+                      </a>
+                    )}
+
                     {msg.content && <p className="text-sm">{msg.content}</p>}
                     
                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
@@ -735,6 +796,31 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </div>
         )}
 
+        {/* 🆕 Prévisualisation Fichier */}
+        {previewFile && (
+          <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <FileText size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{previewFile.name}</p>
+                  <p className="text-xs text-gray-500">{formatFileSize(previewFile.size)}</p>
+                </div>
+                <button onClick={cancelFilePreview} className="p-1.5 bg-red-500 text-white rounded-full shadow-md shrink-0">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={cancelFilePreview} className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition">Annuler</button>
+                <button onClick={confirmFileSend} className="px-4 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition shadow-md flex items-center gap-2">
+                  <Send size={14}/> Envoyer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* 🆕 Prévisualisation Vidéo */}
         {previewVideoUrl && (
           <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
@@ -774,6 +860,11 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer une vidéo">
             <Video size={18} />
             <input type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
+          </label>
+
+          <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer un fichier (PDF, doc, zip...)">
+            <Paperclip size={18} />
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,.rar,.7z,.gz,.tar,application/*,text/*" className="hidden" onChange={handleFileSelect} />
           </label>
 
           {/* 🆕 Bouton Vocal Toggle (Rouge si enregistrement) */}
