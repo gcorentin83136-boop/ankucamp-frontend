@@ -1,23 +1,25 @@
 import { useEffect, useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { io, Socket } from 'socket.io-client'
 import { 
   Send, Image as ImageIcon, Mic, MoreVertical, User, Store, 
-  Flag, Ban, FolderOpen, X, CheckCheck, Play, ArrowLeft
+  Flag, Ban, FolderOpen, X, CheckCheck, ArrowLeft,
+  Smile, Pencil, Trash2, Check, Video, Square
 } from 'lucide-react'
 import messagesApi from '../../service/api/messages.api'
 import type { Conversation, Message } from '../../types/message'
 import { useAuthStore } from '../../context/AuthContext'
 import { blocksApi } from '../../service/api/blocks.api'
-import { commentsApi } from '../../service/api/comments.api'
+import { reportsApi } from '../../service/api/reports.api'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
 const SOCKET_URL = 'http://localhost:3001'
 
-export default function ChatWindow({ conversationId, onCloseMobile }: { conversationId: number, onCloseMobile?: () => void }) {
+export default function ChatWindow({ conversationId, onCloseMobile, hideHeader = false }: { conversationId: number, onCloseMobile?: () => void, hideHeader?: boolean }) {
   const auth = useAuthStore()
   const currentUser = (auth as any)?.user
+  const navigate = useNavigate()
   
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -27,11 +29,33 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
   const [showMenu, setShowMenu] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
   
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [showReactionPicker, setShowReactionPicker] = useState<number | null>(null)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+
+  // États pour l'album photo
+  const [previewFiles, setPreviewFiles] = useState<File[]>([])
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const [captionText, setCaptionText] = useState('')
+
+  // 🆕 États pour la prévisualisation vidéo
+  const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null)
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null)
+  const [videoCaption, setVideoCaption] = useState('')
+
+  // 🆕 États pour l'enregistrement vocal (Toggle)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<any>(null)
+  
   const socketRef = useRef<Socket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 1. Charger la conversation et les messages
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
@@ -52,14 +76,9 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
     fetchData()
   }, [conversationId])
 
-  // 2. Connexion WebSocket
   useEffect(() => {
     const token = localStorage.getItem('anku_token')
-    socketRef.current = io(SOCKET_URL, { 
-      withCredentials: true, 
-      autoConnect: true,
-      auth: { token } 
-    })
+    socketRef.current = io(SOCKET_URL, { withCredentials: true, autoConnect: true, auth: { token } })
     const socket = socketRef.current
 
     socket.emit('conversation:join', { conversationId })
@@ -67,12 +86,40 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
     socket.on('message:new', (msg: Message) => {
       if (msg.conversation_id === conversationId) {
         setMessages(prev => {
-          if (prev.some(m => m.id === msg.id || m.id === Number(msg.id))) return prev;
+          if (prev.some(m => m.id === msg.id)) return prev;
           return [...prev, msg];
         })
         messagesApi.markAsRead(conversationId)
         scrollToBottom()
       }
+    })
+
+    socket.on('message:edited', (msg: Message) => {
+      setMessages(prev => prev.map(m => m.id === msg.id ? msg : m))
+    })
+    
+    socket.on('message:deleted', (data: { messageId: number }) => {
+      setMessages(prev => prev.map(m => m.id === data.messageId ? { ...m, deleted_at: new Date().toISOString() } : m))
+    })
+
+    socket.on('message:reacted', (data: { messageId: number, emoji: string, userId: number, action: 'added' | 'removed' }) => {
+      setMessages(prev => prev.map(m => {
+        if (m.id !== data.messageId) return m;
+        const reactions = JSON.parse(JSON.stringify(m.reactions || {}));
+        
+        if (data.action === 'added') {
+          if (!reactions[data.emoji]) reactions[data.emoji] = [];
+          if (!reactions[data.emoji].includes(data.userId)) {
+            reactions[data.emoji].push(data.userId);
+          }
+        } else if (data.action === 'removed') {
+          if (reactions[data.emoji]) {
+            reactions[data.emoji] = reactions[data.emoji].filter((id: number) => id !== data.userId);
+            if (reactions[data.emoji].length === 0) delete reactions[data.emoji];
+          }
+        }
+        return { ...m, reactions };
+      }))
     })
 
     socket.on('typing:user', (data: { userId: number, isTyping: boolean }) => {
@@ -90,32 +137,23 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
   }
   useEffect(() => { scrollToBottom() }, [messages, isTyping])
 
-  // 3. Envoyer un message (Optimistic UI)
-  const handleSendMessage = async (e?: React.FormEvent, mediaUrl?: string, type: 'text'|'image'|'audio' = 'text') => {
+  const handleSendMessage = async (e?: React.FormEvent, mediaUrl?: string, type: 'text'|'image'|'audio'|'video' = 'text', contentText?: string) => {
     e?.preventDefault()
-    if (!inputText.trim() && !mediaUrl) return
+    const textToSend = contentText !== undefined ? contentText : inputText.trim()
+    if (!textToSend && !mediaUrl) return
     
     const payload: any = { type, media_url: mediaUrl }
-    if (inputText.trim()) payload.content = inputText.trim()
+    if (textToSend) payload.content = textToSend
 
-    // Afficher instantanément
     const tempId = Date.now()
     const optimisticMsg: Message = {
-      id: tempId,
-      conversation_id: conversationId,
-      sender_id: currentUser?.id || 0,
-      type,
-      content: payload.content || '',
-      media_url: mediaUrl || null,
-      created_at: new Date().toISOString(),
-      reply_to_message_id: null,
-      edited_at: null,
-      deleted_at: null,
-      author: currentUser,
+      id: tempId, conversation_id: conversationId, sender_id: currentUser?.id || 0,
+      type, content: payload.content || '', media_url: mediaUrl || null,
+      created_at: new Date().toISOString(), reply_to_message_id: null, edited_at: null, deleted_at: null, author: currentUser,
     }
     
     setMessages(prev => [...prev, optimisticMsg])
-    setInputText('')
+    if (contentText === undefined) setInputText('')
 
     try {
       const res = await messagesApi.sendMessage(conversationId, payload)
@@ -124,6 +162,56 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
     } catch (err: any) {
       setMessages(prev => prev.filter(m => m.id !== tempId))
       toast.error(err?.response?.data?.message || "Impossible d'envoyer le message")
+    }
+  }
+
+  const handleEditMessage = async (msgId: number) => {
+    if (!editContent.trim()) return setEditingMessageId(null)
+    try {
+      const res = await messagesApi.editMessage(msgId, editContent)
+      setMessages(prev => prev.map(m => m.id === msgId ? res.message : m))
+      socketRef.current?.emit('message:edit', { messageId: msgId, content: editContent })
+      setEditingMessageId(null)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur d'édition")
+    }
+  }
+
+  const handleDeleteMessage = async (msgId: number) => {
+    if (!confirm('Supprimer ce message ?')) return
+    try {
+      await messagesApi.deleteMessage(msgId)
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted_at: new Date().toISOString() } : m))
+      socketRef.current?.emit('message:delete', { messageId: msgId })
+      toast.success('Message supprimé')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur de suppression")
+    }
+  }
+
+  const handleReact = async (msgId: number, emoji: string) => {
+    try {
+      const res = await messagesApi.reactToMessage(msgId, emoji)
+      socketRef.current?.emit('message:react', { messageId: msgId, emoji })
+      
+      setMessages(prev => prev.map(m => {
+        if (m.id !== msgId) return m;
+        const reactions = JSON.parse(JSON.stringify(m.reactions || {}));
+        
+        if (res.action === 'added') {
+          if (!reactions[emoji]) reactions[emoji] = [];
+          if (!reactions[emoji].includes(currentUser?.id)) reactions[emoji].push(currentUser?.id);
+        } else if (res.action === 'removed') {
+          if (reactions[emoji]) {
+            reactions[emoji] = reactions[emoji].filter((id: number) => id !== currentUser?.id);
+            if (reactions[emoji].length === 0) delete reactions[emoji];
+          }
+        }
+        return { ...m, reactions };
+      }))
+      setShowReactionPicker(null)
+    } catch (err) {
+      toast.error("Erreur d'envoi de la réaction")
     }
   }
 
@@ -137,6 +225,134 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
     }, 2000)
   }
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const newFiles = Array.from(files)
+    const newUrls = newFiles.map(f => URL.createObjectURL(f))
+    setPreviewFiles(prev => [...prev, ...newFiles])
+    setPreviewUrls(prev => [...prev, ...newUrls])
+    e.target.value = ''
+  }
+
+  const removePreviewImage = (index: number) => {
+    setPreviewFiles(prev => prev.filter((_, i) => i !== index))
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const confirmImagesSend = async () => {
+    if (previewFiles.length === 0) return
+    toast.loading(`Envoi de ${previewFiles.length} image(s)...`, { id: 'upload' })
+    
+    const uploadedUrls: string[] = []
+    try {
+      for (const file of previewFiles) {
+        const res = await messagesApi.uploadChatMedia(file)
+        uploadedUrls.push(res.url)
+      }
+      const mediaUrlPayload = uploadedUrls.length === 1 ? uploadedUrls[0] : JSON.stringify(uploadedUrls)
+      await handleSendMessage(undefined, mediaUrlPayload, 'image', captionText)
+      
+      setPreviewFiles([])
+      setPreviewUrls([])
+      setCaptionText('')
+      toast.success('Image(s) envoyée(s) !', { id: 'upload' })
+    } catch (err) {
+      toast.error("Erreur d'envoi d'une image", { id: 'upload' })
+    }
+  }
+
+  // 🆕 Prévisualisation Vidéo
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPreviewVideoFile(file)
+    setPreviewVideoUrl(URL.createObjectURL(file))
+    setVideoCaption('')
+    e.target.value = ''
+  }
+
+  const cancelVideoPreview = () => {
+    setPreviewVideoFile(null)
+    setPreviewVideoUrl(null)
+    setVideoCaption('')
+  }
+
+  const confirmVideoSend = async () => {
+    if (!previewVideoFile) return
+    toast.loading('Envoi de la vidéo...', { id: 'video' })
+    try {
+      const res = await messagesApi.uploadChatMedia(previewVideoFile)
+      await handleSendMessage(undefined, res.url, 'video', videoCaption)
+      cancelVideoPreview()
+      toast.success('Vidéo envoyée !', { id: 'video' })
+    } catch (err) {
+      toast.error('Erreur vidéo (max 50MB, format mp4/webm)', { id: 'video' })
+    }
+  }
+
+  // 🆕 Enregistrement vocal Toggle (1 clic = start, 1 clic = stop)
+  const toggleRecording = async () => {
+    if (isRecording) {
+      // STOP
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
+      setIsRecording(false)
+      clearInterval(recordingTimerRef.current)
+      return
+    }
+
+    // START
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const file = new File([blob], 'vocal.webm', { type: 'audio/webm' })
+        toast.loading('Envoi du vocal...', { id: 'vocal' })
+        try {
+          const res = await messagesApi.uploadChatMedia(file)
+          await handleSendMessage(undefined, res.url, 'audio')
+          toast.success('Vocal envoyé !', { id: 'vocal' })
+        } catch (err) {
+          toast.error("Erreur d'envoi du vocal", { id: 'vocal' })
+        }
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+
+      // Timer pour afficher le temps et couper à 60s
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((prev) => {
+          if (prev >= 59) {
+            // Auto-stop à 60 secondes
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              mediaRecorderRef.current.stop()
+            }
+            setIsRecording(false)
+            clearInterval(recordingTimerRef.current)
+            return 60
+          }
+          return prev + 1
+        })
+      }, 1000)
+
+    } catch (err) {
+      toast.error('Impossible d’accéder au microphone')
+    }
+  }
+
   const handleBlock = async () => {
     try {
       const otherUser = conversation?.participants.find(p => p.user_id !== currentUser?.id)
@@ -144,70 +360,28 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
         await blocksApi.block(otherUser.user_id)
         toast.success('Utilisateur bloqué')
         setShowMenu(false)
+        window.dispatchEvent(new Event('refresh-conversations'))
+        if (onCloseMobile) onCloseMobile()
+        else navigate('/messages')
       }
     } catch (err: any) {
-      if (err?.response?.status === 409) {
-        toast('Cet utilisateur est déjà dans tes bloqués', { icon: 'ℹ️' })
-      } else {
-        toast.error('Erreur lors du blocage')
-      }
+      if (err?.response?.status === 409) toast('Déjà bloqué', { icon: 'ℹ️' })
+      else toast.error('Erreur lors du blocage')
     }
   }
 
-  const handleReport = () => {
-    toast.success('Signalement envoyé à l’équipe ANKU')
-    setShowMenu(false)
-  }
-  
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    toast.loading('Envoi de l’image...', { id: 'upload' })
+  const handleReportSubmit = async () => {
+    if (!reportReason.trim()) return toast.error('Renseigne un motif')
     try {
-      const res = await commentsApi.uploadMedia(file)
-      await handleSendMessage(undefined, res.url, 'image')
-      toast.success('Image envoyée !', { id: 'upload' })
-    } catch (err) {
-      toast.error('Erreur lors de l’envoi de l’image', { id: 'upload' })
-    }
-  }
-
-  const handleVoiceRecord = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      const chunks: Blob[] = []
-      
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data)
+      const otherUser = conversation?.participants.find(p => p.user_id !== currentUser?.id)
+      if (otherUser) {
+        await reportsApi.create({ target_type: 'user', target_id: otherUser.user_id, reason: 'other', description: reportReason })
+        toast.success('Signalement envoyé')
+        setShowReportModal(false)
+        setReportReason('')
       }
-      
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' })
-        
-        // 🚨 HACK : On force un nom d'image et un type MIME d'image pour passer le filtre du backend
-        const file = new File([blob], 'vocal.png', { type: 'image/png' })
-        
-        toast.loading('Envoi du vocal...', { id: 'vocal' })
-        try {
-          const res = await commentsApi.uploadMedia(file)
-          await handleSendMessage(undefined, res.url, 'audio')
-          toast.success('Vocal envoyé !', { id: 'vocal' })
-        } catch (err: any) {
-          toast.error(err?.response?.data?.message || "Erreur d'envoi du vocal", { id: 'vocal' })
-        }
-        stream.getTracks().forEach(track => track.stop())
-      }
-      
-      mediaRecorder.start()
-      toast('Enregistrement en cours... (S\'arrête tout seul dans 5s)', { icon: '🎙️', duration: 5000 })
-      
-      setTimeout(() => {
-        if (mediaRecorder.state === 'recording') mediaRecorder.stop()
-      }, 5000)
-      
     } catch (err) {
-      toast.error('Impossible d’accéder au microphone')
+      toast.error('Erreur lors du signalement')
     }
   }
 
@@ -217,12 +391,28 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
     </div>
   )
 
-  const mediaArchive = messages.filter(m => m.type === 'image' || m.type === 'audio')
+  const mediaArchive = messages.filter(m => (m.type === 'image' || m.type === 'audio' || m.type === 'video') && !m.deleted_at)
   const otherUser = conversation.participants.find(p => p.user_id !== currentUser?.id)
+
+  const renderImages = (mediaUrl: string) => {
+    try {
+      const urls = JSON.parse(mediaUrl)
+      if (Array.isArray(urls) && urls.length > 0) {
+        return (
+          <div className={`grid gap-1 mb-2 rounded-lg overflow-hidden ${urls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {urls.map((url, i) => (
+              <img key={i} src={url} className="w-full h-full object-cover cursor-pointer max-h-48" onClick={() => window.open(url, '_blank')} alt={`media-${i}`} />
+            ))}
+          </div>
+        )
+      }
+    } catch (e) {}
+    return <img src={mediaUrl} className="rounded-lg mb-2 max-h-48 object-cover cursor-pointer" alt="media" onClick={() => window.open(mediaUrl, '_blank')} />
+  }
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-[#e6f4e1] via-white to-[#d0e8c6] relative">
-      <header className="h-16 px-4 border-b border-emerald-200/50 flex items-center justify-between bg-white/80 backdrop-blur-xl shrink-0 shadow-sm z-10">
+      {!hideHeader && (<header className="h-16 px-4 border-b border-emerald-200/50 flex items-center justify-between bg-white/80 backdrop-blur-xl shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-3">
           <button onClick={onCloseMobile} className="p-2 -ml-2 text-emerald-800 hover:bg-emerald-100/50 rounded-full transition">
             <ArrowLeft size={20} />
@@ -242,47 +432,105 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
           </button>
           {showMenu && (
             <div className="absolute right-0 top-12 w-56 bg-white/95 backdrop-blur-xl border border-gray-200 shadow-xl rounded-xl py-2 z-50 text-sm">
-              <button onClick={handleReport} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 text-left transition">
+              <button onClick={() => { setShowReportModal(true); setShowMenu(false) }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 text-left transition">
                 <Flag size={16}/> Signaler
               </button>
             </div>
           )}
         </div>
-      </header>
+      </header>)}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="text-center py-10 text-gray-400 text-sm italic">
-            Aucun message pour le moment. Dis bonjour ! 👋
-          </div>
+          <div className="text-center py-10 text-gray-400 text-sm italic">Aucun message pour le moment. Dis bonjour ! 👋</div>
         )}
 
         {messages.map((msg) => {
           const isMe = msg.sender_id === currentUser?.id
+          const isDeleted = !!msg.deleted_at
+          const isEditing = editingMessageId === msg.id
+
           return (
-            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group relative`}>
+              
+              {!isDeleted && !isEditing && (
+                <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-md border border-gray-100 rounded-full px-2 py-1 z-10`}>
+                  <button onClick={() => setShowReactionPicker(msg.id)} className="p-1 text-gray-500 hover:text-emerald-600"><Smile size={14} /></button>
+                  {isMe && (
+                    <>
+                      <button onClick={() => { setEditingMessageId(msg.id); setEditContent(msg.content) }} className="p-1 text-gray-500 hover:text-blue-600"><Pencil size={14} /></button>
+                      <button onClick={() => handleDeleteMessage(msg.id)} className="p-1 text-gray-500 hover:text-red-600"><Trash2 size={14} /></button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {showReactionPicker === msg.id && (
+                <div className={`absolute -top-12 ${isMe ? 'right-0' : 'left-0'} bg-white shadow-xl rounded-full px-3 py-1.5 flex gap-2 z-20 border border-gray-100`}>
+                  {['❤️', '👍', '😂', '😮', '😢'].map(emoji => (
+                    <button key={emoji} onClick={() => handleReact(msg.id, emoji)} className="text-lg hover:scale-125 transition">{emoji}</button>
+                  ))}
+                </div>
+              )}
+
               <div
                 className={`max-w-[75%] px-4 py-3 shadow-lg transition-all duration-300 hover:shadow-xl ${
                   isMe
                     ? 'text-white rounded-t-3xl rounded-bl-3xl rounded-br-sm'
                     : 'bg-white text-gray-900 border border-gray-100 rounded-t-3xl rounded-br-3xl rounded-bl-sm'
-                }`}
+                } ${isDeleted ? 'opacity-60 italic' : ''}`}
                 style={isMe ? { background: 'linear-gradient(135deg, #6aa84f 0%, #3d6b2b 100%)' } : {}}
               >
-                {msg.type === 'image' && msg.media_url && (
-                  <img src={msg.media_url} className="rounded-lg mb-2 max-h-48 object-cover" alt="media" />
-                )}
-                {msg.type === 'audio' && msg.media_url && (
-                  <div className="flex items-center gap-2 mb-1">
-                    <button className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center"><Play size={14}/></button>
-                    <div className="h-1 w-32 bg-black/20 rounded-full"><div className="h-1 w-1/2 bg-black/40 rounded-full"></div></div>
+                {isDeleted ? (
+                  <p className="text-sm">Ce message a été supprimé.</p>
+                ) : isEditing ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="bg-white/20 text-white placeholder-white/50 border border-white/30 rounded px-2 py-1 text-sm outline-none w-full"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setEditingMessageId(null)} className="text-xs text-white/70 hover:text-white">Annuler</button>
+                      <button onClick={() => handleEditMessage(msg.id)} className="text-xs font-bold flex items-center gap-1"><Check size={12}/> OK</button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {msg.type === 'image' && msg.media_url && renderImages(msg.media_url)}
+                    
+                    {msg.type === 'video' && msg.media_url && (
+                      <video controls className="rounded-lg mb-2 max-h-48 object-cover">
+                        <source src={msg.media_url} />
+                      </video>
+                    )}
+                    
+                    {msg.type === 'audio' && msg.media_url && (
+                      <audio controls className="mb-2 max-w-full h-10">
+                        <source src={msg.media_url} />
+                      </audio>
+                    )}
+
+                    {msg.content && <p className="text-sm">{msg.content}</p>}
+                    
+                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {Object.entries(msg.reactions).map(([emoji, users]) => (
+                          <span key={emoji} className={`text-[11px] px-1.5 py-0.5 rounded-full flex items-center gap-1 ${isMe ? 'bg-white/20' : 'bg-gray-100'}`}>
+                            {emoji} <span className="font-bold">{users.length}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
+                      {msg.edited_at && <span className="italic mr-1">modifié</span>}
+                      {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {isMe && <CheckCheck size={12} className={msg.id === messages[messages.length-1]?.id ? 'text-white' : ''} />}
+                    </div>
+                  </>
                 )}
-                {msg.content && <p className="text-sm">{msg.content}</p>}
-                <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isMe ? 'text-white/70' : 'text-gray-400'}`}>
-                  {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                  {isMe && <CheckCheck size={12} className={msg.id === messages[messages.length-1]?.id ? 'text-white' : ''} />}
-                </div>
               </div>
             </div>
           )
@@ -292,7 +540,6 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Actions Rapides (Style QuickMenu) */}
       <div className="px-4 py-3 bg-white/90 backdrop-blur-xl border-t border-emerald-100 flex items-center gap-3 overflow-x-auto shrink-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
         {otherUser && (
           <Link to={`/u/${otherUser.username}`} className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-[#0ba360] text-white shadow-md hover:scale-110 transition" title="Voir le profil">
@@ -310,23 +557,108 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
         </button>
       </div>
 
-      <footer className="p-3 bg-white/80 backdrop-blur-xl border-t border-emerald-100 shrink-0">
+      <footer className="p-3 bg-white/80 backdrop-blur-xl border-t border-emerald-100 shrink-0 relative">
+        
+        {/* Prévisualisation Images */}
+        {previewUrls.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {previewUrls.map((url, idx) => (
+                  <div key={idx} className="relative shrink-0">
+                    <img src={url} alt="Preview" className="w-20 h-20 object-cover rounded-xl border border-emerald-200 shadow-sm" />
+                    <button onClick={() => removePreviewImage(idx)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 items-end">
+                <textarea
+                  value={captionText}
+                  onChange={(e) => setCaptionText(e.target.value)}
+                  placeholder="Ajouter une légende..."
+                  className="w-full border border-gray-200 rounded-xl p-2 text-sm focus:border-emerald-500 outline-none resize-none"
+                  rows={2}
+                />
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => { setPreviewFiles([]); setPreviewUrls([]) }} className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition">Annuler</button>
+                  <button onClick={confirmImagesSend} className="px-4 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition shadow-md flex items-center gap-2">
+                    <Send size={14}/> Envoyer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🆕 Prévisualisation Vidéo */}
+        {previewVideoUrl && (
+          <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
+            <div className="flex flex-col gap-3">
+              <div className="relative w-full max-w-sm mx-auto">
+                <video src={previewVideoUrl} controls className="w-full rounded-xl border border-emerald-200 shadow-sm max-h-48 object-cover" />
+                <button onClick={cancelVideoPreview} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2 items-end">
+                <textarea
+                  value={videoCaption}
+                  onChange={(e) => setVideoCaption(e.target.value)}
+                  placeholder="Ajouter une légende..."
+                  className="w-full border border-gray-200 rounded-xl p-2 text-sm focus:border-emerald-500 outline-none resize-none"
+                  rows={2}
+                />
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={cancelVideoPreview} className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition">Annuler</button>
+                  <button onClick={confirmVideoSend} className="px-4 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition shadow-md flex items-center gap-2">
+                    <Send size={14}/> Envoyer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white border-2 border-emerald-100 rounded-3xl p-1.5 shadow-sm focus-within:border-emerald-400 transition-colors">
-          <label className="p-2 text-emerald-600 hover:text-emerald-800 cursor-pointer transition">
+          
+          <label className="p-2 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer des images">
             <ImageIcon size={20} />
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
           </label>
-          <button type="button" onClick={handleVoiceRecord} className="p-2 text-emerald-600 hover:text-emerald-800 transition">
-            <Mic size={20} />
+
+          <label className="p-2 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer une vidéo">
+            <Video size={20} />
+            <input type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
+          </label>
+
+          {/* 🆕 Bouton Vocal Toggle (Rouge si enregistrement) */}
+          <button 
+            type="button" 
+            onClick={toggleRecording} 
+            className={`p-2 transition flex items-center justify-center rounded-full ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-emerald-600 hover:text-emerald-800'}`}
+            title={isRecording ? 'Arrêter l’enregistrement' : 'Enregistrer un vocal'}
+          >
+            {isRecording ? (
+              <div className="flex items-center gap-1 px-1">
+                <Square size={12} fill="currentColor" />
+                <span className="text-xs font-bold">{recordingTime}s</span>
+              </div>
+            ) : (
+              <Mic size={20} />
+            )}
           </button>
+          
           <input
             type="text"
             value={inputText}
             onChange={handleTyping}
-            placeholder="Écris ton message..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-1 outline-none"
+            placeholder={isRecording ? "Enregistrement en cours..." : "Écris ton message..."}
+            disabled={isRecording}
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-1 outline-none disabled:opacity-50"
           />
-          <button type="submit" disabled={!inputText.trim()} className="p-2 rounded-xl text-white disabled:opacity-50 transition shadow-md hover:shadow-lg" style={{ background: ANKU.green }}>
+          <button type="submit" disabled={!inputText.trim() || isRecording} className="p-2 rounded-xl text-white disabled:opacity-50 transition shadow-md hover:shadow-lg" style={{ background: ANKU.green }}>
             <Send size={18} />
           </button>
         </form>
@@ -343,9 +675,38 @@ export default function ChatWindow({ conversationId, onCloseMobile }: { conversa
               {mediaArchive.length === 0 && <p className="col-span-3 text-center text-gray-500 mt-10">Aucun média partagé.</p>}
               {mediaArchive.map(m => (
                 <div key={m.id} className="aspect-square bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                  {m.type === 'image' ? <img src={m.media_url!} className="w-full h-full object-cover" /> : <Mic size={24} className="text-gray-400" />}
+                  {m.type === 'image' && (
+                    (() => {
+                      try {
+                        const urls = JSON.parse(m.media_url!)
+                        if (Array.isArray(urls) && urls.length > 0) return <img src={urls[0]} className="w-full h-full object-cover" />
+                      } catch (e) {}
+                      return <img src={m.media_url!} className="w-full h-full object-cover" />
+                    })()
+                  )}
+                  {m.type === 'video' && <Video size={24} className="text-gray-400" />}
+                  {m.type === 'audio' && <Mic size={24} className="text-gray-400" />}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReportModal && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl">
+            <h3 className="font-bold text-gray-900 mb-3">Signaler la conversation</h3>
+            <textarea
+              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:border-emerald-500 outline-none mb-4"
+              rows={3}
+              placeholder="Explique brièvement le problème..."
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowReportModal(false)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition">Annuler</button>
+              <button onClick={handleReportSubmit} className="px-4 py-2 text-sm text-white bg-red-500 hover:bg-red-600 rounded-xl transition shadow-md">Signaler</button>
             </div>
           </div>
         </div>

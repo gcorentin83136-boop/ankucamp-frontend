@@ -31,6 +31,16 @@ export const messagesApi = {
   },
   reactToMessage: async (messageId: number, emoji: string): Promise<{ success: boolean; action: string }> => {
     const { data } = await httpClient.post(`/messages/${messageId}/reactions`, { emoji }); return data
+  },
+  
+  // 🆕 Upload de média pour le chat (images, audios, vidéos)
+  uploadChatMedia: async (file: File): Promise<{ success: boolean; url: string }> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await httpClient.post('/uploads/chat-media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return data
   }
 }
 

@@ -8,6 +8,7 @@ import { LogOut, Store, Users, LayoutDashboard, ChevronRight, MessageSquare } fr
 import BadgePopup from '../components/BadgePopup'
 import CompleteProfileModal from '../components/auth/CompleteProfileModal'
 import messagesApi from '../service/api/messages.api'
+import { io } from 'socket.io-client'
 
 export default function Home() {
   const { isAuthenticated, user, logout } = useAuthStore()
@@ -37,13 +38,18 @@ export default function Home() {
 
   useEffect(() => {
     fetchUnreadCount()
-    const handler = () => fetchUnreadCount()
-    window.addEventListener('refresh-conversations', handler)
-    window.addEventListener('refresh-notifications', handler)
-    return () => {
-      window.removeEventListener('refresh-conversations', handler)
-      window.removeEventListener('refresh-notifications', handler)
-    }
+
+    const token = localStorage.getItem('anku_token')
+    if (!token || !isAuthenticated) return
+
+    const socket = io('http://localhost:3001', { withCredentials: true, auth: { token } })
+
+    socket.on('message:new', () => {
+      fetchUnreadCount()
+      window.dispatchEvent(new Event('refresh-conversations'))
+    })
+
+    return () => { socket.disconnect() }
   }, [isAuthenticated])
 
   const showKycBanner = isAuthenticated && user?.role === 'professionnel' && user.verification_status !== 'verified'
@@ -68,9 +74,11 @@ export default function Home() {
       <div className="fixed inset-0 z-[2] pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 12%, rgba(0,0,0,0) 88%, rgba(0,0,0,0.15) 100%)' }} />
 
       <div className="relative z-10 min-h-screen md:h-screen flex flex-col">
+        
         {/* NAVBAR */}
         <nav className="w-full px-3 sm:px-6 py-2 sm:py-3 backdrop-blur-xl bg-black/20 border-b border-emerald-500/20 shrink-0">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            
             <div className="flex items-center gap-3 sm:gap-4">
               <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
                 <img src="/images/anku-logo.png" alt="ANKU" className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain transition-transform group-hover:scale-110" style={{ filter: 'drop-shadow(0 0 12px rgba(110,231,183,0.6))' }} />
@@ -86,8 +94,8 @@ export default function Home() {
                   </button>
                   <UserMenu />
                   <div className="flex items-center gap-2">
-                    {/* 🆕 Icône Messagerie à DROITE */}
-                    <Link to="/messages" className="relative w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition" title="Messagerie">
+                    <CartIcon />
+                    <Link to="/messages" className="relative w-10 h-10 rounded-full flex items-center justify-center text-white bg-white/15 hover:bg-white/25 border border-white/25 transition" title="Messagerie">
                       <MessageSquare size={20} />
                       {unreadCount > 0 && (
                         <span className="absolute top-0 right-0 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border border-white/50">
@@ -95,7 +103,6 @@ export default function Home() {
                         </span>
                       )}
                     </Link>
-                    <CartIcon />
                     <NotificationBell />
                   </div>
                 </>
@@ -109,7 +116,7 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* BANDEAU KYC */}
+        {/* BANDEAU KYC, HERO, CARTES, FOOTER restent inchangés */}
         {showKycBanner && (
           <Link to="/kyc" className="relative w-full shrink-0 overflow-hidden group">
             <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.35) 0%, rgba(5,150,105,0.25) 50%, rgba(16,185,129,0.35) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }} />
@@ -132,7 +139,6 @@ export default function Home() {
           </Link>
         )}
 
-        {/* HERO */}
         <section className="flex-1 flex items-center justify-center px-3 sm:px-4 py-3 sm:py-4 min-h-0">
           <div className="w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-5 md:px-10 md:py-7 bg-black/15 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] shadow-[0_25px_80px_rgba(0,0,0,0.35)] flex flex-col items-center text-center">
             <span className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-full bg-emerald-500/60 border border-emerald-300/90 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.15em] mb-2 sm:mb-3 text-white" style={{ boxShadow: '0 0 12px rgba(16,185,129,0.5), inset 0 0 8px rgba(16,185,129,0.3)' }}>
@@ -162,7 +168,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CARTES */}
         <section className="w-full px-3 sm:px-4 pb-3 sm:pb-5 shrink-0">
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
             {isAuthenticated && user
@@ -204,7 +209,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* FOOTER */}
         <footer className="w-full px-3 sm:px-6 py-2 sm:py-2.5 backdrop-blur-xl bg-black/20 border-t border-emerald-500/20 shrink-0">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-2">
             <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-white/90">
@@ -221,4 +225,4 @@ export default function Home() {
       <CompleteProfileModal open={showCompleteProfile} onClose={() => setShowCompleteProfile(false)} />
     </div>
   )
-}
+  }

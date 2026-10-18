@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../context/AuthContext'
 import UserMenu from './UserMenu'
 import CartIcon from './CartIcon'
@@ -10,10 +10,13 @@ import {
 } from 'lucide-react'
 import httpClient from '../../service/api/httpClient'
 import messagesApi from '../../service/api/messages.api'
+import { toast } from 'react-hot-toast'
+import MessageToast from '../chat/MessageToast'
 
 export default function AppHeader() {
   const { isAuthenticated, user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [q, setQ] = useState('')
   const [results, setResults] = useState<{ users: any[], shops: any[], products: any[] }>({ users: [], shops: [], products: [] })
   const [searching, setSearching] = useState(false)
@@ -34,17 +37,37 @@ export default function AppHeader() {
     const token = localStorage.getItem('anku_token')
     if (!token || !isAuthenticated) return
     fetchUnreadCount()
+
     const socket = io('http://localhost:3001', { withCredentials: true, auth: { token } })
-    socket.on('message:new', () => {
+
+    socket.on('message:new', (msg: any) => {
       window.dispatchEvent(new Event('refresh-notifications'))
       window.dispatchEvent(new Event('refresh-conversations'))
       fetchUnreadCount()
+
+      // 🍃 BULLE DE NOTIFICATION (TOAST)
+      // Si on n'est pas déjà dans cette conversation
+      if (!(location.pathname === '/messages' && location.search.includes(`c=${msg.conversation_id}`))) {
+        toast.custom((t) => (
+          <MessageToast
+            senderName={`${msg.author?.first_name} ${msg.author?.last_name}`}
+            senderAvatar={msg.author?.avatar_url}
+            content={msg.content}
+            onClick={() => {
+              toast.dismiss(t.id)
+              navigate(`/messages?c=${msg.conversation_id}`)
+            }}
+          />
+        ), { duration: 5000, position: 'top-right' })
+      }
     })
+
     socket.on('notification:new', () => {
       window.dispatchEvent(new Event('refresh-notifications'))
     })
+
     return () => { socket.disconnect() }
-  }, [isAuthenticated])
+  }, [isAuthenticated, location.pathname, location.search, navigate])
 
   const handleLogout = async () => {
     await logout()
@@ -91,12 +114,10 @@ export default function AppHeader() {
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex items-center gap-3 sm:gap-4">
         
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group shrink-0" title="Retour à l'accueil">
           <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-white group-hover:text-emerald-100 transition drop-shadow-sm">ANKU</span>
         </Link>
 
-        {/* Recherche */}
         {isAuthenticated && (
           <div ref={wrapRef} className="flex-1 max-w-xl relative hidden md:block">
             <div className="relative">
@@ -176,8 +197,9 @@ export default function AppHeader() {
               </button>
               
               <div className="flex items-center gap-1">
-                {/* 🆕 Icône Messagerie à DROITE */}
-                <Link to="/messages" className="relative w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition mr-1" title="Messagerie">
+                <UserMenu />
+                <CartIcon />
+                <Link to="/messages" className="relative w-10 h-10 rounded-full flex items-center justify-center text-white bg-white/15 hover:bg-white/25 border border-white/25 transition" title="Messagerie">
                   <MessageSquare size={20} />
                   {unreadCount > 0 && (
                     <span className="absolute top-0 right-0 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center border border-white/50">
@@ -185,9 +207,6 @@ export default function AppHeader() {
                     </span>
                   )}
                 </Link>
-
-                <UserMenu />
-                <CartIcon />
                 <NotificationBell />
               </div>
             </>

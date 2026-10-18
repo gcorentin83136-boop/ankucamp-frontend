@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Mail, Bell, CheckCircle2 } from 'lucide-react'
+import { Mail, Bell, CheckCircle2, MessageSquare } from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsToggle from '../../components/settings/SettingsToggle'
 import notificationsApi from '../../service/api/settings/notifications.api'
@@ -40,6 +40,7 @@ export default function NotificationsSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<NotificationSettings | null>(null)
+  const [chatBubbleEnabled, setChatBubbleEnabled] = useState(true)
 
   useEffect(() => {
     notificationsApi
@@ -48,6 +49,14 @@ export default function NotificationsSettings() {
       .catch(() => toast.error('Impossible de charger les préférences'))
       .finally(() => setLoading(false))
   }, [])
+
+  const toggleChatBubble = () => {
+    const next = !chatBubbleEnabled
+    setChatBubbleEnabled(next)
+    localStorage.setItem('anku_chat_bubble_enabled', String(next))
+    window.dispatchEvent(new CustomEvent('anku:chat-bubble-toggle', { detail: next }))
+    toastOk(`Bulles de chat : ${next ? 'activées' : 'désactivées'}`)
+  }
 
   const updateEmail = async (key: keyof NotificationSettings['email']) => {
     if (!settings) return
@@ -107,6 +116,18 @@ export default function NotificationsSettings() {
 
   return (
     <div className="space-y-4">
+      <SettingsSection
+        title="Bulles de chat"
+        description="Affiche une mini-fenêtre de discussion quand tu reçois un message"
+        icon={<MessageSquare size={18} />}
+      >
+        <SettingsToggle
+          label="Activer les bulles de chat"
+          description="Si désactivé, tu recevras une simple notification en haut à droite"
+          checked={chatBubbleEnabled}
+          onChange={toggleChatBubble}
+        />
+      </SettingsSection>
       <SettingsSection
         title="Notifications par email"
         description="Choisis les emails que tu veux recevoir"

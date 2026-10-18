@@ -1,5 +1,10 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './context/AuthContext'
+import { io } from 'socket.io-client'
+import { toast } from 'react-hot-toast'
+import MessageToast from './components/chat/MessageToast'
+import FloatingChatBubble from './components/chat/FloatingChatBubble'
 import './index.css'
 
 import Home from './pages/Home'
@@ -86,8 +91,68 @@ function MyProfileRedirect() {
   }
   return <Navigate to={`/u/${user.username}`} replace />
 }
+
 function App() {
+  const { user } = useAuthStore()
+
+  // 🍃 WebSocket Global pour la bulle de notification
+  useEffect(() => {
+    const token = localStorage.getItem('anku_token')
+    if (!token || !user) return
+
+    console.log("🔌 TENTATIVE DE CONNEXION WEBSOCKET...")
+    const socket = io('http://localhost:3001', {
+      withCredentials: true,
+      auth: { token },
+    })
+
+    socket.on('connect', () => {
+      console.log("✅ SOCKET CONNECTÉ ! ID:", socket.id)
+    })
+
+    socket.on('connect_error', (err) => {
+      console.log("❌ ERREUR SOCKET :", err.message)
+    })
+
+    socket.on('message:notification', (msg: any) => {
+      console.log("🟢 ÉVÉNEMENT message:notification REÇU !", msg)
+      
+      if (window.location.pathname === '/messages' && window.location.search.includes(`c=${msg.conversation_id}`)) {
+        return
+      }
+
+      // 🆕 Dispatche l'événement pour la bulle flottante
+      window.dispatchEvent(new CustomEvent('anku:new-message', { detail: msg }))
+
+      // Fallback : Si la bulle est désactivée, on utilise le toast classique
+      const bubbleEnabled = localStorage.getItem('anku_chat_bubble_enabled') !== 'false'
+      if (!bubbleEnabled) {
+        toast.custom((t) => (
+          <MessageToast
+            senderName={`${msg.author?.first_name} ${msg.author?.last_name}`}
+            senderAvatar={msg.author?.avatar_url}
+            content={msg.content}
+            onClick={() => {
+              toast.dismiss(t.id)
+              window.location.href = `/messages?c=${msg.conversation_id}`
+            }}
+          />
+        ), { duration: 4000, position: 'top-right' })
+      }
+
+      window.dispatchEvent(new Event('refresh-notifications'))
+      window.dispatchEvent(new Event('refresh-conversations'))
+    })
+
+    return () => {
+      console.log("🔌 DÉCONNEXION WEBSOCKET")
+      socket.disconnect()
+    }
+  }, [user?.id])
+
   return (
+    <>
+    <FloatingChatBubble />
     <Routes>
       <Route path="/" element={<Home />} />
 
@@ -102,31 +167,10 @@ function App() {
       <Route path="/legal/cookies" element={<Cookies />} />
       <Route path="/contact" element={<Contact />} />
 
-      <Route
-        path="/kyc"
-        element={
-          <ProtectedRoute requiresPro>
-            <Kyc />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/become-pro"
-        element={
-          <ProtectedRoute>
-            <BecomePro />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/kyc" element={<ProtectedRoute requiresPro><Kyc /></ProtectedRoute>} />
+      <Route path="/become-pro" element={<ProtectedRoute><BecomePro /></ProtectedRoute>} />
 
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <SettingsLayout />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/settings" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
         <Route index element={<SettingsHub />} />
         <Route path="account" element={<AccountSettings />} />
         <Route path="security" element={<SecuritySettings />} />
@@ -135,7 +179,7 @@ function App() {
         <Route path="notifications" element={<NotificationsSettings />} />
         <Route path="blocked" element={<BlockedUsers />} />
         <Route path="payment" element={<PaymentSettings />} />
-          <Route path="danger" element={<DangerZone />} />
+        <Route path="danger" element={<DangerZone />} />
       </Route>
 
       <Route path="/profile" element={<ProtectedRoute><MyProfileRedirect /></ProtectedRoute>} />
@@ -151,19 +195,11 @@ function App() {
       <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
 
       <Route path="/events" element={<Events />} />
-
       <Route path="/shops" element={<ShopsList />} />
       <Route path="/shops/:id" element={<ShopDetail />} />
       <Route path="/products/:id" element={<ProductDetail />} />
 
-      <Route
-        path="/dashboard/shop"
-        element={
-          <ProtectedRoute requiresPro>
-            <SellerLayout />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/dashboard/shop" element={<ProtectedRoute requiresPro><SellerLayout /></ProtectedRoute>}>
         <Route index element={<SellerDashboard />} />
         <Route path="settings" element={<SellerSettings />} />
         <Route path="products" element={<SellerProducts />} />
@@ -175,15 +211,7 @@ function App() {
         <Route path="invoices" element={<SellerInvoices />} />
       </Route>
 
-      {/* Dashboard Buyer */}
-      <Route
-        path="/dashboard/user"
-        element={
-          <ProtectedRoute>
-            <BuyerLayout />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/dashboard/user" element={<ProtectedRoute><BuyerLayout /></ProtectedRoute>}>
         <Route index element={<BuyerDashboard />} />
         <Route path="orders" element={<BuyerOrders />} />
         <Route path="wishlist" element={<BuyerWishlist />} />
@@ -194,14 +222,7 @@ function App() {
         <Route path="follows" element={<BuyerFollows />} />
       </Route>
 
-      <Route
-        path="/admin"
-        element={
-          <AdminGuard>
-            <AdminLayout />
-          </AdminGuard>
-        }
-      >
+      <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
         <Route index element={<AdminDashboard />} />
         <Route path="kyc" element={<AdminKyc />} />
         <Route path="moderation" element={<AdminModeration />} />
@@ -215,11 +236,11 @@ function App() {
 
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/payment/cancel" element={<PaymentCancel />} />
-
       <Route path="/dashboard/stripe/return" element={<Navigate to="/settings/payment?stripe=return" replace />} />
       <Route path="/dashboard/stripe/refresh" element={<Navigate to="/settings/payment?stripe=refresh" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 
