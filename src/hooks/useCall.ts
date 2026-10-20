@@ -50,13 +50,15 @@ export function useCall(currentUserId: number | null) {
   const localStreamRef = useRef<MediaStream | null>(null)
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([])
   const callStateRef = useRef<CallState>(initialCallState)
+  const videoRequestRef = useRef<'incoming' | 'sent' | null>(null)
+  // Flag : A a demandé la vidéo, il attend la relance vidéo → auto-accept
+  const expectingVideoCallRef = useRef<boolean>(false)
 
-  // Garde callState à jour dans une ref (pour handlers socket stables)
-  useEffect(() => {
-    callStateRef.current = callState
-  }, [callState])
+  // Sync callState / videoRequest dans refs
+  useEffect(() => { callStateRef.current = callState }, [callState])
+  useEffect(() => { videoRequestRef.current = videoRequest }, [videoRequest])
 
-  // Connexion socket
+  // Connexion socket globale
   useEffect(() => {
     if (!currentUserId) return
     const token = localStorage.getItem('anku_token')
@@ -67,9 +69,12 @@ export function useCall(currentUserId: number | null) {
     }
   }, [currentUserId])
 
-  // Cleanup
+  // Cleanup complet
   const cleanup = useCallback(() => {
     if (pcRef.current) {
+      pcRef.current.onicecandidate = null
+      pcRef.current.ontrack = null
+      pcRef.current.onconnectionstatechange = null
       pcRef.current.close()
       pcRef.current = null
     }
@@ -81,49 +86,46 @@ export function useCall(currentUserId: number | null) {
     setLocalStream(null)
     pendingCandidatesRef.current = []
     setVideoRequest(null)
+    videoRequestRef.current = null
     setCallState(initialCallState)
   }, [])
 
-  // Création PC
-  const createPeerConnection = useCallback(
-    (peerId: number, callId: string) => {
-      const pc = new RTCPeerConnection(ICE_SERVERS)
-      pcRef.current = pc
+  // Créer le PC
+  const createPeerConnection = useCallback((peerId: number, callId: string) => {
+    const pc = new RTCPeerConnection(ICE_SERVERS)
+    pcRef.current = pc
 
-      pc.onicecandidate = (event) => {
-        if (event.candidate && socketRef.current) {
-          socketRef.current.emit('call:ice-candidate', {
-            callId,
-            toUserId: peerId,
-            candidate: event.candidate.toJSON(),
-          })
-        }
-      }
-
-      pc.ontrack = (event) => {
-        const [stream] = event.streams
-        if (stream) setRemoteStream(stream)
-      }
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          toast.error('Connexion perdue')
-          cleanup()
-        }
-      }
-
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          pc.addTrack(track, localStreamRef.current!)
+    pc.onicecandidate = (event) => {
+      if (event.candidate && socketRef.current) {
+        socketRef.current.emit('call:ice-candidate', {
+          callId,
+          toUserId: peerId,
+          candidate: event.candidate.toJSON(),
         })
       }
+    }
 
-      return pc
-    },
-    [cleanup]
-  )
+    pc.ontrack = (event) => {
+      const [stream] = event.streams
+      if (stream) setRemoteStream(stream)
+    }
 
-  // Récup media local
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'failed') {
+        toast.error('Connexion perdue')
+        cleanup()
+      }
+    }
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, localStreamRef.current!)
+      })
+    }
+    return pc
+  }, [cleanup])
+
+  // Récupérer le média local
   const getLocalMedia = useCallback(async (type: CallType): Promise<MediaStream> => {
     const constraints: MediaStreamConstraints = {
       audio: true,
@@ -135,7 +137,9 @@ export function useCall(currentUserId: number | null) {
     return stream
   }, [])
 
-  // Démarrer appel
+  // ─────────────────────────────────────────
+  // DÉMARRER UN APPEL
+  // ─────────────────────────────────────────
   const startCall = useCallback(
     async (conversationId: number, toUserId: number, toUserName: string, type: CallType) => {
       try {
@@ -165,7 +169,9 @@ export function useCall(currentUserId: number | null) {
     [getLocalMedia, cleanup]
   )
 
-  // Accepter appel
+  // ─────────────────────────────────────────
+  // ACCEPTER UN APPEL (audio ou vidéo normal)
+  // ─────────────────────────────────────────
   const acceptCall = useCallback(async () => {
     const { callId, callType, peerUserId } = callStateRef.current
     if (!callId || !peerUserId) return
@@ -188,7 +194,9 @@ export function useCall(currentUserId: number | null) {
     }
   }, [getLocalMedia, createPeerConnection, cleanup])
 
-  // Refuser appel
+  // ─────────────────────────────────────────
+  // REFUSER UN APPEL
+  // ─────────────────────────────────────────
   const rejectCall = useCallback(() => {
     const { callId, peerUserId } = callStateRef.current
     if (callId && peerUserId) {
@@ -201,7 +209,9 @@ export function useCall(currentUserId: number | null) {
     cleanup()
   }, [cleanup])
 
-  // Raccrocher
+  // ─────────────────────────────────────────
+  // RACCROCHER
+  // ─────────────────────────────────────────
   const hangup = useCallback(() => {
     const { callId, peerUserId } = callStateRef.current
     if (callId && peerUserId) {
@@ -235,7 +245,9 @@ export function useCall(currentUserId: number | null) {
     }
   }, [])
 
-  // Demander la vidéo
+  // ─────────────────────────────────────────
+  // DEMANDER LE PASSAGE EN VIDÉO
+  // ─────────────────────────────────────────
   const requestVideoUpgrade = useCallback(() => {
     const { callId, peerUserId } = callStateRef.current
     if (callId && peerUserId) {
@@ -247,50 +259,88 @@ export function useCall(currentUserId: number | null) {
     }
   }, [])
 
-  // Refuser la demande vidéo
+  // Refuser le passage en vidéo
   const rejectVideoUpgrade = useCallback(() => {
+    const { callId, peerUserId } = callStateRef.current
+    if (callId && peerUserId) {
+      socketRef.current?.emit('call:reject-video', {
+        callId,
+        toUserId: peerUserId,
+      })
+    }
     setVideoRequest(null)
     toast('Demande vidéo refusée', { icon: '📹' })
   }, [])
 
-  // Accepter la vidéo (côté B) : on notifie juste A, c'est A qui relancera
+  // ─────────────────────────────────────────
+  // ACCEPTER LE PASSAGE EN VIDÉO
+  // Stratégie : B accepte → prévient A → les 2 raccrochent proprement
+  //             A relance appel vidéo → B auto-accepte (flag)
+  // ─────────────────────────────────────────
   const acceptVideoUpgrade = useCallback(async () => {
     const { callId, peerUserId } = callStateRef.current
     if (!callId || !peerUserId) return
 
     try {
       setVideoRequest(null)
+      // ⚡ FLAG : on attend la relance vidéo de A → on auto-acceptera
+      expectingVideoCallRef.current = true
+
+      // 1) Prévenir A qu'on a accepté
       socketRef.current?.emit('call:accept-video', {
         callId,
         toUserId: peerUserId,
       })
-      // On met l'UI en attente, l'appel vidéo va arriver côté A
-      setCallState((prev) => ({ ...prev, callType: 'video' }))
-      toast.loading('Connexion vidéo en cours...', { id: 'video-connect', duration: 3000 })
+
+      // 2) A va raccrocher + relancer appel vidéo → on recevra call:incoming
+      //    Grâce au flag, on auto-acceptera sans intervention
+      toast.loading('Connexion vidéo...', { id: 'video-connect', duration: 5000 })
     } catch (err) {
       console.error('[CALL] acceptVideoUpgrade error', err)
+      expectingVideoCallRef.current = false
       toast.error("Impossible d'activer la caméra")
     }
   }, [])
 
-  // Écoute des events socket
+  // ─────────────────────────────────────────
+  // ÉCOUTE DES EVENTS SOCKET
+  // ─────────────────────────────────────────
   useEffect(() => {
     const socket = socketRef.current
     if (!socket) return
 
     const onIncoming = async (data: any) => {
-      // ⚡ AUTO-ACCEPT : B vient de cliquer "Accepter" et A a relancé en vidéo
-      // (videoRequest est encore 'incoming' côté B à ce moment-là)
-      if (videoRequest === 'incoming' && data.callType === 'video') {
+      // ⚡ AUTO-ACCEPT si on attendait la relance vidéo
+      if (expectingVideoCallRef.current && data.callType === 'video') {
+        expectingVideoCallRef.current = false
         try {
-          // 1) Répondre IMMÉDIATEMENT à l'appel
-          socket.emit('call:accept', {
-            callId: data.callId,
-            toUserId: data.fromUser.id,
-          })
+          // 1) Cleanup ANCIEN PC + ANCIEN flux (on repart de zéro)
+          if (pcRef.current) {
+            pcRef.current.onicecandidate = null
+            pcRef.current.ontrack = null
+            pcRef.current.onconnectionstatechange = null
+            pcRef.current.close()
+            pcRef.current = null
+          }
+          if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach((t) => t.stop())
+            localStreamRef.current = null
+          }
+          setRemoteStream(null)
+          pendingCandidatesRef.current = []
 
-          // 2) Update state
-          setVideoRequest(null)
+          // 2) Récupérer flux vidéo + audio tout neufs
+          const freshStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          })
+          localStreamRef.current = freshStream
+          setLocalStream(freshStream)
+
+          // 3) Créer le nouveau PC AVANT de répondre (pour que l'offre de A puisse être traitée)
+          createPeerConnection(data.fromUser.id, data.callId)
+
+          // 4) Update state
           setCallState({
             status: 'ongoing',
             callId: data.callId,
@@ -305,9 +355,11 @@ export function useCall(currentUserId: number | null) {
           })
           toast.dismiss('video-connect')
 
-          // 3) Caméra + PC
-          await getLocalMedia('video')
-          createPeerConnection(data.fromUser.id, data.callId)
+          // 5) Accepter APRÈS que le PC soit prêt
+          socket.emit('call:accept', {
+            callId: data.callId,
+            toUserId: data.fromUser.id,
+          })
         } catch (err) {
           console.error('[CALL] auto-accept video error', err)
           toast.error("Impossible d'activer la caméra")
@@ -315,7 +367,7 @@ export function useCall(currentUserId: number | null) {
         return
       }
 
-      // CAS NORMAL : appel classique
+      // Appel classique
       if (callStateRef.current.status !== 'idle') {
         socket.emit('call:reject', {
           callId: data.callId,
@@ -339,9 +391,7 @@ export function useCall(currentUserId: number | null) {
     }
 
     const onAccepted = async (data: { callId: string; fromUserId: number }) => {
-      if (!pcRef.current) {
-        createPeerConnection(data.fromUserId, data.callId)
-      }
+      if (!pcRef.current) createPeerConnection(data.fromUserId, data.callId)
       const pc = pcRef.current!
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -405,6 +455,13 @@ export function useCall(currentUserId: number | null) {
     }
 
     const onHangup = () => {
+      // ⚡ Si on attend la relance vidéo, on ignore le hangup (transition silencieuse)
+      if (expectingVideoCallRef.current) {
+        // On NE cleanup PAS → on garde le PC prêt
+        // On affiche un petit loader
+        toast.loading('Passage en vidéo...', { id: 'video-connect', duration: 5000 })
+        return
+      }
       toast('Appel terminé', { icon: '📴' })
       cleanup()
     }
@@ -413,39 +470,56 @@ export function useCall(currentUserId: number | null) {
       setVideoRequest('incoming')
     }
 
+    const onVideoRejected = () => {
+      setVideoRequest(null)
+      toast('Demande vidéo refusée', { icon: '📹' })
+    }
+
+    // ⚡ A reçoit l'accord de B → A fait hangup + relance vidéo
     const onVideoAccepted = async () => {
-      // A reçoit l'accord de B → c'est A qui relance proprement en vidéo
       const { callId, peerUserId, peerName, conversationId } = callStateRef.current
-      if (!callId || !peerUserId || !conversationId) {
-        console.warn('[CALL] onVideoAccepted: infos manquantes', callStateRef.current)
-        return
-      }
+      if (!callId || !peerUserId || !conversationId) return
+
+      setVideoRequest(null)
+      // Loader pendant la transition
+      toast.loading('Passage en vidéo...', { id: 'video-connect', duration: 5000 })
 
       try {
-        setVideoRequest(null)
-
-        // 1. Prévenir B qu'on coupe (pour qu'il se prépare)
+        // 1) Prévient B qu'on raccroche (mais B ignore grâce à expectingVideoCallRef)
         socket.emit('call:hangup', {
           callId,
           toUserId: peerUserId,
         })
 
-        // 2. Cleanup local
-        cleanup()
+        // 2) Cleanup local COMPLET
+        if (pcRef.current) {
+          pcRef.current.onicecandidate = null
+          pcRef.current.ontrack = null
+          pcRef.current.onconnectionstatechange = null
+          pcRef.current.close()
+          pcRef.current = null
+        }
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach((t) => t.stop())
+          localStreamRef.current = null
+        }
+        setRemoteStream(null)
+        setLocalStream(null)
+        pendingCandidatesRef.current = []
 
-        // 3. Attendre un peu que les 2 cleanup soient faits
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        // 3) Petite attente
+        await new Promise((resolve) => setTimeout(resolve, 400))
 
-        // 4. Relancer appel vidéo (A redevient appelant)
+        // 4) Reset state à idle AVANT de relancer (pour éviter "Appel en cours" sur ancien)
+        setCallState(initialCallState)
+
+        // 5) Relance appel vidéo
         await startCall(conversationId, peerUserId, peerName, 'video')
       } catch (err) {
         console.error('[CALL] onVideoAccepted error', err)
-        toast.error("Impossible de relancer en vidéo")
+        toast.error('Impossible de relancer en vidéo')
+        cleanup()
       }
-    }
-
-    const onError = (data: { message: string }) => {
-      toast.error(data.message)
     }
 
     socket.on('call:incoming', onIncoming)
@@ -457,7 +531,7 @@ export function useCall(currentUserId: number | null) {
     socket.on('call:hangup', onHangup)
     socket.on('call:video-requested', onVideoRequested)
     socket.on('call:video-accepted', onVideoAccepted)
-    socket.on('call:error', onError)
+    socket.on('call:video-rejected', onVideoRejected)
 
     return () => {
       socket.off('call:incoming', onIncoming)
@@ -469,9 +543,14 @@ export function useCall(currentUserId: number | null) {
       socket.off('call:hangup', onHangup)
       socket.off('call:video-requested', onVideoRequested)
       socket.off('call:video-accepted', onVideoAccepted)
-      socket.off('call:error', onError)
+      socket.off('call:video-rejected', onVideoRejected)
     }
-  }, [createPeerConnection, cleanup])
+  }, [cleanup, createPeerConnection, getLocalMedia, startCall])
+
+  // ⚡ IMPORTANT : quand B (le receveur initial) voit son `video-accepted` (parce qu'il a demandé)
+  // → on n'auto-accept PAS côté B (c'est A qui relance, donc B doit accepter)
+  // MAIS quand A relance l'appel vidéo, B reçoit call:incoming → il faut que B auto-accepte
+  // C'est là qu'intervient le flag expectingVideoCallRef
 
   return {
     callState,
