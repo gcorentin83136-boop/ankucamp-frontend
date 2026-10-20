@@ -30,6 +30,61 @@ export default function CallUI() {
     }
   }, [localStream, remoteStream])
 
+
+  // 🎵 Sonnerie d'appel entrant — Carillon "nature ANKU"
+  // Mélodie douce en 3 notes (do-mi-sol) façon chant d'oiseau
+  useEffect(() => {
+    if (callState.status !== 'incoming') return
+
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+
+    const audioContext = new AudioCtx()
+
+    // Joue une note douce avec un léger vibrato (comme une clochette)
+    const playNote = (freq: number, startTime: number, duration: number) => {
+      try {
+        const osc = audioContext.createOscillator()
+        const gain = audioContext.createGain()
+
+        // Triangle wave = plus doux que sine, évoque une flûte
+        osc.type = 'triangle'
+        osc.frequency.setValueAtTime(freq, startTime)
+
+        // Enveloppe douce : attaque progressive + fade out
+        gain.gain.setValueAtTime(0, startTime)
+        gain.gain.linearRampToValueAtTime(0.15, startTime + 0.05)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+
+        osc.connect(gain)
+        gain.connect(audioContext.destination)
+
+        osc.start(startTime)
+        osc.stop(startTime + duration)
+      } catch {}
+    }
+
+    // Mélodie "nature" : do - mi - sol - mi (arpège qui monte puis descend)
+    // Fréquences en Hz : C5=523, E5=659, G5=784
+    const playMelody = () => {
+      try {
+        const now = audioContext.currentTime
+        playNote(523, now + 0.0, 0.4)      // Do
+        playNote(659, now + 0.25, 0.4)     // Mi
+        playNote(784, now + 0.5, 0.5)      // Sol
+        playNote(659, now + 0.85, 0.6)     // Mi (redescend)
+      } catch {}
+    }
+
+    // Joue la mélodie toutes les 3 secondes
+    playMelody()
+    const interval = setInterval(playMelody, 3000)
+
+    return () => {
+      clearInterval(interval)
+      try { audioContext.close() } catch {}
+    }
+  }, [callState.status])
   if (callState.status === 'idle') return null
 
   // APPEL ENTRANT

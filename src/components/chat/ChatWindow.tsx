@@ -5,7 +5,8 @@ import { io, Socket } from 'socket.io-client'
 import {
   Send, Image as ImageIcon, Mic, MoreVertical, User, Store,
   Flag, Ban, FolderOpen, X, CheckCheck, ArrowLeft, Phone,
-  Smile, Pencil, Trash2, Check, Video, Square, Reply, Paperclip, FileText, Download
+  Smile, Pencil, Trash2, Check, Video, Square, Reply, Paperclip, FileText, Download,
+  PhoneOff,
 } from 'lucide-react'
 import messagesApi from '../../service/api/messages.api'
 import type { Conversation, Message } from '../../types/message'
@@ -40,17 +41,14 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const [showReportModal, setShowReportModal] = useState(false)
   const [reportReason, setReportReason] = useState('')
 
-  // États pour l'album photo
   const [previewFiles, setPreviewFiles] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [captionText, setCaptionText] = useState('')
 
-  // 🆕 États pour la prévisualisation vidéo
   const [previewVideoFile, setPreviewVideoFile] = useState<File | null>(null)
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null)
   const [videoCaption, setVideoCaption] = useState('')
 
-  // 🆕 État pour l'envoi de fichier (PDF, docs, zip...)
   const [previewFile, setPreviewFile] = useState<File | null>(null)
 
   const formatFileSize = (bytes: number): string => {
@@ -59,7 +57,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  // 🆕 États pour l'enregistrement vocal (Toggle)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -70,7 +67,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Scroll infini
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const prevScrollHeightRef = useRef<number>(0)
@@ -109,7 +105,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     const token = localStorage.getItem('anku_token')
     socketRef.current = io(SOCKET_URL, { withCredentials: true, autoConnect: true, auth: { token } })
     const socket = socketRef.current
-
     socket.emit('conversation:join', { conversationId })
 
     socket.on('message:new', (msg: Message) => {
@@ -135,12 +130,9 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       setMessages(prev => prev.map(m => {
         if (m.id !== data.messageId) return m;
         const reactions = JSON.parse(JSON.stringify(m.reactions || {}));
-
         if (data.action === 'added') {
           if (!reactions[data.emoji]) reactions[data.emoji] = [];
-          if (!reactions[data.emoji].includes(data.userId)) {
-            reactions[data.emoji].push(data.userId);
-          }
+          if (!reactions[data.emoji].includes(data.userId)) reactions[data.emoji].push(data.userId);
         } else if (data.action === 'removed') {
           if (reactions[data.emoji]) {
             reactions[data.emoji] = reactions[data.emoji].filter((id: number) => id !== data.userId);
@@ -169,15 +161,12 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     if (isLoadingMoreRef.current || !hasMore) return
     const oldestId = messages[0]?.id
     if (!oldestId) return
-
     isLoadingMoreRef.current = true
     setIsLoadingMore(true)
     prevScrollHeightRef.current = scrollContainerRef.current?.scrollHeight ?? 0
-
     try {
       const res = await messagesApi.listMessages(conversationId, {
-        limit: PAGE_SIZE,
-        before_message_id: oldestId,
+        limit: PAGE_SIZE, before_message_id: oldestId,
       })
       if (res.messages.length < PAGE_SIZE) setHasMore(false)
       setMessages(prev => [...res.messages, ...prev])
@@ -195,7 +184,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   useLayoutEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
-
     if (prevScrollHeightRef.current > 0) {
       const prevHeight = prevScrollHeightRef.current
       const newHeight = container.scrollHeight
@@ -204,7 +192,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       isLoadingMoreRef.current = false
       return
     }
-
     const lastId = messages[messages.length - 1]?.id ?? null
     if (lastId !== null && lastId !== lastMessageIdRef.current) {
       lastMessageIdRef.current = lastId
@@ -218,17 +205,13 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     const sentinel = topSentinelRef.current
     const container = scrollContainerRef.current
     if (!sentinel || !container) return
-
     const observer = new IntersectionObserver(
       (entries) => {
         const { hasMore: hm, messagesLength: ml } = observerStateRef.current
-        if (entries[0].isIntersecting && hm && ml > 0) {
-          loadMoreRef.current()
-        }
+        if (entries[0].isIntersecting && hm && ml > 0) loadMoreRef.current()
       },
       { root: container, rootMargin: '200px' }
     )
-
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [])
@@ -237,22 +220,18 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     e?.preventDefault()
     const textToSend = contentText !== undefined ? contentText : inputText.trim()
     if (!textToSend && !mediaUrl) return
-
     const payload: any = { type, media_url: mediaUrl }
     if (textToSend) payload.content = textToSend
     if (replyToMessage) payload.reply_to_message_id = replyToMessage.id
-
     const tempId = Date.now()
     const optimisticMsg: Message = {
       id: tempId, conversation_id: conversationId, sender_id: currentUser?.id || 0,
       type, content: payload.content || '', media_url: mediaUrl || null,
       created_at: new Date().toISOString(), reply_to_message_id: replyToMessage?.id ?? null, edited_at: null, deleted_at: null, author: currentUser, reply_to_message: replyToMessage ? { id: replyToMessage.id, content: replyToMessage.content, type: replyToMessage.type, media_url: replyToMessage.media_url, deleted_at: replyToMessage.deleted_at, author: replyToMessage.author } : null,
     }
-
     setMessages(prev => [...prev, optimisticMsg])
     if (contentText === undefined) setInputText('')
     setReplyToMessage(null)
-
     try {
       const res = await messagesApi.sendMessage(conversationId, payload)
       setMessages(prev => prev.map(m => m.id === tempId ? res.message : m))
@@ -290,11 +269,9 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const handleReact = async (msgId: number, emoji: string) => {
     try {
       const res = await messagesApi.reactToMessage(msgId, emoji)
-
       setMessages(prev => prev.map(m => {
         if (m.id !== msgId) return m;
         const reactions = JSON.parse(JSON.stringify(m.reactions || {}));
-
         if (res.action === 'added') {
           if (!reactions[emoji]) reactions[emoji] = [];
           if (!reactions[emoji].includes(currentUser?.id)) reactions[emoji].push(currentUser?.id);
@@ -340,7 +317,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
   const confirmImagesSend = async () => {
     if (previewFiles.length === 0) return
     toast.loading(`Envoi de ${previewFiles.length} image(s)...`, { id: 'upload' })
-
     const uploadedUrls: string[] = []
     try {
       for (const file of previewFiles) {
@@ -349,7 +325,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       }
       const mediaUrlPayload = uploadedUrls.length === 1 ? uploadedUrls[0] : JSON.stringify(uploadedUrls)
       await handleSendMessage(undefined, mediaUrlPayload, 'image', captionText)
-
       setPreviewFiles([])
       setPreviewUrls([])
       setCaptionText('')
@@ -359,7 +334,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     }
   }
 
-  // 🆕 Prévisualisation Vidéo
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -375,7 +349,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
     setVideoCaption('')
   }
 
-  // 🆕 Envoi de fichiers (PDF, docs, zip...)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -417,31 +390,23 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       cancelVideoPreview()
       toast.success('Vidéo envoyée !', { id: 'video' })
     } catch (err) {
-      toast.error('Erreur vidéo (max 50MB, format mp4/webm)', { id: 'video' })
+      toast.error('Erreur vidéo', { id: 'video' })
     }
   }
 
-  // 🆕 Enregistrement vocal Toggle (1 clic = start, 1 clic = stop)
   const toggleRecording = async () => {
     if (isRecording) {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop()
-      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') mediaRecorderRef.current.stop()
       setIsRecording(false)
       clearInterval(recordingTimerRef.current)
       return
     }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data)
-      }
-
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mediaRecorder.onstop = async () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
         const file = new File([blob], 'vocal.webm', { type: 'audio/webm' })
@@ -455,17 +420,13 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         }
         stream.getTracks().forEach(track => track.stop())
       }
-
       mediaRecorder.start()
       setIsRecording(true)
       setRecordingTime(0)
-
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
           if (prev >= 59) {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-              mediaRecorderRef.current.stop()
-            }
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') mediaRecorderRef.current.stop()
             setIsRecording(false)
             clearInterval(recordingTimerRef.current)
             return 60
@@ -473,7 +434,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           return prev + 1
         })
       }, 1000)
-
     } catch (err) {
       toast.error('Impossible d’accéder au microphone')
     }
@@ -564,24 +524,15 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </div>
           {otherUser && (
             <div className="flex items-center gap-1 ml-2">
-              <button
-                onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'audio')}
-                className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition"
-                title="Appel vocal"
-              >
+              <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'audio')} className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition" title="Appel vocal">
                 <Phone size={18} />
               </button>
-              <button
-                onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'video')}
-                className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition"
-                title="Appel vidéo"
-              >
+              <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'video')} className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition" title="Appel vidéo">
                 <Video size={18} />
               </button>
             </div>
           )}
         </div>
-
         <div className="relative">
           <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition">
             <MoreVertical size={20} />
@@ -601,12 +552,8 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         <div ref={topSentinelRef} className="flex justify-center py-2 min-h-[1px]">
-          {isLoadingMore && (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600"></div>
-          )}
-          {!hasMore && messages.length > 0 && !isLoadingMore && (
-            <p className="text-xs text-gray-400 italic">Début de la conversation</p>
-          )}
+          {isLoadingMore && <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600"></div>}
+          {!hasMore && messages.length > 0 && !isLoadingMore && <p className="text-xs text-gray-400 italic">Début de la conversation</p>}
         </div>
 
         {messages.length === 0 && (
@@ -620,7 +567,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
 
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group relative`}>
-
               {!isDeleted && !isEditing && (
                 <div className={`absolute -top-8 ${isMe ? 'right-0' : 'left-0'} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white shadow-md border border-gray-100 rounded-full px-2 py-1 z-10`}>
                   <button onClick={() => setReplyToMessage(msg)} className="p-1 text-gray-500 hover:text-emerald-600" title="Répondre"><Reply size={14} /></button>
@@ -677,6 +623,37 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
                         </div>
                       </div>
                     )}
+
+                    {/* BULLE CALL */}
+                    {msg.type === 'call' && (() => {
+                      try {
+                        const callData = JSON.parse(msg.content)
+                        const isVideo = callData.callType === 'video'
+                        const status = callData.status
+                        const duration = callData.duration || 0
+                        const isMissed = status === 'missed' || status === 'rejected'
+                        const Icon = isVideo ? Video : Phone
+                        return (
+                          <div className={`flex items-center gap-2 mb-1 ${isMe ? 'text-white' : 'text-gray-800'}`}>
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isMissed ? 'bg-red-100 text-red-500' : (isMe ? 'bg-white/20' : 'bg-emerald-100 text-emerald-600')}`}>
+                              <Icon size={18} />
+                            </div>
+                            <div className="flex-1">
+                              <p className={`text-xs font-medium flex items-center gap-1 ${isMissed ? 'text-red-500' : ''}`}>
+                                {isMissed && <PhoneOff size={11} />}
+                                {isMissed ? 'Appel manqué' : `Appel ${isVideo ? 'vidéo' : 'vocal'} ${isMe ? 'émis' : 'reçu'}`}
+                              </p>
+                              <p className={`text-[10px] ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
+                                {duration > 0 ? `${Math.floor(duration / 60)}m${duration % 60}s` : 'Aucune réponse'}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      } catch {
+                        return <p className="text-xs italic">Message d'appel</p>
+                      }
+                    })()}
+
                     {msg.type === 'image' && msg.media_url && renderImages(msg.media_url)}
 
                     {msg.type === 'video' && msg.media_url && (
@@ -710,7 +687,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
                       </a>
                     )}
 
-                    {msg.content && <p className="text-sm">{msg.content}</p>}
+                    {msg.type !== 'call' && msg.content && <p className="text-sm">{msg.content}</p>}
 
                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
@@ -783,7 +760,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </div>
         )}
 
-        {/* Prévisualisation Images */}
         {previewUrls.length > 0 && (
           <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
             <div className="flex flex-col gap-3">
@@ -816,7 +792,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </div>
         )}
 
-        {/* 🆕 Prévisualisation Fichier */}
         {previewFile && (
           <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
             <div className="flex flex-col gap-3">
@@ -841,7 +816,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
             </div>
           </div>
         )}
-        {/* 🆕 Prévisualisation Vidéo */}
+
         {previewVideoUrl && (
           <div className="absolute bottom-full left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-emerald-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20">
             <div className="flex flex-col gap-3">
@@ -871,23 +846,18 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         )}
 
         <form onSubmit={handleSendMessage} className="flex items-center gap-1 bg-white border-2 border-emerald-100 rounded-3xl p-1.5 shadow-sm focus-within:border-emerald-400 transition-colors">
-
           <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer des images">
             <ImageIcon size={18} />
             <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
           </label>
-
           <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer une vidéo">
             <Video size={18} />
             <input type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
           </label>
-
           <label className="p-1.5 text-emerald-600 hover:text-emerald-800 cursor-pointer transition" title="Envoyer un fichier (PDF, doc, zip...)">
             <Paperclip size={18} />
             <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,.rar,.7z,.gz,.tar,application/*,text/*" className="hidden" onChange={handleFileSelect} />
           </label>
-
-          {/* 🆕 Bouton Vocal Toggle (Rouge si enregistrement) */}
           <button
             type="button"
             onClick={toggleRecording}
@@ -903,7 +873,6 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
               <Mic size={18} />
             )}
           </button>
-
           <input
             type="text"
             value={inputText}

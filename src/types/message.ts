@@ -10,14 +10,14 @@ export interface Message {
   id: number
   conversation_id: number
   sender_id: number
-  type: 'text' | 'image' | 'audio' | 'video' | 'file'
+  type: 'text' | 'image' | 'audio' | 'video' | 'file' | 'call'
   content: string
   media_url: string | null
   reply_to_message_id: number | null
   reply_to_message?: {
     id: number
     content: string
-    type: 'text' | 'image' | 'audio' | 'video' | 'file'
+    type: 'text' | 'image' | 'audio' | 'video' | 'file' | 'call'
     media_url: string | null
     deleted_at: string | null
     author?: MessageAuthor | null
@@ -77,7 +77,7 @@ export interface CreateConversationPayload {
 
 export interface SendMessagePayload {
   content?: string
-  type: 'text' | 'image' | 'audio' | 'video' | 'file'
+  type: 'text' | 'image' | 'audio' | 'video' | 'file' | 'call'
   media_url?: string
   reply_to_message_id?: number
 }

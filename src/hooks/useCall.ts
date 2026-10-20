@@ -198,12 +198,14 @@ export function useCall(currentUserId: number | null) {
   // REFUSER UN APPEL
   // ─────────────────────────────────────────
   const rejectCall = useCallback(() => {
-    const { callId, peerUserId } = callStateRef.current
+    const { callId, peerUserId, conversationId, callType } = callStateRef.current
     if (callId && peerUserId) {
       socketRef.current?.emit('call:reject', {
         callId,
         toUserId: peerUserId,
         reason: 'declined',
+        conversationId: conversationId ?? undefined,
+        callType,
       })
     }
     cleanup()
@@ -213,11 +215,15 @@ export function useCall(currentUserId: number | null) {
   // RACCROCHER
   // ─────────────────────────────────────────
   const hangup = useCallback(() => {
-    const { callId, peerUserId } = callStateRef.current
+    const { callId, peerUserId, conversationId, callType, startedAt } = callStateRef.current
+    const duration = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0
     if (callId && peerUserId) {
       socketRef.current?.emit('call:hangup', {
         callId,
         toUserId: peerUserId,
+        conversationId: conversationId ?? undefined,
+        callType,
+        duration,
       })
     }
     cleanup()
@@ -454,15 +460,17 @@ export function useCall(currentUserId: number | null) {
       }
     }
 
-    const onHangup = () => {
+    const onHangup = (data?: { reason?: string }) => {
       // ⚡ Si on attend la relance vidéo, on ignore le hangup (transition silencieuse)
       if (expectingVideoCallRef.current) {
-        // On NE cleanup PAS → on garde le PC prêt
-        // On affiche un petit loader
         toast.loading('Passage en vidéo...', { id: 'video-connect', duration: 5000 })
         return
       }
-      toast('Appel terminé', { icon: '📴' })
+      if (data?.reason === 'missed') {
+        toast('Appel manqué (pas de réponse)', { icon: '📞' })
+      } else {
+        toast('Appel terminé', { icon: '📴' })
+      }
       cleanup()
     }
 
