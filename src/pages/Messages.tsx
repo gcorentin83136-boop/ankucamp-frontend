@@ -5,6 +5,8 @@ import { MessageSquare, Search, Loader, Trash2, Phone, Video } from 'lucide-reac
 import messagesApi from '../service/api/messages.api'
 import type { Conversation } from '../types/message'
 import ChatWindow from '../components/chat/ChatWindow'
+import { useCallContext } from '../context/CallContext'
+import { useAuthStore } from '../context/AuthContext'
 import AppHeader from '../components/layout/AppHeader'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
@@ -14,6 +16,9 @@ type Tab = 'messages' | 'calls'
 export default function Messages() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeId = searchParams.get('c') ? Number(searchParams.get('c')) : null
+  const call = useCallContext()
+  const auth = useAuthStore()
+  const currentUser = (auth as any)?.user
 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
@@ -145,13 +150,53 @@ export default function Messages() {
                       <div className="flex-1 min-w-0 pr-6">
                         <div className="flex items-center justify-between">
                           <p className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{conv.name}</p>
-                          {conv.last_message_at && <span className={`text-[10px] ${hasUnread ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>{new Date(conv.last_message_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
+                          {conv.last_message_at && (
+                            <span
+                              className={`text-[10px] shrink-0 ml-2 transition-opacity duration-200 opacity-0 md:opacity-100 md:group-hover:opacity-0 ${
+                                hasUnread ? 'text-emerald-600 font-bold' : 'text-gray-400'
+                              }`}
+                            >
+                              {new Date(conv.last_message_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center justify-between mt-0.5">
                           <p className={`text-xs truncate pr-2 ${hasUnread ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>{conv.last_message_preview || 'Nouvelle conversation'}</p>
                           {hasUnread && <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm" style={{ background: ANKU.green }}>{conv.unread_count}</span>}
                         </div>
                       </div>
+
+                      {/* 🆕 Boutons d'appel (hover desktop, toujours visible mobile) */}
+                      {(() => {
+                        const other = conv.participants?.find(
+                          (p: any) => p.user_id !== currentUser?.id
+                        )
+                        if (!other) return null
+                        return (
+                          <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                call.startCall(conv.id, other.user_id, other.first_name + ' ' + other.last_name, other.avatar_url ?? null, 'audio')
+                              }}
+                              className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-sm"
+                              title="Appel vocal"
+                            >
+                              <Phone size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                call.startCall(conv.id, other.user_id, other.first_name + ' ' + other.last_name, other.avatar_url ?? null, 'video')
+                              }}
+                              className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-sm"
+                              title="Appel vidéo"
+                            >
+                              <Video size={14} />
+                            </button>
+                          </div>
+                        )
+                      })()}
 
                       <button
                         onClick={(e) => handleDeleteConv(e, conv.id)}

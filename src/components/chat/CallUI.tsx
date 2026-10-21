@@ -104,6 +104,20 @@ export default function CallUI() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+  // 📳 Vibration mobile pendant les appels entrants (Android uniquement)
+  useEffect(() => {
+    if (callState.status !== 'incoming') return
+    if (typeof navigator === 'undefined' || !navigator.vibrate) return
+
+    const pattern = [400, 200, 400, 200]
+    navigator.vibrate(pattern)
+    const interval = setInterval(() => navigator.vibrate(pattern), 1200)
+
+    return () => {
+      clearInterval(interval)
+      navigator.vibrate(0)
+    }
+  }, [callState.status])
   if (callState.status === 'idle') return null
 
   // APPEL ENTRANT
