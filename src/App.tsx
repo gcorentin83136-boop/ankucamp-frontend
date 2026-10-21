@@ -70,6 +70,7 @@ import Cart from './pages/Cart'
 import Orders from './pages/Orders'
 import Wishlist from './pages/Wishlist'
 import Events from './pages/Events'
+import ArticlesFeed from './pages/ArticlesFeed'
 import ShopsList from './pages/Shops/List'
 import ShopDetail from './pages/Shops/Detail'
 import ProductDetail from './pages/Products/Detail'
@@ -197,7 +198,7 @@ function App() {
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
 
-      <Route path="/events" element={<Events />} />
+      <Route path="/articles" element={<ArticlesFeed />} />`n      <Route path="/events" element={<Events />} />
       <Route path="/shops" element={<ShopsList />} />
       <Route path="/shops/:id" element={<ShopDetail />} />
       <Route path="/products/:id" element={<ProductDetail />} />
