@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Mail, Bell, CheckCircle2, MessageSquare } from 'lucide-react'
+import {
+  Mail,
+  Bell,
+  CheckCircle2,
+  MessageSquare,
+  Music,
+} from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsToggle from '../../components/settings/SettingsToggle'
 import notificationsApi from '../../service/api/settings/notifications.api'
-import type { NotificationSettings } from '../../types/settings'
+import type {
+  NotificationSettings,
+  CallRingtone,
+} from '../../types/settings'
 
 // ============================================================
 // Helper : toast unifié
@@ -35,6 +44,15 @@ const PUSH_LABELS: Record<string, string> = {
   new_messages: 'Nouveaux messages (push)',
   social_activity: 'Activité sociale (push)',
 }
+
+const RINGTONE_OPTIONS: { value: CallRingtone; label: string }[] = [
+  { value: 'nature', label: '🌿 Nature ANKU (par défaut)' },
+  { value: 'classic', label: '📞 Classique' },
+  { value: 'silent', label: '🔇 Silencieux' },
+]
+
+const selectCls =
+  'w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-emerald-400 focus:bg-white transition appearance-none cursor-pointer'
 
 export default function NotificationsSettings() {
   const [loading, setLoading] = useState(true)
@@ -72,7 +90,6 @@ export default function NotificationsSettings() {
         [`email_${key}`]: next.email[key],
       } as any)
       setSettings(res.notifications)
-
       toastOk(
         `${EMAIL_LABELS[key] ?? key} : ${next.email[key] ? 'activé' : 'désactivé'}`
       )
@@ -98,10 +115,30 @@ export default function NotificationsSettings() {
         [`push_${key}`]: next.push[key],
       } as any)
       setSettings(res.notifications)
-
       toastOk(
         `${PUSH_LABELS[key] ?? key} : ${next.push[key] ? 'activé' : 'désactivé'}`
       )
+    } catch (err: any) {
+      setSettings(previous)
+      toast.error(err?.response?.data?.message || 'Erreur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateMessaging = async (patch: Partial<NotificationSettings['messaging']>) => {
+    if (!settings) return
+    const previous = settings
+    const next = {
+      ...settings,
+      messaging: { ...settings.messaging, ...patch },
+    }
+    setSettings(next)
+    setSaving(true)
+    try {
+      const res = await notificationsApi.updateAll(patch as any)
+      setSettings(res.notifications)
+      toastOk('Préférences messagerie mises à jour')
     } catch (err: any) {
       setSettings(previous)
       toast.error(err?.response?.data?.message || 'Erreur')
@@ -128,6 +165,45 @@ export default function NotificationsSettings() {
           onChange={toggleChatBubble}
         />
       </SettingsSection>
+
+      {/* 🆕 Notifications messagerie */}
+      <SettingsSection
+        title="Messagerie"
+        description="Sons et sonneries pour la messagerie et les appels"
+        icon={<Music size={18} />}
+      >
+        <SettingsToggle
+          label="Sonnerie des messages"
+          description="Joue un son court à chaque nouveau message reçu"
+          checked={settings.messaging.notification_sound}
+          onChange={(v) => updateMessaging({ notification_sound: v })}
+          disabled={saving}
+        />
+
+        <div className="pt-3 mt-3 border-t border-gray-100">
+          <label className="block text-sm font-medium text-gray-800 mb-2">
+            Sonnerie d'appel
+          </label>
+          <select
+            value={settings.messaging.call_ringtone}
+            onChange={(e) =>
+              updateMessaging({ call_ringtone: e.target.value as CallRingtone })
+            }
+            disabled={saving}
+            className={selectCls}
+          >
+            {RINGTONE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1.5">
+            Sonnerie jouée pendant les appels entrants (vocal et vidéo)
+          </p>
+        </div>
+      </SettingsSection>
+
       <SettingsSection
         title="Notifications par email"
         description="Choisis les emails que tu veux recevoir"
@@ -142,14 +218,14 @@ export default function NotificationsSettings() {
         />
         <SettingsToggle
           label="Nouveaux messages"
-          description="Reçois un email quand on t’envoie un message"
+          description="Reçois un email quand on t'envoie un message"
           checked={settings.email.new_messages}
           onChange={() => updateEmail('new_messages')}
           disabled={saving}
         />
         <SettingsToggle
           label="Activité sociale"
-          description="Likes, commentaires, demandes d’amis"
+          description="Likes, commentaires, demandes d'amis"
           checked={settings.email.social_activity}
           onChange={() => updateEmail('social_activity')}
           disabled={saving}

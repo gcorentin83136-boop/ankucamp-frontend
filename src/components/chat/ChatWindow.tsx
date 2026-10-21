@@ -524,10 +524,10 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           </div>
           {otherUser && (
             <div className="flex items-center gap-1 ml-2">
-              <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'audio')} className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition" title="Appel vocal">
+              <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, otherUser.avatar_url ?? null, 'audio')} className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition" title="Appel vocal">
                 <Phone size={18} />
               </button>
-              <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'video')} className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition" title="Appel vidéo">
+              <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, otherUser.avatar_url ?? null, 'video')} className="p-2 rounded-full text-emerald-600 hover:bg-emerald-100 transition" title="Appel vidéo">
                 <Video size={18} />
               </button>
             </div>
@@ -732,10 +732,10 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         </button>
         {otherUser && (
           <>
-            <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'audio')} className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-emerald-500 text-white shadow-md hover:scale-110 transition" title="Appel vocal">
+            <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, otherUser.avatar_url ?? null, 'audio')} className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-emerald-500 text-white shadow-md hover:scale-110 transition" title="Appel vocal">
               <Phone size={18} />
             </button>
-            <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, 'video')} className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-emerald-600 text-white shadow-md hover:scale-110 transition" title="Appel vidéo">
+            <button onClick={() => call.startCall(conversationId, otherUser.user_id, `${otherUser.first_name} ${otherUser.last_name}`, otherUser.avatar_url ?? null, 'video')} className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-emerald-600 text-white shadow-md hover:scale-110 transition" title="Appel vidéo">
               <Video size={18} />
             </button>
           </>

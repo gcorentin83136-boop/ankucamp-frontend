@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, X } from 'lucide-react'
 import { useCallContext } from '../../context/CallContext'
 
@@ -20,6 +20,7 @@ export default function CallUI() {
 
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const [callDuration, setCallDuration] = useState(0)
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -30,9 +31,7 @@ export default function CallUI() {
     }
   }, [localStream, remoteStream])
 
-
-  // 🎵 Sonnerie d'appel entrant — Carillon "nature ANKU"
-  // Mélodie douce en 3 notes (do-mi-sol) façon chant d'oiseau
+  // 🎵 Sonneries d'appel entrant — différenciées audio vs vidéo
   useEffect(() => {
     if (callState.status !== 'incoming') return
 
@@ -40,51 +39,71 @@ export default function CallUI() {
     if (!AudioCtx) return
 
     const audioContext = new AudioCtx()
+    const isVideo = callState.callType === 'video'
 
-    // Joue une note douce avec un léger vibrato (comme une clochette)
-    const playNote = (freq: number, startTime: number, duration: number) => {
+    const playNote = (freq: number, startTime: number, duration: number, volume = 0.15) => {
       try {
         const osc = audioContext.createOscillator()
         const gain = audioContext.createGain()
-
-        // Triangle wave = plus doux que sine, évoque une flûte
         osc.type = 'triangle'
         osc.frequency.setValueAtTime(freq, startTime)
-
-        // Enveloppe douce : attaque progressive + fade out
         gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.15, startTime + 0.05)
+        gain.gain.linearRampToValueAtTime(volume, startTime + 0.05)
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
-
         osc.connect(gain)
         gain.connect(audioContext.destination)
-
         osc.start(startTime)
         osc.stop(startTime + duration)
       } catch {}
     }
 
-    // Mélodie "nature" : do - mi - sol - mi (arpège qui monte puis descend)
-    // Fréquences en Hz : C5=523, E5=659, G5=784
     const playMelody = () => {
       try {
         const now = audioContext.currentTime
-        playNote(523, now + 0.0, 0.4)      // Do
-        playNote(659, now + 0.25, 0.4)     // Mi
-        playNote(784, now + 0.5, 0.5)      // Sol
-        playNote(659, now + 0.85, 0.6)     // Mi (redescend)
+        if (isVideo) {
+          playNote(523, now + 0.0, 0.35)
+          playNote(659, now + 0.2, 0.35)
+          playNote(784, now + 0.4, 0.4)
+          playNote(1047, now + 0.7, 0.4)
+          playNote(784, now + 1.0, 0.5)
+        } else {
+          playNote(523, now + 0.0, 0.4)
+          playNote(659, now + 0.25, 0.4)
+          playNote(784, now + 0.5, 0.5)
+          playNote(659, now + 0.85, 0.6)
+        }
       } catch {}
     }
 
-    // Joue la mélodie toutes les 3 secondes
     playMelody()
-    const interval = setInterval(playMelody, 3000)
+    const interval = setInterval(playMelody, isVideo ? 3500 : 3000)
 
     return () => {
       clearInterval(interval)
       try { audioContext.close() } catch {}
     }
-  }, [callState.status])
+  }, [callState.status, callState.callType])
+
+  // ⏱️ Chrono de durée d'appel
+  useEffect(() => {
+    if (callState.status !== 'ongoing' || !callState.startedAt) {
+      setCallDuration(0)
+      return
+    }
+    const update = () => {
+      setCallDuration(Math.floor((Date.now() - callState.startedAt!) / 1000))
+    }
+    update()
+    const interval = setInterval(update, 1000)
+    return () => clearInterval(interval)
+  }, [callState.status, callState.startedAt])
+
+  const formatDuration = (sec: number) => {
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
   if (callState.status === 'idle') return null
 
   // APPEL ENTRANT
@@ -92,8 +111,12 @@ export default function CallUI() {
     return (
       <div className="fixed inset-0 z-[10001] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6">
         <div className="flex flex-col items-center gap-6 animate-pulse">
-          <div className="w-28 h-28 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-white text-4xl font-bold shadow-2xl">
-            {callState.peerName?.[0]?.toUpperCase() ?? '?'}
+          <div className="w-28 h-28 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-white text-4xl font-bold shadow-2xl overflow-hidden">
+            {callState.peerAvatar ? (
+              <img src={callState.peerAvatar} alt={callState.peerName} className="w-full h-full object-cover" />
+            ) : (
+              callState.peerName?.[0]?.toUpperCase() ?? '?'
+            )}
           </div>
           <div className="text-center">
             <p className="text-white text-2xl font-bold">{callState.peerName}</p>
@@ -122,8 +145,12 @@ export default function CallUI() {
           <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-contain" />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-white gap-4">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-5xl font-bold shadow-2xl">
-              {callState.peerName?.[0]?.toUpperCase() ?? '?'}
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-5xl font-bold shadow-2xl overflow-hidden">
+              {callState.peerAvatar ? (
+                <img src={callState.peerAvatar} alt={callState.peerName} className="w-full h-full object-cover" />
+              ) : (
+                callState.peerName?.[0]?.toUpperCase() ?? '?'
+              )}
             </div>
             <p className="text-2xl font-bold">{callState.peerName}</p>
             <p className="text-white/60 text-sm">
@@ -141,6 +168,13 @@ export default function CallUI() {
         <button onClick={hangup} className="absolute top-4 left-4 z-10 p-2 bg-black/60 hover:bg-black/80 rounded-full text-white" title="Raccrocher">
           <X size={20} />
         </button>
+
+        {/* ⏱️ Chrono de durée */}
+        {callState.status === 'ongoing' && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-white text-sm font-mono tabular-nums">
+            {formatDuration(callDuration)}
+          </div>
+        )}
       </div>
 
       {/* Overlay demande vidéo entrante */}

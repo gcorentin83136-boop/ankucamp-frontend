@@ -20,6 +20,7 @@ export interface CallState {
   conversationId: number | null
   peerUserId: number | null
   peerName: string
+  peerAvatar: string | null
   isIncoming: boolean
   videoEnabled: boolean
   audioEnabled: boolean
@@ -33,6 +34,7 @@ const initialCallState: CallState = {
   conversationId: null,
   peerUserId: null,
   peerName: '',
+  peerAvatar: null,
   isIncoming: false,
   videoEnabled: false,
   audioEnabled: true,
@@ -141,7 +143,7 @@ export function useCall(currentUserId: number | null) {
   // DÉMARRER UN APPEL
   // ─────────────────────────────────────────
   const startCall = useCallback(
-    async (conversationId: number, toUserId: number, toUserName: string, type: CallType) => {
+    async (conversationId: number, toUserId: number, toUserName: string, toUserAvatar: string | null, type: CallType) => {
       try {
         await getLocalMedia(type)
         setCallState({
@@ -151,6 +153,7 @@ export function useCall(currentUserId: number | null) {
           conversationId,
           peerUserId: toUserId,
           peerName: toUserName,
+          peerAvatar: toUserAvatar,
           isIncoming: false,
           videoEnabled: type === 'video',
           audioEnabled: true,
@@ -354,6 +357,7 @@ export function useCall(currentUserId: number | null) {
             conversationId: data.conversationId,
             peerUserId: data.fromUser.id,
             peerName: data.fromUser.firstName,
+            peerAvatar: data.fromUser.avatarUrl ?? null,
             isIncoming: false,
             videoEnabled: true,
             audioEnabled: true,
@@ -389,6 +393,7 @@ export function useCall(currentUserId: number | null) {
         conversationId: data.conversationId,
         peerUserId: data.fromUser.id,
         peerName: data.fromUser.firstName,
+        peerAvatar: data.fromUser.avatarUrl ?? null,
         isIncoming: true,
         videoEnabled: false,
         audioEnabled: true,
@@ -522,7 +527,7 @@ export function useCall(currentUserId: number | null) {
         setCallState(initialCallState)
 
         // 5) Relance appel vidéo
-        await startCall(conversationId, peerUserId, peerName, 'video')
+        await startCall(conversationId, peerUserId, peerName, callStateRef.current.peerAvatar, 'video')
       } catch (err) {
         console.error('[CALL] onVideoAccepted error', err)
         toast.error('Impossible de relancer en vidéo')

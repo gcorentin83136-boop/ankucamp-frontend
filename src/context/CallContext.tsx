@@ -9,7 +9,7 @@ interface CallContextValue {
   videoRequest: 'incoming' | 'sent' | null
   remoteStream: MediaStream | null
   localStream: MediaStream | null
-  startCall: (conversationId: number, toUserId: number, toUserName: string, type: 'audio' | 'video') => Promise<void>
+  startCall: (conversationId: number, toUserId: number, toUserName: string, toUserAvatar: string | null, type: 'audio' | 'video') => Promise<void>
   acceptCall: () => Promise<void>
   rejectCall: () => void
   hangup: () => void

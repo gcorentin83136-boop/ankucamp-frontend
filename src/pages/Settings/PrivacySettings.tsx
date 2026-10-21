@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Eye, MessageSquare, Search, Ban, ShieldOff, ChevronRight } from 'lucide-react'
+import {
+  Eye,
+  MessageSquare,
+  Search,
+  Ban,
+  ShieldOff,
+  ChevronRight,
+  Clock,
+  Phone,
+  MessageCircle,
+} from 'lucide-react'
 import SettingsSection from '../../components/settings/SettingsSection'
 import SettingsToggle from '../../components/settings/SettingsToggle'
 import privacyApi from '../../service/api/settings/privacy.api'
@@ -9,6 +19,8 @@ import type {
   PrivacySettings as PrivacySettingsType,
   ProfileVisibility,
   AllowMessagesFrom,
+  OnlineStatusVisibility,
+  CallPermissions,
 } from '../../types/settings'
 
 const selectCls =
@@ -21,6 +33,18 @@ const visibilityOptions: { value: ProfileVisibility; label: string }[] = [
 ]
 
 const messagesOptions: { value: AllowMessagesFrom; label: string }[] = [
+  { value: 'everyone', label: 'Tout le monde' },
+  { value: 'friends', label: 'Amis uniquement' },
+  { value: 'nobody', label: 'Personne' },
+]
+
+const onlineStatusOptions: { value: OnlineStatusVisibility; label: string }[] = [
+  { value: 'everyone', label: 'Tout le monde' },
+  { value: 'friends', label: 'Amis uniquement' },
+  { value: 'nobody', label: 'Personne' },
+]
+
+const callPermissionsOptions: { value: CallPermissions; label: string }[] = [
   { value: 'everyone', label: 'Tout le monde' },
   { value: 'friends', label: 'Amis uniquement' },
   { value: 'nobody', label: 'Personne' },
@@ -86,7 +110,7 @@ export default function PrivacySettings() {
 
       <SettingsSection
         title="Messages privés"
-        description="Qui peut t’envoyer un message ?"
+        description="Qui peut t'envoyer un message ?"
         icon={<MessageSquare size={18} />}
       >
         <select
@@ -98,6 +122,74 @@ export default function PrivacySettings() {
           className={selectCls}
         >
           {messagesOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </SettingsSection>
+
+      {/* 🆕 Messages avancés */}
+      <SettingsSection
+        title="Messages avancés"
+        description="Contrôle les indicateurs visibles dans la messagerie"
+        icon={<MessageCircle size={18} />}
+      >
+        <SettingsToggle
+          label="Accusés de lecture"
+          description="Affiche le double-check bleu quand tu lis un message. Si désactivé, tu ne vois pas non plus les accusés des autres."
+          checked={settings.read_receipts}
+          onChange={(v) => update({ read_receipts: v })}
+          disabled={saving}
+        />
+        <SettingsToggle
+          label="Indicateur de frappe"
+          description="Affiche « en train d'écrire… » aux autres quand tu rédiges un message."
+          checked={settings.typing_indicator}
+          onChange={(v) => update({ typing_indicator: v })}
+          disabled={saving}
+        />
+      </SettingsSection>
+
+      {/* 🆕 Statut en ligne */}
+      <SettingsSection
+        title="Statut en ligne"
+        description="Qui peut voir que tu es connecté ?"
+        icon={<Clock size={18} />}
+      >
+        <select
+          value={settings.online_status_visibility}
+          onChange={(e) =>
+            update({
+              online_status_visibility: e.target.value as OnlineStatusVisibility,
+            })
+          }
+          disabled={saving}
+          className={selectCls}
+        >
+          {onlineStatusOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </SettingsSection>
+
+      {/* 🆕 Appels entrants */}
+      <SettingsSection
+        title="Appels entrants"
+        description="Qui peut t'appeler (vocal ou vidéo) ?"
+        icon={<Phone size={18} />}
+      >
+        <select
+          value={settings.call_permissions}
+          onChange={(e) =>
+            update({ call_permissions: e.target.value as CallPermissions })
+          }
+          disabled={saving}
+          className={selectCls}
+        >
+          {callPermissionsOptions.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -132,10 +224,6 @@ export default function PrivacySettings() {
           disabled={saving}
         />
       </SettingsSection>
-
-      {/* ============================================================ */}
-      {/* GESTION DES COMPTES BLOQUÉS / RESTREINTS                     */}
-      {/* ============================================================ */}
 
       <SettingsSection
         title="Comptes bloqués"

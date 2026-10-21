@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // ANKU — Types des paramètres utilisateur
 // ============================================================
 
@@ -76,21 +76,50 @@ export interface ActiveSession {
 // ------------------------------------------------------------
 export type ProfileVisibility = 'public' | 'friends' | 'private'
 export type AllowMessagesFrom = 'everyone' | 'friends' | 'nobody'
+export type OnlineStatusVisibility = 'everyone' | 'friends' | 'nobody'
+export type CallPermissions = 'everyone' | 'friends' | 'nobody'
+export type CallRingtone = 'nature' | 'classic' | 'silent'
 
 export interface PrivacySettings {
+  // Profil
   profile_visibility: ProfileVisibility
-  allow_messages_from: AllowMessagesFrom
   show_email: boolean
   show_phone: boolean
   search_indexable: boolean
+
+  // Messagerie
+  allow_messages_from: AllowMessagesFrom
+
+  // 🆕 Messagerie avancée
+  read_receipts: boolean
+  online_status_visibility: OnlineStatusVisibility
+  typing_indicator: boolean
+  call_permissions: CallPermissions
+
+  // 🆕 Notifications messagerie
+  notification_sound: boolean
+  call_ringtone: CallRingtone
 }
 
 export interface UpdatePrivacyPayload {
+  // Profil
   profile_visibility?: ProfileVisibility
-  allow_messages_from?: AllowMessagesFrom
   show_email?: boolean
   show_phone?: boolean
   search_indexable?: boolean
+
+  // Messagerie
+  allow_messages_from?: AllowMessagesFrom
+
+  // 🆕 Messagerie avancée
+  read_receipts?: boolean
+  online_status_visibility?: OnlineStatusVisibility
+  typing_indicator?: boolean
+  call_permissions?: CallPermissions
+
+  // 🆕 Notifications messagerie
+  notification_sound?: boolean
+  call_ringtone?: CallRingtone
 }
 
 // ------------------------------------------------------------
@@ -109,9 +138,16 @@ export interface NotificationPushPrefs {
   social_activity: boolean
 }
 
+// 🆕 Préférences messagerie (sonnerie, sonnerie appel)
+export interface NotificationMessagingPrefs {
+  notification_sound: boolean
+  call_ringtone: CallRingtone
+}
+
 export interface NotificationSettings {
   email: NotificationEmailPrefs
   push: NotificationPushPrefs
+  messaging: NotificationMessagingPrefs
 }
 
 export interface UpdateNotificationsPayload {
@@ -122,6 +158,8 @@ export interface UpdateNotificationsPayload {
   push_order_updates?: boolean
   push_new_messages?: boolean
   push_social_activity?: boolean
+  notification_sound?: boolean
+  call_ringtone?: CallRingtone
 }
 
 // ------------------------------------------------------------
