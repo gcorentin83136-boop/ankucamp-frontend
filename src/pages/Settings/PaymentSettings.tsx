@@ -115,7 +115,7 @@ export default function PaymentSettings() {
     try {
       const res = await paymentsApi.connectStatus()
       setStatus(res)
-    } catch {
+    } catch (err: any) {
       // 404 si jamais le user n'a pas de compte â†’ on met un faux status "not_connected"
       setStatus({
         success: false,
@@ -174,7 +174,7 @@ export default function PaymentSettings() {
       const res = await paymentsApi.connectOnboard()
       toast.success('Redirection vers Stripeâ€¦')
       window.location.href = res.onboarding_url
-    } catch {
+    } catch (err: any) {
       toast.error(
         err?.response?.data?.message ||
           'Impossible de crÃ©er le lien Stripe Connect'
@@ -190,7 +190,7 @@ export default function PaymentSettings() {
       toast.success('Compte Stripe dÃ©connectÃ© âœ…')
       setShowDisconnectConfirm(false)
       await loadStatus()
-    } catch {
+    } catch (err: any) {
       toast.error(
         err?.response?.data?.message || 'Erreur lors de la dÃ©connexion'
       )
@@ -204,7 +204,7 @@ export default function PaymentSettings() {
     try {
       const res = await paymentsApi.listPaymentMethods()
       setCards(res.payment_methods)
-    } catch {
+    } catch (err: any) {
       toast.error(
         err?.response?.data?.message || 'Impossible de charger les cartes'
       )
@@ -220,7 +220,7 @@ export default function PaymentSettings() {
       await paymentsApi.deletePaymentMethod(id)
       toast.success('Carte supprimÃ©e âœ…')
       setCards((prev) => prev.filter((c) => c.id !== id))
-    } catch {
+    } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
     } finally {
       setDeletingCardId(null)
@@ -561,5 +561,6 @@ export default function PaymentSettings() {
     </div>
   )
 }
+
 
 

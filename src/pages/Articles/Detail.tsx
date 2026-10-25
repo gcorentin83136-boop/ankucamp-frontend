@@ -78,7 +78,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
     try {
       const res = await articlesApi.uploadCover(file);
       setReplyMediaUrl(res.url);
-    } catch {
+    } catch (err: any) {
       toast.error("Erreur lors de l'upload");
     } finally {
       setUploading(false);
@@ -252,7 +252,7 @@ export default function ArticleDetail() {
           const commentsRes = await commentsApi.listByArticle(res.article.id)
           if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
         }
-      } catch {
+      } catch (err: any) {
         toast.error('Article introuvable.')
         navigate('/articles')
       } finally { setLoading(false) }
@@ -291,7 +291,7 @@ export default function ArticleDetail() {
     try {
       const res = await articlesApi.like(article.id)
       setArticle(prev => prev ? { ...prev, liked_by_me: res.liked, likes_count: res.liked ? prev.likes_count + 1 : prev.likes_count - 1 } : null)
-    } catch { toast.error('Erreur lors du like.') } finally { setLiking(false) }
+    } catch (err: any) { toast.error('Erreur lors du like.') } finally { setLiking(false) }
   }
 
   const handleReactComment = async (commentId: number, emoji: string) => {
@@ -301,7 +301,7 @@ export default function ArticleDetail() {
         const commentsRes = await commentsApi.listByArticle(article.id)
         if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
       }
-    } catch { toast.error('Erreur lors de la rÃ©action') }
+    } catch (err: any) { toast.error('Erreur lors de la rÃ©action') }
   }
 
   const handleReplySubmit = async (parentId: number, content: string, mediaUrl?: string) => {
@@ -311,7 +311,7 @@ export default function ArticleDetail() {
       const commentsRes = await commentsApi.listByArticle(article.id)
       if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
       toast.success('RÃ©ponse ajoutÃ©e !')
-    } catch {
+    } catch (err: any) {
       toast.error(err?.response?.data?.message || "Erreur")
       throw err
     }
@@ -330,7 +330,7 @@ export default function ArticleDetail() {
       const res = await articlesApi.uploadCover(file)
       setCommentMediaUrl(res.url)
       toast.success('Image ajoutÃ©e âœ…')
-    } catch { toast.error("Erreur lors de l'upload") } finally {
+    } catch (err: any) { toast.error("Erreur lors de l'upload") } finally {
       setUploadingMedia(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -349,7 +349,7 @@ export default function ArticleDetail() {
         toast.success('Commentaire ajoutÃ© !')
         setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
       }
-    } catch { toast.error(err?.response?.data?.message || "Erreur") } finally { setPostingComment(false) }
+    } catch (err: any) { toast.error(err?.response?.data?.message || "Erreur") } finally { setPostingComment(false) }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader size={32} className="animate-spin text-emerald-500" /></div>
@@ -533,4 +533,5 @@ export default function ArticleDetail() {
     </div>
   )
 }
+
 
