@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   MessageCircle,
@@ -7,7 +7,7 @@ import {
   Image as ImageIcon,
   X,
 } from 'lucide-react'
-import commentsApi from '../../service/api/comments.api'
+import { commentsApi } from '../../service/api/comments.api'
 import type { Comment } from '../../types/comment'
 import CommentItem from './CommentItem'
 import EmojiPicker from './EmojiPicker'

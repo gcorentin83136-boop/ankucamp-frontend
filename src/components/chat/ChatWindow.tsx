@@ -92,7 +92,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         setMessages(msgsRes.messages)
         setHasMore(msgsRes.messages.length >= PAGE_SIZE)
         messagesApi.markAsRead(conversationId)
-      } catch (err) {
+      } catch {
         toast.error('Erreur chargement du chat')
       } finally {
         setLoading(false)
@@ -236,7 +236,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       const res = await messagesApi.sendMessage(conversationId, payload)
       setMessages(prev => prev.map(m => m.id === tempId ? res.message : m))
       socketRef.current?.emit('typing:stop', { conversationId })
-    } catch (err: any) {
+    } catch {
       setMessages(prev => prev.filter(m => m.id !== tempId))
       toast.error(err?.response?.data?.message || "Impossible d'envoyer le message")
     }
@@ -249,7 +249,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       setMessages(prev => prev.map(m => m.id === msgId ? res.message : m))
       socketRef.current?.emit('message:edit', { messageId: msgId, content: editContent })
       setEditingMessageId(null)
-    } catch (err: any) {
+    } catch {
       toast.error(err?.response?.data?.message || "Erreur d'édition")
     }
   }
@@ -261,7 +261,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted_at: new Date().toISOString() } : m))
       socketRef.current?.emit('message:delete', { messageId: msgId })
       toast.success('Message supprimé')
-    } catch (err: any) {
+    } catch {
       toast.error(err?.response?.data?.message || "Erreur de suppression")
     }
   }
@@ -284,7 +284,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         return { ...m, reactions };
       }))
       setShowReactionPicker(null)
-    } catch (err) {
+    } catch {
       toast.error("Erreur d'envoi de la réaction")
     }
   }
@@ -329,7 +329,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       setPreviewUrls([])
       setCaptionText('')
       toast.success('Image(s) envoyée(s) !', { id: 'upload' })
-    } catch (err) {
+    } catch {
       toast.error("Erreur d'envoi d'une image", { id: 'upload' })
     }
   }
@@ -376,7 +376,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       await handleSendMessage(undefined, res.url, 'file', previewFile.name)
       setPreviewFile(null)
       toast.success('Fichier envoyé !', { id: 'file' })
-    } catch (err: any) {
+    } catch {
       toast.error(err?.response?.data?.message || "Erreur d'envoi du fichier", { id: 'file' })
     }
   }
@@ -389,7 +389,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       await handleSendMessage(undefined, res.url, 'video', videoCaption)
       cancelVideoPreview()
       toast.success('Vidéo envoyée !', { id: 'video' })
-    } catch (err) {
+    } catch {
       toast.error('Erreur vidéo', { id: 'video' })
     }
   }
@@ -415,7 +415,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           const res = await messagesApi.uploadChatMedia(file)
           await handleSendMessage(undefined, res.url, 'audio')
           toast.success('Vocal envoyé !', { id: 'vocal' })
-        } catch (err) {
+        } catch {
           toast.error("Erreur d'envoi du vocal", { id: 'vocal' })
         }
         stream.getTracks().forEach(track => track.stop())
@@ -434,7 +434,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
           return prev + 1
         })
       }, 1000)
-    } catch (err) {
+    } catch {
       toast.error('Impossible d’accéder au microphone')
     }
   }
@@ -447,7 +447,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
       window.dispatchEvent(new Event('refresh-conversations'))
       if (onCloseMobile) onCloseMobile()
       else navigate('/messages')
-    } catch (err: any) {
+    } catch {
       toast.error(err?.response?.data?.message || 'Erreur lors de la suppression')
     }
   }
@@ -463,7 +463,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         if (onCloseMobile) onCloseMobile()
         else navigate('/messages')
       }
-    } catch (err: any) {
+    } catch {
       if (err?.response?.status === 409) toast('Déjà bloqué', { icon: 'ℹ️' })
       else toast.error('Erreur lors du blocage')
     }
@@ -479,7 +479,7 @@ export default function ChatWindow({ conversationId, onCloseMobile, hideHeader =
         setShowReportModal(false)
         setReportReason('')
       }
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors du signalement')
     }
   }

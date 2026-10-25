@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import {
   Reply,
   Trash2,
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import type { Comment } from '../../types/comment'
 import EmojiPicker from './EmojiPicker'
-import commentsApi from '../../service/api/comments.api'
+import { commentsApi } from '../../service/api/comments.api'
 
 const ANKU = {
   green: '#6aa84f',

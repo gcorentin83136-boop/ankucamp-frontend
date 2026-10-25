@@ -164,7 +164,7 @@ export function useCall(currentUserId: number | null) {
           toUserId,
           callType: type,
         })
-      } catch (err) {
+      } catch {
         toast.error("Impossible d'accéder au micro/caméra")
         cleanup()
       }
@@ -191,7 +191,7 @@ export function useCall(currentUserId: number | null) {
         callId,
         toUserId: peerUserId,
       })
-    } catch (err) {
+    } catch {
       toast.error("Impossible d'accéder au micro/caméra")
       cleanup()
     }
@@ -304,7 +304,7 @@ export function useCall(currentUserId: number | null) {
       // 2) A va raccrocher + relancer appel vidéo → on recevra call:incoming
       //    Grâce au flag, on auto-acceptera sans intervention
       toast.loading('Connexion vidéo...', { id: 'video-connect', duration: 5000 })
-    } catch (err) {
+    } catch {
       console.error('[CALL] acceptVideoUpgrade error', err)
       expectingVideoCallRef.current = false
       toast.error("Impossible d'activer la caméra")
@@ -370,7 +370,7 @@ export function useCall(currentUserId: number | null) {
             callId: data.callId,
             toUserId: data.fromUser.id,
           })
-        } catch (err) {
+        } catch {
           console.error('[CALL] auto-accept video error', err)
           toast.error("Impossible d'activer la caméra")
         }
@@ -440,7 +440,7 @@ export function useCall(currentUserId: number | null) {
           await pc.addIceCandidate(new RTCIceCandidate(c))
         }
         pendingCandidatesRef.current = []
-      } catch (err) {
+      } catch {
         console.error('[CALL] error on call:offer', err)
       }
     }
@@ -528,7 +528,7 @@ export function useCall(currentUserId: number | null) {
 
         // 5) Relance appel vidéo
         await startCall(conversationId, peerUserId, peerName, callStateRef.current.peerAvatar, 'video')
-      } catch (err) {
+      } catch {
         console.error('[CALL] onVideoAccepted error', err)
         toast.error('Impossible de relancer en vidéo')
         cleanup()

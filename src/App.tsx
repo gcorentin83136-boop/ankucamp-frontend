@@ -152,7 +152,7 @@ function App() {
       console.log("🔌 DÉCONNEXION WEBSOCKET")
       socket.disconnect()
     }
-  }, [user?.id])
+  }, [user])
 
   return (
     <CallProvider>

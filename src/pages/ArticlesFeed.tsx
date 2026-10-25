@@ -33,7 +33,7 @@ export default function ArticlesFeed() {
         if (res && res.articles) {
           setAllArticles(res.articles)
         }
-      } catch (err: any) {
+      } catch {
         console.error("Erreur API Articles:", err)
         toast.error('Impossible de charger le kiosque.')
       } finally {
@@ -71,7 +71,7 @@ export default function ArticlesFeed() {
           ? { ...a, liked_by_me: res.liked, likes_count: res.liked ? a.likes_count + 1 : a.likes_count - 1 } 
           : a
       ))
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors du like.')
     } finally {
       setLikingId(null)
@@ -88,7 +88,7 @@ export default function ArticlesFeed() {
           title: article.title,
           url: url,
         })
-      } catch (err) {}
+      } catch {}
     } else {
       navigator.clipboard.writeText(url)
       toast.success('Lien de l\'article copié !')
