@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -201,16 +201,23 @@ export default function ArticlesFeed() {
                     </p>
 
                     <div className="flex items-center justify-between border-t border-gray-100 pt-4 mb-3">
-                      <div className="flex items-center gap-2">
+                      <div 
+                        className="flex items-center gap-2 cursor-pointer group/author hover:opacity-80 transition-opacity"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate(`/u/${authorUsername}`);
+                        }}
+                      >
                         {a.author?.avatar_url ? (
-                          <img src={a.author.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                          <img src={a.author.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200 group-hover/author:border-emerald-400 transition-colors" />
                         ) : (
                           <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-emerald-500">
                             {authorName.substring(0, 2).toUpperCase()}
                           </div>
                         )}
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-gray-800 leading-none">{authorName}</span>
+                          <span className="text-xs font-bold text-gray-800 leading-none group-hover/author:text-emerald-600 transition-colors">{authorName}</span>
                           <span className="text-[10px] text-gray-400 mt-0.5">@{authorUsername}</span>
                         </div>
                       </div>

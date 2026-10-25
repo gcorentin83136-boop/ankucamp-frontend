@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -395,17 +395,17 @@ export default function ArticleDetail() {
           <h1 className="text-3xl sm:text-5xl font-serif font-black text-gray-900 leading-tight mb-4">{article.title}</h1>
           {article.excerpt && <p className="text-lg text-gray-600 leading-relaxed font-serif italic mb-6">{article.excerpt}</p>}
           <div className="flex items-center justify-between border-t border-gray-100 pt-6">
-            <div className="flex items-center gap-3">
+            <Link to={`/u/${article.author?.username}`} className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
               {article.author?.avatar_url ? (
-                <img src={article.author.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
+                <img src={article.author.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm group-hover:border-emerald-400 transition-colors" />
               ) : (
                 <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-white bg-emerald-500 shadow-sm">{authorName.substring(0, 2).toUpperCase()}</div>
               )}
               <div>
-                <p className="text-sm font-bold text-gray-900">{authorName}</p>
+                <p className="text-sm font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">{authorName}</p>
                 <p className="text-xs text-gray-500">@{article.author?.username || 'anonyme'}</p>
               </div>
-            </div>
+            </Link>
             <div className="flex items-center gap-4 text-sm font-medium text-gray-500 bg-gray-50 px-4 py-2 rounded-full">
               <span className="flex items-center gap-1.5"><Clock size={16} className="text-emerald-500"/> {readTime} min</span>
               <span className="flex items-center gap-1.5"><Eye size={16} /> {article.views_count || 0}</span>
