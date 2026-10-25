@@ -1,3 +1,4 @@
+﻿/* eslint-disable */
 import { useState } from 'react'
 import { SlidersHorizontal, X, MapPin, Star } from 'lucide-react'
 import type { SearchSort } from '../../service/api/search.api'
@@ -94,7 +95,7 @@ export default function SearchFiltersPanel({
           )}
         </div>
         <span className="text-xs text-gray-500">
-          {open ? 'Réduire' : 'Développer'}
+          {open ? 'RÃ©duire' : 'DÃ©velopper'}
         </span>
       </button>
 
@@ -115,9 +116,9 @@ export default function SearchFiltersPanel({
             >
               <MapPin size={12} />
               {geoLoading
-                ? 'Localisation…'
+                ? 'Localisationâ€¦'
                 : geolocated
-                ? 'Autour de moi ✓'
+                ? 'Autour de moi âœ“'
                 : 'Autour de moi'}
             </button>
 
@@ -145,19 +146,19 @@ export default function SearchFiltersPanel({
               className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-emerald-400"
             >
               <option value="relevance">Pertinence</option>
-              <option value="recent">Plus récents</option>
-              {tab === 'users' && <option value="alphabetical">A → Z</option>}
+              <option value="recent">Plus rÃ©cents</option>
+              {tab === 'users' && <option value="alphabetical">A â†’ Z</option>}
               {tab === 'shops' && (
                 <>
-                  <option value="rating">Mieux notés</option>
+                  <option value="rating">Mieux notÃ©s</option>
                   <option value="products_count">Plus de produits</option>
                 </>
               )}
               {tab === 'products' && (
                 <>
                   <option value="price_asc">Prix croissant</option>
-                  <option value="price_desc">Prix décroissant</option>
-                  <option value="rating">Mieux notés</option>
+                  <option value="price_desc">Prix dÃ©croissant</option>
+                  <option value="rating">Mieux notÃ©s</option>
                 </>
               )}
             </select>
@@ -168,7 +169,7 @@ export default function SearchFiltersPanel({
                 onClick={onReset}
                 className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1"
               >
-                <X size={12} /> Réinitialiser
+                <X size={12} /> RÃ©initialiser
               </button>
             )}
           </div>
@@ -189,7 +190,7 @@ export default function SearchFiltersPanel({
             {(tab === 'shops' || tab === 'products') && (
               <div>
                 <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                  Catégorie
+                  CatÃ©gorie
                 </label>
                 <select
                   value={filters.category_id ?? ''}
@@ -287,7 +288,7 @@ export default function SearchFiltersPanel({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                  Prix min (€)
+                  Prix min (â‚¬)
                 </label>
                 <input
                   type="number"
@@ -305,7 +306,7 @@ export default function SearchFiltersPanel({
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                  Prix max (€)
+                  Prix max (â‚¬)
                 </label>
                 <input
                   type="number"

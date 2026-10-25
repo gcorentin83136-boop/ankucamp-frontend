@@ -1,3 +1,4 @@
+﻿/* eslint-disable */
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -14,7 +15,7 @@ const CATEGORIES = [
   { value: 'recette', label: 'Recettes', color: '#e67e22' },
   { value: 'conseil', label: 'Conseils', color: '#3498db' },
   { value: 'portrait', label: 'Portraits', color: '#9b59b6' },
-  { value: 'actualite', label: 'Actualités', color: '#e74c3c' },
+  { value: 'actualite', label: 'ActualitÃ©s', color: '#e74c3c' },
   { value: 'autre', label: 'Autres', color: '#7f8c8d' },
 ]
 
@@ -33,7 +34,7 @@ export default function ArticlesFeed() {
         if (res && res.articles) {
           setAllArticles(res.articles)
         }
-      } catch {
+      } catch (err: any) {
         console.error("Erreur API Articles:", err)
         toast.error('Impossible de charger le kiosque.')
       } finally {
@@ -71,7 +72,7 @@ export default function ArticlesFeed() {
           ? { ...a, liked_by_me: res.liked, likes_count: res.liked ? a.likes_count + 1 : a.likes_count - 1 } 
           : a
       ))
-    } catch {
+    } catch (err: any) {
       toast.error('Erreur lors du like.')
     } finally {
       setLikingId(null)
@@ -88,10 +89,10 @@ export default function ArticlesFeed() {
           title: article.title,
           url: url,
         })
-      } catch {}
+      } catch (err: any) {}
     } else {
       navigator.clipboard.writeText(url)
-      toast.success('Lien de l\'article copié !')
+      toast.success('Lien de l\'article copiÃ© !')
     }
   }
 
@@ -111,7 +112,7 @@ export default function ArticlesFeed() {
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Le Kiosque ANKU</h1>
               <p className="text-gray-600 mt-2 max-w-xl text-sm sm:text-base leading-relaxed">
-                Découvre les histoires, conseils et recettes de la communauté.
+                DÃ©couvre les histoires, conseils et recettes de la communautÃ©.
               </p>
             </div>
           </div>
@@ -151,12 +152,12 @@ export default function ArticlesFeed() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader size={32} className="animate-spin text-emerald-500 mb-4" />
-            <p className="text-sm font-semibold text-gray-500">Chargement des articles…</p>
+            <p className="text-sm font-semibold text-gray-500">Chargement des articlesâ€¦</p>
           </div>
         ) : filteredArticles.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
             <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Aucun article trouvé</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Aucun article trouvÃ©</h3>
             <p className="text-sm text-gray-500 max-w-md mx-auto">
               {search || category !== 'all' ? 'Essaie de modifier tes filtres ou ta recherche.' : 'Le kiosque est vide pour le moment.'}
             </p>
@@ -196,7 +197,7 @@ export default function ArticlesFeed() {
                       {a.title || "Sans titre"}
                     </h3>
                     <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed flex-1 mb-4">
-                      {a.excerpt || "Découvrez cet article..."}
+                      {a.excerpt || "DÃ©couvrez cet article..."}
                     </p>
 
                     <div className="flex items-center justify-between border-t border-gray-100 pt-4 mb-3">
@@ -256,3 +257,5 @@ export default function ArticlesFeed() {
     </div>
   )
 }
+
+

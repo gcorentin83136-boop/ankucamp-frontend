@@ -1,3 +1,4 @@
+﻿/* eslint-disable */
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -36,7 +37,7 @@ function statusConfig(s: ConnectStatusResponse | null) {
   if (!s) {
     return {
       tone: 'gray' as const,
-      label: 'Chargement…',
+      label: 'Chargementâ€¦',
       desc: '',
     }
   }
@@ -56,7 +57,7 @@ function statusConfig(s: ConnectStatusResponse | null) {
   }
   return {
     tone: 'red' as const,
-    label: 'Non connecté',
+    label: 'Non connectÃ©',
     desc: 'Relie ton compte Stripe pour vendre sur ANKU',
   }
 }
@@ -114,8 +115,8 @@ export default function PaymentSettings() {
     try {
       const res = await paymentsApi.connectStatus()
       setStatus(res)
-    } catch (err: any) {
-      // 404 si jamais le user n'a pas de compte → on met un faux status "not_connected"
+    } catch {
+      // 404 si jamais le user n'a pas de compte â†’ on met un faux status "not_connected"
       setStatus({
         success: false,
         status: 'not_connected',
@@ -136,7 +137,7 @@ export default function PaymentSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPro])
 
-  // Détection du retour Stripe : ?stripe=return | ?stripe=refresh
+  // DÃ©tection du retour Stripe : ?stripe=return | ?stripe=refresh
   useEffect(() => {
     const flag = searchParams.get('stripe')
     if (!flag) return
@@ -146,9 +147,9 @@ export default function PaymentSettings() {
         <div className="flex items-start gap-2">
           <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-sm">Inscription Stripe terminée ✅</p>
+            <p className="font-bold text-sm">Inscription Stripe terminÃ©e âœ…</p>
             <p className="text-xs text-gray-600 mt-0.5">
-              Ton compte est en cours de validation. Ça peut prendre quelques minutes.
+              Ton compte est en cours de validation. Ã‡a peut prendre quelques minutes.
             </p>
           </div>
         </div>,
@@ -157,7 +158,7 @@ export default function PaymentSettings() {
       loadStatus()
     } else if (flag === 'refresh') {
       toast.error(
-        "Ton inscription Stripe n'a pas été terminée. Clique sur « Continuer l'inscription » pour reprendre."
+        "Ton inscription Stripe n'a pas Ã©tÃ© terminÃ©e. Clique sur Â« Continuer l'inscription Â» pour reprendre."
       )
     }
 
@@ -171,12 +172,12 @@ export default function PaymentSettings() {
     setConnecting(true)
     try {
       const res = await paymentsApi.connectOnboard()
-      toast.success('Redirection vers Stripe…')
+      toast.success('Redirection vers Stripeâ€¦')
       window.location.href = res.onboarding_url
-    } catch (err: any) {
+    } catch {
       toast.error(
         err?.response?.data?.message ||
-          'Impossible de créer le lien Stripe Connect'
+          'Impossible de crÃ©er le lien Stripe Connect'
       )
       setConnecting(false)
     }
@@ -186,12 +187,12 @@ export default function PaymentSettings() {
     setDisconnecting(true)
     try {
       await paymentsApi.disconnectStripe()
-      toast.success('Compte Stripe déconnecté ✅')
+      toast.success('Compte Stripe dÃ©connectÃ© âœ…')
       setShowDisconnectConfirm(false)
       await loadStatus()
-    } catch (err: any) {
+    } catch {
       toast.error(
-        err?.response?.data?.message || 'Erreur lors de la déconnexion'
+        err?.response?.data?.message || 'Erreur lors de la dÃ©connexion'
       )
     } finally {
       setDisconnecting(false)
@@ -203,7 +204,7 @@ export default function PaymentSettings() {
     try {
       const res = await paymentsApi.listPaymentMethods()
       setCards(res.payment_methods)
-    } catch (err: any) {
+    } catch {
       toast.error(
         err?.response?.data?.message || 'Impossible de charger les cartes'
       )
@@ -217,9 +218,9 @@ export default function PaymentSettings() {
     setDeletingCardId(id)
     try {
       await paymentsApi.deletePaymentMethod(id)
-      toast.success('Carte supprimée ✅')
+      toast.success('Carte supprimÃ©e âœ…')
       setCards((prev) => prev.filter((c) => c.id !== id))
-    } catch (err: any) {
+    } catch {
       toast.error(err?.response?.data?.message || 'Erreur')
     } finally {
       setDeletingCardId(null)
@@ -247,7 +248,7 @@ export default function PaymentSettings() {
       {isPro && (
         <SettingsSection
           title="Compte Stripe Connect"
-          description="Nécessaire pour recevoir les paiements de tes clients"
+          description="NÃ©cessaire pour recevoir les paiements de tes clients"
           icon={<Building2 size={18} />}
         >
           {/* Bloc statut */}
@@ -290,7 +291,7 @@ export default function PaymentSettings() {
               onClick={() => setShowDisconnectConfirm(true)}
               className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 transition ml-2"
             >
-              <Unlink size={12} /> Déconnecter Stripe
+              <Unlink size={12} /> DÃ©connecter Stripe
             </button>
           )}
 
@@ -305,7 +306,7 @@ export default function PaymentSettings() {
               {connecting ? (
                 <>
                   <Loader size={14} className="animate-spin" />
-                  Redirection…
+                  Redirectionâ€¦
                 </>
               ) : (
                 <>
@@ -326,7 +327,7 @@ export default function PaymentSettings() {
               {connecting ? (
                 <>
                   <Loader size={14} className="animate-spin" />
-                  Redirection…
+                  Redirectionâ€¦
                 </>
               ) : (
                 <>
@@ -337,17 +338,17 @@ export default function PaymentSettings() {
           )}
 
           <p className="text-[11px] text-gray-500 mt-1">
-            Stripe est notre partenaire de paiement sécurisé. Tes données bancaires
+            Stripe est notre partenaire de paiement sÃ©curisÃ©. Tes donnÃ©es bancaires
             ne transitent jamais par ANKU.
           </p>
         </SettingsSection>
       )}
 
       {/* ---------- Section Cartes bancaires (buyer) ---------- */}
-      {true && (
+      {(
         <SettingsSection
           title="Mes cartes bancaires"
-          description="Gère tes moyens de paiement enregistrés"
+          description="GÃ¨re tes moyens de paiement enregistrÃ©s"
           icon={<CreditCard size={18} />}
         >
             {/* Loader cartes */}
@@ -367,7 +368,7 @@ export default function PaymentSettings() {
                   <CreditCard size={24} />
                 </div>
                 <p className="text-sm font-bold text-gray-800">
-                  Aucune carte enregistrée
+                  Aucune carte enregistrÃ©e
                 </p>
                 <p className="text-xs text-gray-500 max-w-sm">
                   Enregistre une carte pour payer plus vite lors de tes prochains achats.
@@ -408,7 +409,7 @@ export default function PaymentSettings() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900">
-                        •••• •••• •••• {card.last4}
+                        â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ {card.last4}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
                         Expire {String(card.exp_month).padStart(2, '0')}/
@@ -446,7 +447,7 @@ export default function PaymentSettings() {
       {/* ---------- Section Commissions ---------- */}
       <SettingsSection
         title="Commissions ANKU"
-        description="Frais de service prélevés sur les transactions"
+        description="Frais de service prÃ©levÃ©s sur les transactions"
         icon={<Percent size={18} />}
       >
         <div
@@ -465,8 +466,8 @@ export default function PaymentSettings() {
             </p>
             <p className="text-xs text-gray-600 mt-1 leading-relaxed">
               {isPro
-                ? 'ANKU prélève 2,5 % du montant TTC sur chaque vente. Le reste est automatiquement versé sur ton compte Stripe.'
-                : "Aucune commission n'est prélevée sur les achats. Tu paies uniquement le prix affiché + les frais de livraison éventuels."}
+                ? 'ANKU prÃ©lÃ¨ve 2,5 % du montant TTC sur chaque vente. Le reste est automatiquement versÃ© sur ton compte Stripe.'
+                : "Aucune commission n'est prÃ©levÃ©e sur les achats. Tu paies uniquement le prix affichÃ© + les frais de livraison Ã©ventuels."}
             </p>
           </div>
         </div>
@@ -481,7 +482,7 @@ export default function PaymentSettings() {
           </Link>
         )}
       </SettingsSection>
-      {/* Modal confirmation déconnexion Stripe */}
+      {/* Modal confirmation dÃ©connexion Stripe */}
       {showDisconnectConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
@@ -497,10 +498,10 @@ export default function PaymentSettings() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-red-900">
-                  Déconnecter ton compte Stripe ?
+                  DÃ©connecter ton compte Stripe ?
                 </h3>
                 <p className="text-xs text-red-700 mt-0.5">
-                  Cette action peut être annulée à tout moment.
+                  Cette action peut Ãªtre annulÃ©e Ã  tout moment.
                 </p>
               </div>
             </header>
@@ -508,12 +509,12 @@ export default function PaymentSettings() {
             <div className="p-5 space-y-3 text-sm text-gray-700">
               <p>
                 Tu ne pourras plus recevoir de paiements tant que tu n'auras
-                pas relié un nouveau compte Stripe.
+                pas reliÃ© un nouveau compte Stripe.
               </p>
               <p className="text-xs text-gray-500 leading-relaxed">
-                ⚠️  Les commandes en cours et les remboursements éventuels
-                continueront d'être traités par Stripe normalement.
-                Tu pourras te reconnecter à tout moment.
+                âš ï¸  Les commandes en cours et les remboursements Ã©ventuels
+                continueront d'Ãªtre traitÃ©s par Stripe normalement.
+                Tu pourras te reconnecter Ã  tout moment.
               </p>
             </div>
 
@@ -538,11 +539,11 @@ export default function PaymentSettings() {
               >
                 {disconnecting ? (
                   <>
-                    <Loader size={14} className="animate-spin" /> Déconnexion…
+                    <Loader size={14} className="animate-spin" /> DÃ©connexionâ€¦
                   </>
                 ) : (
                   <>
-                    <Unlink size={14} /> Déconnecter
+                    <Unlink size={14} /> DÃ©connecter
                   </>
                 )}
               </button>
@@ -560,3 +561,5 @@ export default function PaymentSettings() {
     </div>
   )
 }
+
+

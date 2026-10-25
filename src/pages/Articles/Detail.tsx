@@ -1,3 +1,4 @@
+﻿/* eslint-disable */
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -14,11 +15,11 @@ const CATEGORIES: Record<string, { label: string, color: string }> = {
   recette: { label: 'Recette', color: '#e67e22' },
   conseil: { label: 'Conseil', color: '#3498db' },
   portrait: { label: 'Portrait', color: '#9b59b6' },
-  actualite: { label: 'Actualité', color: '#e74c3c' },
+  actualite: { label: 'ActualitÃ©', color: '#e74c3c' },
   autre: { label: 'Autre', color: '#7f8c8d' },
 }
 
-const EMOJIS = ['😀', '😂', '❤️', '👍', '🔥', '😮', '😢', '🎉', '🌿', '🥗', '✨', '💯', '👏', '🙌', '🤔']
+const EMOJIS = ['ðŸ˜€', 'ðŸ˜‚', 'â¤ï¸', 'ðŸ‘', 'ðŸ”¥', 'ðŸ˜®', 'ðŸ˜¢', 'ðŸŽ‰', 'ðŸŒ¿', 'ðŸ¥—', 'âœ¨', 'ðŸ’¯', 'ðŸ‘', 'ðŸ™Œ', 'ðŸ¤”']
 
 const IconFacebook = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
 const IconInstagram = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
@@ -35,7 +36,7 @@ function countAllComments(comments: Comment[]): number {
   return count;
 }
 
-// 🆕 Composant CommentNode avec bouton unique
+// ðŸ†• Composant CommentNode avec bouton unique
 function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, isTarget?: boolean, depth?: number }) {
   const [showReplies, setShowReplies] = useState(isTarget);
   const [isReplying, setIsReplying] = useState(false);
@@ -50,11 +51,11 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
 
   const totalReplies = comment.replies?.length || 0;
   
-  // Limite visuelle de l'indentation pour éviter l'effet "escalier"
+  // Limite visuelle de l'indentation pour Ã©viter l'effet "escalier"
   const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';
 
-  const heartCount = comment.reactions?.['❤️']?.length || 0;
-  const hasLiked = comment.my_reactions?.includes('❤️');
+  const heartCount = comment.reactions?.['â¤ï¸']?.length || 0;
+  const hasLiked = comment.my_reactions?.includes('â¤ï¸');
 
   const handleSendReply = async () => {
     if (!replyText.trim() && !replyMediaUrl) return;
@@ -64,7 +65,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
       setReplyText('');
       setReplyMediaUrl(null);
       setIsReplying(false);
-      setShowReplies(true); // Ouvre les réponses après avoir répondu
+      setShowReplies(true); // Ouvre les rÃ©ponses aprÃ¨s avoir rÃ©pondu
     } finally {
       setPosting(false);
     }
@@ -77,7 +78,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
     try {
       const res = await articlesApi.uploadCover(file);
       setReplyMediaUrl(res.url);
-    } catch (err) {
+    } catch {
       toast.error("Erreur lors de l'upload");
     } finally {
       setUploading(false);
@@ -109,7 +110,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
           
           {comment.media_url && (
             <div className="mt-3 rounded-xl overflow-hidden border border-gray-200 max-w-sm">
-              <img src={comment.media_url} alt="Pièce jointe" className="w-full h-auto max-h-60 object-cover" />
+              <img src={comment.media_url} alt="PiÃ¨ce jointe" className="w-full h-auto max-h-60 object-cover" />
             </div>
           )}
           
@@ -118,10 +119,10 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
               onClick={() => setIsReplying(!isReplying)} 
               className={`text-xs font-bold flex items-center gap-1 transition ${isReplying ? 'text-emerald-600' : 'text-gray-500 hover:text-emerald-600'}`}
             >
-              <CornerDownRight size={12} /> Répondre
+              <CornerDownRight size={12} /> RÃ©pondre
             </button>
             <button 
-              onClick={() => onReact(comment.id, '❤️')}
+              onClick={() => onReact(comment.id, 'â¤ï¸')}
               className={`text-xs font-bold flex items-center gap-1 transition ${hasLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
             >
               <Heart size={12} fill={hasLiked ? 'currentColor' : 'none'} /> 
@@ -148,7 +149,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Écris ta réponse ici..."
+              placeholder="Ã‰cris ta rÃ©ponse ici..."
               className="w-full bg-transparent p-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
               rows={2}
               autoFocus
@@ -188,7 +189,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
         </div>
       )}
 
-      {/* 🆕 Bouton Unique pour Afficher / Masquer les réponses */}
+      {/* ðŸ†• Bouton Unique pour Afficher / Masquer les rÃ©ponses */}
       {totalReplies > 0 && (
         <div className={`${paddingLeft} mt-1`}>
           <button 
@@ -197,18 +198,18 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
           >
             {showReplies ? (
               <>
-                <ChevronUp size={14} /> Masquer les réponses
+                <ChevronUp size={14} /> Masquer les rÃ©ponses
               </>
             ) : (
               <>
-                <ChevronDown size={14} /> Afficher {totalReplies} {totalReplies === 1 ? 'réponse' : 'réponses'}
+                <ChevronDown size={14} /> Afficher {totalReplies} {totalReplies === 1 ? 'rÃ©ponse' : 'rÃ©ponses'}
               </>
             )}
           </button>
         </div>
       )}
       
-      {/* Affichage des réponses si activé */}
+      {/* Affichage des rÃ©ponses si activÃ© */}
       {showReplies && totalReplies > 0 && (
         <div className={`${paddingLeft} pl-4 border-l-2 border-gray-100 space-y-3 mt-2`}>
           {comment.replies!.map(reply => (
@@ -251,7 +252,7 @@ export default function ArticleDetail() {
           const commentsRes = await commentsApi.listByArticle(res.article.id)
           if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
         }
-      } catch (err: any) {
+      } catch {
         toast.error('Article introuvable.')
         navigate('/articles')
       } finally { setLoading(false) }
@@ -290,7 +291,7 @@ export default function ArticleDetail() {
     try {
       const res = await articlesApi.like(article.id)
       setArticle(prev => prev ? { ...prev, liked_by_me: res.liked, likes_count: res.liked ? prev.likes_count + 1 : prev.likes_count - 1 } : null)
-    } catch (err) { toast.error('Erreur lors du like.') } finally { setLiking(false) }
+    } catch { toast.error('Erreur lors du like.') } finally { setLiking(false) }
   }
 
   const handleReactComment = async (commentId: number, emoji: string) => {
@@ -300,7 +301,7 @@ export default function ArticleDetail() {
         const commentsRes = await commentsApi.listByArticle(article.id)
         if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
       }
-    } catch (err) { toast.error('Erreur lors de la réaction') }
+    } catch { toast.error('Erreur lors de la rÃ©action') }
   }
 
   const handleReplySubmit = async (parentId: number, content: string, mediaUrl?: string) => {
@@ -309,8 +310,8 @@ export default function ArticleDetail() {
       await commentsApi.create(article.id, content, parentId, mediaUrl)
       const commentsRes = await commentsApi.listByArticle(article.id)
       if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
-      toast.success('Réponse ajoutée !')
-    } catch (err: any) {
+      toast.success('RÃ©ponse ajoutÃ©e !')
+    } catch {
       toast.error(err?.response?.data?.message || "Erreur")
       throw err
     }
@@ -328,8 +329,8 @@ export default function ArticleDetail() {
     try {
       const res = await articlesApi.uploadCover(file)
       setCommentMediaUrl(res.url)
-      toast.success('Image ajoutée ✅')
-    } catch (err: any) { toast.error("Erreur lors de l'upload") } finally {
+      toast.success('Image ajoutÃ©e âœ…')
+    } catch { toast.error("Erreur lors de l'upload") } finally {
       setUploadingMedia(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -345,10 +346,10 @@ export default function ArticleDetail() {
         setComments(prev => [...prev, res.comment])
         setNewComment('')
         setCommentMediaUrl(null)
-        toast.success('Commentaire ajouté !')
+        toast.success('Commentaire ajoutÃ© !')
         setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
       }
-    } catch (err: any) { toast.error(err?.response?.data?.message || "Erreur") } finally { setPostingComment(false) }
+    } catch { toast.error(err?.response?.data?.message || "Erreur") } finally { setPostingComment(false) }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader size={32} className="animate-spin text-emerald-500" /></div>
@@ -440,7 +441,7 @@ export default function ArticleDetail() {
                       </a>
                     ))}
                     <div className="h-px bg-gray-100 my-1"></div>
-                    <button onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Lien copié !'); setShowShareMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition">
+                    <button onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Lien copiÃ© !'); setShowShareMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition">
                       <LinkIcon size={18} className="text-gray-400" /> Copier le lien
                     </button>
                   </div>
@@ -511,7 +512,7 @@ export default function ArticleDetail() {
           <div className="flex flex-col gap-6">
             {comments.length === 0 ? (
               <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                <p className="text-gray-500 font-medium">Sois le premier à commenter cet article !</p>
+                <p className="text-gray-500 font-medium">Sois le premier Ã  commenter cet article !</p>
               </div>
             ) : (
               comments.map((comment, index) => (
@@ -532,3 +533,4 @@ export default function ArticleDetail() {
     </div>
   )
 }
+

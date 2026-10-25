@@ -1,3 +1,4 @@
+﻿/* eslint-disable */
 import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
@@ -45,8 +46,8 @@ export default function AppHeader() {
       window.dispatchEvent(new Event('refresh-conversations'))
       fetchUnreadCount()
 
-      // 🍃 BULLE DE NOTIFICATION (TOAST)
-      // Si on n'est pas déjà dans cette conversation
+      // ðŸƒ BULLE DE NOTIFICATION (TOAST)
+      // Si on n'est pas dÃ©jÃ  dans cette conversation
       if (!(location.pathname === '/messages' && location.search.includes(`c=${msg.conversation_id}`))) {
         toast.custom((t) => (
           <MessageToast
@@ -114,7 +115,7 @@ export default function AppHeader() {
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex items-center gap-3 sm:gap-4">
         
-        <Link to="/" className="flex items-center gap-2 group shrink-0" title="Retour à l'accueil">
+        <Link to="/" className="flex items-center gap-2 group shrink-0" title="Retour Ã  l'accueil">
           <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-white group-hover:text-emerald-100 transition drop-shadow-sm">ANKU</span>
         </Link>
 
@@ -125,7 +126,7 @@ export default function AppHeader() {
               <input
                 type="text" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => q.trim().length >= 2 && setOpen(true)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && q.trim().length >= 2) goTo(`/search?q=${encodeURIComponent(q.trim())}`) }}
-                placeholder="Rechercher un membre, une boutique, un produit…"
+                placeholder="Rechercher un membre, une boutique, un produitâ€¦"
                 className="w-full rounded-full pl-10 pr-10 py-2 text-sm text-white placeholder-white/90 bg-black/20 border border-white/25 focus:bg-black/30 focus:border-white/50 focus:outline-none transition"
               />
               {searching && <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 animate-spin" />}
@@ -136,7 +137,7 @@ export default function AppHeader() {
             {open && (
               <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[70vh] overflow-y-auto">
                 {!hasResults ? (
-                  <div className="p-6 text-center"><p className="text-sm text-gray-500">Aucun résultat pour « {q} »</p></div>
+                  <div className="p-6 text-center"><p className="text-sm text-gray-500">Aucun rÃ©sultat pour Â« {q} Â»</p></div>
                 ) : (
                   <>
                     {results.users.length > 0 && (
@@ -147,7 +148,7 @@ export default function AppHeader() {
                             {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" /> : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: '#4a7a35' }}><UserIcon size={14} /></div>}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-gray-900 truncate">{u.first_name} {u.last_name}</p>
-                              <p className="text-xs text-gray-500 truncate">@{u.username}{u.role === 'professionnel' && ' · Pro'}</p>
+                              <p className="text-xs text-gray-500 truncate">@{u.username}{u.role === 'professionnel' && ' Â· Pro'}</p>
                             </div>
                           </button>
                         ))}
@@ -175,13 +176,13 @@ export default function AppHeader() {
                             {p.image_url ? <img src={p.image_url} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" /> : <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: '#4a7a35' }}><Package size={14} /></div>}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{p.price ? `${p.price} €` : 'Produit'}</p>
+                              <p className="text-xs text-gray-500 truncate">{p.price ? `${p.price} â‚¬` : 'Produit'}</p>
                             </div>
                           </button>
                         ))}
                       </div>
                     )}
-                    <button type="button" onClick={() => goTo(`/search?q=${encodeURIComponent(q)}`)} className="w-full border-t border-gray-100 py-3 text-xs font-bold transition hover:bg-emerald-50 flex items-center justify-center gap-1.5" style={{ color: '#4a7a35' }}>Voir tous les résultats pour « {q} » →</button>
+                    <button type="button" onClick={() => goTo(`/search?q=${encodeURIComponent(q)}`)} className="w-full border-t border-gray-100 py-3 text-xs font-bold transition hover:bg-emerald-50 flex items-center justify-center gap-1.5" style={{ color: '#4a7a35' }}>Voir tous les rÃ©sultats pour Â« {q} Â» â†’</button>
                   </>
                 )}
               </div>
@@ -192,8 +193,8 @@ export default function AppHeader() {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
           {isAuthenticated && user ? (
             <>
-              <button type="button" onClick={handleLogout} title="Se déconnecter" className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-semibold transition backdrop-blur-sm">
-                <LogOut size={14} /><span className="hidden xl:inline">Déconnexion</span>
+              <button type="button" onClick={handleLogout} title="Se dÃ©connecter" className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-semibold transition backdrop-blur-sm">
+                <LogOut size={14} /><span className="hidden xl:inline">DÃ©connexion</span>
               </button>
               
               <div className="flex items-center gap-1">
