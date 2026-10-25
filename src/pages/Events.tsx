@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Calendar, MapPin, Clock, Users, Heart, Filter, Ticket, Loader, ChevronRight } from 'lucide-react'
+import { Search, Calendar, MapPin, Clock, Heart, Filter, Ticket, Loader } from 'lucide-react'
 import eventsApi from '../service/api/events.api'
 import type { Event, EventType } from '../types/event'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
@@ -123,7 +123,7 @@ export default function Events() {
         }
         return ev
       }))
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors du like')
     }
   }
