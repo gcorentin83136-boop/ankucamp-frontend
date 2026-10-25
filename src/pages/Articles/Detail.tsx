@@ -15,7 +15,7 @@ const CATEGORIES: Record<string, { label: string, color: string }> = {
   recette: { label: 'Recette', color: '#e67e22' },
   conseil: { label: 'Conseil', color: '#3498db' },
   portrait: { label: 'Portrait', color: '#9b59b6' },
-  actualite: { label: 'ActualitÃ©', color: '#e74c3c' },
+  actualite: { label: 'Actualité', color: '#e74c3c' },
   autre: { label: 'Autre', color: '#7f8c8d' },
 }
 
@@ -51,7 +51,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
 
   const totalReplies = comment.replies?.length || 0;
   
-  // Limite visuelle de l'indentation pour Ã©viter l'effet "escalier"
+  // Limite visuelle de l'indentation pour éviter l'effet "escalier"
   const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';
 
   const heartCount = comment.reactions?.['â¤ï¸']?.length || 0;
@@ -65,7 +65,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
       setReplyText('');
       setReplyMediaUrl(null);
       setIsReplying(false);
-      setShowReplies(true); // Ouvre les rÃ©ponses aprÃ¨s avoir rÃ©pondu
+      setShowReplies(true); // Ouvre les réponses après avoir répondu
     } finally {
       setPosting(false);
     }
@@ -110,7 +110,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
           
           {comment.media_url && (
             <div className="mt-3 rounded-xl overflow-hidden border border-gray-200 max-w-sm">
-              <img src={comment.media_url} alt="PiÃ¨ce jointe" className="w-full h-auto max-h-60 object-cover" />
+              <img src={comment.media_url} alt="Pièce jointe" className="w-full h-auto max-h-60 object-cover" />
             </div>
           )}
           
@@ -119,7 +119,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
               onClick={() => setIsReplying(!isReplying)} 
               className={`text-xs font-bold flex items-center gap-1 transition ${isReplying ? 'text-emerald-600' : 'text-gray-500 hover:text-emerald-600'}`}
             >
-              <CornerDownRight size={12} /> RÃ©pondre
+              <CornerDownRight size={12} /> Répondre
             </button>
             <button 
               onClick={() => onReact(comment.id, 'â¤ï¸')}
@@ -149,7 +149,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Ã‰cris ta rÃ©ponse ici..."
+              placeholder="Ã‰cris ta réponse ici..."
               className="w-full bg-transparent p-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
               rows={2}
               autoFocus
@@ -189,7 +189,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
         </div>
       )}
 
-      {/* ðŸ†• Bouton Unique pour Afficher / Masquer les rÃ©ponses */}
+      {/* ðŸ†• Bouton Unique pour Afficher / Masquer les réponses */}
       {totalReplies > 0 && (
         <div className={`${paddingLeft} mt-1`}>
           <button 
@@ -198,18 +198,18 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
           >
             {showReplies ? (
               <>
-                <ChevronUp size={14} /> Masquer les rÃ©ponses
+                <ChevronUp size={14} /> Masquer les réponses
               </>
             ) : (
               <>
-                <ChevronDown size={14} /> Afficher {totalReplies} {totalReplies === 1 ? 'rÃ©ponse' : 'rÃ©ponses'}
+                <ChevronDown size={14} /> Afficher {totalReplies} {totalReplies === 1 ? 'réponse' : 'réponses'}
               </>
             )}
           </button>
         </div>
       )}
       
-      {/* Affichage des rÃ©ponses si activÃ© */}
+      {/* Affichage des réponses si activé */}
       {showReplies && totalReplies > 0 && (
         <div className={`${paddingLeft} pl-4 border-l-2 border-gray-100 space-y-3 mt-2`}>
           {comment.replies!.map(reply => (
@@ -301,7 +301,7 @@ export default function ArticleDetail() {
         const commentsRes = await commentsApi.listByArticle(article.id)
         if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
       }
-    } catch (err: any) { toast.error('Erreur lors de la rÃ©action') }
+    } catch (err: any) { toast.error('Erreur lors de la réaction') }
   }
 
   const handleReplySubmit = async (parentId: number, content: string, mediaUrl?: string) => {
@@ -310,7 +310,7 @@ export default function ArticleDetail() {
       await commentsApi.create(article.id, content, parentId, mediaUrl)
       const commentsRes = await commentsApi.listByArticle(article.id)
       if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
-      toast.success('RÃ©ponse ajoutÃ©e !')
+      toast.success('réponse ajoutée !')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Erreur")
       throw err
@@ -329,7 +329,7 @@ export default function ArticleDetail() {
     try {
       const res = await articlesApi.uploadCover(file)
       setCommentMediaUrl(res.url)
-      toast.success('Image ajoutÃ©e âœ…')
+      toast.success('Image ajoutée âœ…')
     } catch (err: any) { toast.error("Erreur lors de l'upload") } finally {
       setUploadingMedia(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -346,7 +346,7 @@ export default function ArticleDetail() {
         setComments(prev => [...prev, res.comment])
         setNewComment('')
         setCommentMediaUrl(null)
-        toast.success('Commentaire ajoutÃ© !')
+        toast.success('Commentaire ajouté !')
         setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
       }
     } catch (err: any) { toast.error(err?.response?.data?.message || "Erreur") } finally { setPostingComment(false) }
@@ -441,7 +441,7 @@ export default function ArticleDetail() {
                       </a>
                     ))}
                     <div className="h-px bg-gray-100 my-1"></div>
-                    <button onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Lien copiÃ© !'); setShowShareMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition">
+                    <button onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Lien copié !'); setShowShareMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition">
                       <LinkIcon size={18} className="text-gray-400" /> Copier le lien
                     </button>
                   </div>
