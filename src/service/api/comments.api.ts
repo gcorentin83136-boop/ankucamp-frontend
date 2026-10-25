@@ -52,17 +52,17 @@ export const commentsApi = {
     return data
   },
 
-  createForArticle: async (articleId: number, payload: any) => {
-    // On accepte l'ancien format (objet) ou le nouveau (paramètres séparés)
+  // 🆕 Correction : On accepte l'objet (comme dans CommentSection) sans utiliser 'arguments'
+  createForArticle: async (articleId: number, payload: any, mediaUrlAlt?: string, parentIdAlt?: number) => {
     const isObj = typeof payload === 'object' && payload !== null;
     const body = isObj ? {
       content: payload.content,
       media_url: payload.media_url,
       parent_comment_id: payload.parent_comment_id
     } : {
-      content: arguments[1],
-      parent_comment_id: arguments[2],
-      media_url: arguments[3]
+      content: payload,
+      parent_comment_id: parentIdAlt,
+      media_url: mediaUrlAlt
     };
     const { data } = await httpClient.post(`/articles/${articleId}/comments`, body)
     return data
