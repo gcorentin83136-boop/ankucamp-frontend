@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Loader, Eye, Heart, Clock, BookOpen, Filter } from 'lucide-react'
+import { Search, Loader, Eye, Heart, Clock, BookOpen, Filter, Image as ImageIcon, MessageCircle, Share2 } from 'lucide-react'
 import articlesApi from '../service/api/articles.api'
 import type { Article } from '../types/article'
-
-// 🟢 Import de tes composants existants pour l'arrière-plan et le menu de gauche
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import QuickMenu from '../components/shops/QuickMenu'
 
@@ -21,12 +19,13 @@ const CATEGORIES = [
 ]
 
 export default function ArticlesFeed() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [allArticles, setAllArticles] = useState<Article[]>([])
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
+  const [likingId, setLikingId] = useState<number | null>(null)
 
-  // On charge TOUS les articles publiés une seule fois au montage
   useEffect(() => {
     const fetchArticles = async () => {
       try {
@@ -44,58 +43,80 @@ export default function ArticlesFeed() {
     fetchArticles()
   }, [])
 
-  // 🟢 Filtrage 100% local (instantané et sans bug d'API)
   const filteredArticles = useMemo(() => {
     let result = allArticles
-
-    // Filtre par catégorie
     if (category !== 'all') {
-      result = result.filter(a => a.category?.toLowerCase() === category)
+      result = result.filter(a => (a.category || '').toLowerCase() === category)
     }
-
-    // Filtre par recherche (titre ou extrait)
     if (search.trim()) {
       const q = search.toLowerCase().trim()
       result = result.filter(a => 
-        a.title.toLowerCase().includes(q) || 
-        (a.excerpt && a.excerpt.toLowerCase().includes(q)) ||
-        (a.author?.first_name && a.author.first_name.toLowerCase().includes(q))
+        (a.title || '').toLowerCase().includes(q) || 
+        (a.excerpt || '').toLowerCase().includes(q) ||
+        (a.author?.first_name || '').toLowerCase().includes(q) ||
+        (a.author?.last_name || '').toLowerCase().includes(q)
       )
     }
-
     return result
   }, [allArticles, search, category])
+
+  const handleLike = async (e: React.MouseEvent, article: Article) => {
+    e.preventDefault()
+    if (likingId === article.id) return
+    setLikingId(article.id)
+    try {
+      const res = await articlesApi.like(article.id)
+      setAllArticles(prev => prev.map(a => 
+        a.id === article.id 
+          ? { ...a, liked_by_me: res.liked, likes_count: res.liked ? a.likes_count + 1 : a.likes_count - 1 } 
+          : a
+      ))
+    } catch (err) {
+      toast.error('Erreur lors du like.')
+    } finally {
+      setLikingId(null)
+    }
+  }
+
+  const handleShare = async (e: React.MouseEvent, article: Article) => {
+    e.preventDefault()
+    const url = `${window.location.origin}/articles/${article.slug}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: article.title,
+          url: url,
+        })
+      } catch (err) {}
+    } else {
+      navigator.clipboard.writeText(url)
+      toast.success('Lien de l\'article copié !')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20 relative overflow-hidden">
       
-      {/* 🟢 Ton composant d'icônes flottantes */}
       <AnimatedShopsBackground />
-      
-      {/* 🟢 Ton menu de gauche flottant */}
       <QuickMenu />
 
-      {/* Conteneur principal - On garde le pl-20 pour le menu */}
       <div className="relative z-10 max-w-6xl mx-auto px-4 md:pl-24 pt-6">
         
-        {/* Bannière d'en-tête style ANKU */}
         <div className="rounded-3xl p-6 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 border border-emerald-100 shadow-sm mb-8" style={{ background: 'linear-gradient(135deg, #f0f9e8 0%, #ffffff 100%)' }}>
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white shadow-md border border-emerald-100 shrink-0">
               <BookOpen size={32} style={{ color: ANKU.greenDark }} />
             </div>
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-                Le Kiosque ANKU
-              </h1>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Le Kiosque ANKU</h1>
               <p className="text-gray-600 mt-2 max-w-xl text-sm sm:text-base leading-relaxed">
-                Découvre les histoires, conseils et recettes de la communauté. Plume ta pensée, on s'occupe de l'impression.
+                Découvre les histoires, conseils et recettes de la communauté.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Barre de recherche et Filtres */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 flex flex-col md:flex-row gap-4 items-center mb-10">
           <div className="relative flex-1 w-full">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -103,7 +124,7 @@ export default function ArticlesFeed() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un article, un thème, un auteur..."
+              placeholder="Rechercher un article..."
               className="w-full rounded-xl bg-gray-50 border-none py-3.5 pl-11 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition"
             />
           </div>
@@ -127,7 +148,6 @@ export default function ArticlesFeed() {
           </div>
         </div>
 
-        {/* Grille d'articles */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader size={32} className="animate-spin text-emerald-500 mb-4" />
@@ -144,8 +164,11 @@ export default function ArticlesFeed() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredArticles.map((a) => {
-              // On cherche la catégorie correspondante pour avoir la bonne couleur/label
-              const catObj = CATEGORIES.find(c => c.value === a.category?.toLowerCase()) || CATEGORIES[5];
+              const catObj = CATEGORIES.find(c => c.value === (a.category || '').toLowerCase()) || CATEGORIES[5];
+              const authorName = a.author ? `${a.author.first_name || ''} ${a.author.last_name || ''}`.trim() : 'Auteur inconnu';
+              const authorUsername = a.author?.username || 'anonyme';
+              const readTime = Math.max(1, Math.ceil((a.content?.length || 0) / 1000));
+
               return (
                 <Link
                   key={a.id}
@@ -156,8 +179,9 @@ export default function ArticlesFeed() {
                     {a.cover_url ? (
                       <img src={a.cover_url} alt={a.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-emerald-50">
-                        <BookOpen size={32} className="text-emerald-200" />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-50">
+                        <ImageIcon size={32} className="text-emerald-200 mb-2" />
+                        <span className="text-xs text-emerald-600/50 font-medium">Pas d'image</span>
                       </div>
                     )}
                     <div className="absolute top-4 left-4">
@@ -169,36 +193,58 @@ export default function ArticlesFeed() {
 
                   <div className="p-5 flex flex-col flex-1">
                     <h3 className="text-lg font-bold text-gray-900 line-clamp-2 leading-snug group-hover:text-emerald-700 transition mb-2">
-                      {a.title}
+                      {a.title || "Sans titre"}
                     </h3>
-                    <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed flex-1">
+                    <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed flex-1 mb-4">
                       {a.excerpt || "Découvrez cet article..."}
                     </p>
 
-                    <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
-                      {a.author ? (
-                        <div className="flex items-center gap-2">
-                          {a.author.avatar_url ? (
-                            <img src={a.author.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-emerald-500">
-                              {a.author.first_name?.[0]}{a.author.last_name?.[0]}
-                            </div>
-                          )}
-                          <div className="flex flex-col">
-                            <span className="text-xs font-bold text-gray-800 leading-none">{a.author.first_name} {a.author.last_name}</span>
-                            <span className="text-[10px] text-gray-400 mt-0.5">@{a.author.username}</span>
+                    <div className="flex items-center justify-between border-t border-gray-100 pt-4 mb-3">
+                      <div className="flex items-center gap-2">
+                        {a.author?.avatar_url ? (
+                          <img src={a.author.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-emerald-500">
+                            {authorName.substring(0, 2).toUpperCase()}
                           </div>
-                        </div>
-                      ) : <div />}
-                      
-                      <div className="flex flex-col items-end gap-1.5 text-[11px] font-medium text-gray-500">
-                        <span className="flex items-center gap-1.5"><Clock size={12} className="text-emerald-500" /> {Math.max(1, Math.ceil((a.content?.length || 0) / 1000))} min</span>
-                        <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1"><Eye size={12} /> {a.views_count}</span>
-                          <span className="flex items-center gap-1"><Heart size={12} className="text-red-400" /> {a.likes_count}</span>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-gray-800 leading-none">{authorName}</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">@{authorUsername}</span>
                         </div>
                       </div>
+                      
+                      <div className="flex flex-col items-end gap-1 text-[10px] font-medium text-gray-500">
+                        <span className="flex items-center gap-1"><Clock size={10} className="text-emerald-500" /> {readTime} min</span>
+                        <span className="flex items-center gap-1"><Eye size={10} /> {a.views_count || 0}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                      <button 
+                        onClick={(e) => handleLike(e, a)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${a.liked_by_me ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:bg-gray-100'}`}
+                      >
+                        <Heart size={14} fill={a.liked_by_me ? 'currentColor' : 'none'} /> 
+                        {a.likes_count || 0}
+                      </button>
+                      
+                      <button 
+                        onClick={(e) => { 
+                          e.preventDefault(); 
+                          navigate(`/articles/${a.slug}#comments`); 
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
+                      >
+                        <MessageCircle size={14} /> Commenter
+                      </button>
+
+                      <button 
+                        onClick={(e) => handleShare(e, a)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
+                      >
+                        <Share2 size={14} /> Partager
+                      </button>
                     </div>
                   </div>
                 </Link>

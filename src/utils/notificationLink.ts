@@ -14,6 +14,8 @@ const ROUTE_MAP: Array<{ pattern: RegExp; to: Resolver }> = [
   { pattern: /^\/dashboard\/followers$/, to: '/dashboard/shop' },
   { pattern: /^\/dashboard$/, to: '/dashboard/shop' },
   { pattern: /^\/posts\/(\d+)$/, to: (m) => `/feed?post=${m[1]}` },
+  { pattern: /^\/articles\/([^/]+)$/, to: (m) => `/articles/${m[1]}` },
+  { pattern: /^\/articles\/([^/]+)$/, to: (m) => `/articles/${m[1]}` },
   { pattern: /^\/messages\/(\d+)$/, to: (m) => `/messages?conversation=${m[1]}` },
   { pattern: /^\/events\/(\d+)$/, to: (m) => `/events?event=${m[1]}` },
   { pattern: /^\/friends\/requests$/, to: '/friends?tab=requests' },

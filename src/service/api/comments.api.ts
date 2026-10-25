@@ -1,97 +1,49 @@
-// ============================================================
-// ANKU — API Commentaires (articles + posts)
-// ============================================================
-
 import httpClient from './httpClient'
-import type {
-  CommentsListResponse,
-  CommentResponse,
-  CreateCommentPayload,
-} from '../../types/comment'
+
+export interface CommentAuthor {
+  id: number
+  first_name: string
+  last_name: string
+  username: string
+  avatar_url: string | null
+}
+
+export interface Comment {
+  id: number
+  article_id: number
+  content: string
+  media_url?: string | null
+  created_at: string
+  author: CommentAuthor
+  reactions?: Record<string, number[]> // ex: { "❤️": [1, 2] }
+  my_reactions?: string[] // ex: ["❤️"]
+  replies?: Comment[]
+  parent_comment_id?: number | null
+}
 
 export const commentsApi = {
-  // --------------------------------------------------------
-  // ARTICLES
-  // --------------------------------------------------------
-  listForArticle: async (
-    articleId: number
-  ): Promise<CommentsListResponse> => {
-    const { data } = await httpClient.get<CommentsListResponse>(
-      `/articles/${articleId}/comments`
-    )
+  listByArticle: async (articleId: number): Promise<{ success: boolean; count: number; comments: Comment[] }> => {
+    const { data } = await httpClient.get(`/articles/${articleId}/comments`)
     return data
   },
 
-  createForArticle: async (
-    articleId: number,
-    payload: CreateCommentPayload
-  ): Promise<CommentResponse> => {
-    const { data } = await httpClient.post<CommentResponse>(
-      `/articles/${articleId}/comments`,
-      payload
-    )
-    return data
-  },
-
-  update: async (
-    commentId: number,
-    content: string
-  ): Promise<CommentResponse> => {
-    const { data } = await httpClient.put<CommentResponse>(
-      `/articles/comments/${commentId}`,
-      { content }
-    )
-    return data
-  },
-
-  delete: async (commentId: number): Promise<{ success: boolean }> => {
-    const { data } = await httpClient.delete(
-      `/articles/comments/${commentId}`
-    )
-    return data
-  },
-
-  react: async (
-    commentId: number,
-    emoji: string
-  ): Promise<{ success: boolean; action: 'added' | 'removed' }> => {
-    const { data } = await httpClient.post(
-      `/articles/comments/${commentId}/reactions`,
-      { emoji }
-    )
-    return data
-  },
-
-  // --------------------------------------------------------
-  // PARTAGER UN ARTICLE EN POST
-  // --------------------------------------------------------
-  shareArticle: async (
-    articleId: number,
-    payload: { share_comment?: string | null; visibility?: string }
-  ): Promise<{ success: boolean; post: any }> => {
-    const { data } = await httpClient.post(
-      `/posts/share-article/${articleId}`,
-      payload
-    )
-    return data
-  },
-
-  // --------------------------------------------------------
-  // UPLOAD MÉDIA
-  // --------------------------------------------------------
-  uploadMedia: async (
-    file: File
-  ): Promise<{ success: boolean; url: string }> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const { data } = await httpClient.post<{
-      success: boolean
-      url: string
-    }>('/uploads/comment-media', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  create: async (
+    articleId: number, 
+    content: string, 
+    parentCommentId?: number,
+    mediaUrl?: string
+  ): Promise<{ success: boolean; comment: Comment }> => {
+    const { data } = await httpClient.post(`/articles/${articleId}/comments`, { 
+      content,
+      parent_comment_id: parentCommentId,
+      media_url: mediaUrl
     })
     return data
   },
-}
 
-export default commentsApi
+  // 🆕 Ajouter/Retirer une réaction (URL corrigée avec /reactions)
+  react: async (commentId: number, emoji: string = '❤️'): Promise<{ success: boolean; action: string; emoji: string }> => {
+    const { data } = await httpClient.post(`/articles/comments/${commentId}/reactions`, { emoji })
+    return data
+  }
+}
