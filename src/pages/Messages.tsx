@@ -29,7 +29,7 @@ export default function Messages() {
     try {
       const res = await messagesApi.listConversations()
       setConversations(res.conversations)
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors du chargement des messages')
     } finally {
       setLoading(false)
