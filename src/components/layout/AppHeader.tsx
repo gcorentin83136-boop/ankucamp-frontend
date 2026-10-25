@@ -102,7 +102,7 @@ export default function AppHeader() {
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
-  }, [])
+  }, [fetchUnreadCount])
 
   const hasResults = results.users.length > 0 || results.shops.length > 0 || results.products.length > 0
   const goTo = (path: string) => { setOpen(false); setQ(''); navigate(path) }
