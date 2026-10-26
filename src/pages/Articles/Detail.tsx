@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -6,6 +5,7 @@ import { ArrowLeft, Heart, Eye, Calendar, Clock, Loader, Share2, BookOpen, Link 
 import articlesApi from '../../service/api/articles.api'
 import { commentsApi, type Comment } from '../../service/api/comments.api'
 import type { Article } from '../../types/article'
+import httpClient from '../../service/api/httpClient'
 import AnimatedShopsBackground from '../../components/shops/AnimatedShopsBackground'
 import QuickMenu from '../../components/shops/QuickMenu'
 
@@ -19,7 +19,7 @@ const CATEGORIES: Record<string, { label: string, color: string }> = {
   autre: { label: 'Autre', color: '#7f8c8d' },
 }
 
-const EMOJIS = ['ðŸ˜€', 'ðŸ˜‚', 'â¤ï¸', 'ðŸ‘', 'ðŸ”¥', 'ðŸ˜®', 'ðŸ˜¢', 'ðŸŽ‰', 'ðŸŒ¿', 'ðŸ¥—', 'âœ¨', 'ðŸ’¯', 'ðŸ‘', 'ðŸ™Œ', 'ðŸ¤”']
+const EMOJIS = ['😀', '😂', '❤️', '👍', '🔥', '😮', '😢', '🎉', '🌿', '🥗', '✨', '💯', '👏', '🙌', '🤔']
 
 const IconFacebook = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
 const IconInstagram = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
@@ -28,47 +28,48 @@ const IconWhatsApp = () => <svg width="18" height="18" viewBox="0 0 24 24" fill=
 
 function countAllComments(comments: Comment[]): number {
   let count = comments.length;
-  for (const c of comments) {
-    if (c.replies) {
-      count += countAllComments(c.replies);
-    }
-  }
+  for (const c of comments) if (c.replies) count += countAllComments(c.replies);
   return count;
 }
 
-// ðŸ†• Composant CommentNode avec bouton unique
-function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, isTarget?: boolean, depth?: number }) {
-  const [showReplies, setShowReplies] = useState(isTarget);
-  const [isReplying, setIsReplying] = useState(false);
+// Composant récursif avec gestion du targetId
+function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, targetId?: number | null, depth?: number }) {
+  const isTarget = comment.id === targetId;
   
+  const hasTargetInside = (c: Comment): boolean => {
+    if (c.id === targetId) return true;
+    if (c.replies) return c.replies.some(hasTargetInside);
+    return false;
+  };
+  
+  const [showReplies, setShowReplies] = useState(hasTargetInside(comment));
+  const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [replyMediaUrl, setReplyMediaUrl] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const totalReplies = comment.replies?.length || 0;
-  
-  // Limite visuelle de l'indentation pour éviter l'effet "escalier"
-  const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';
+  // On force l'ouverture si la cible change (ex: on clique sur une autre notification)
+  useEffect(() => {
+    if (hasTargetInside(comment)) {
+      setShowReplies(true);
+    }
+  }, [targetId]);
 
-  const heartCount = comment.reactions?.['â¤ï¸']?.length || 0;
-  const hasLiked = comment.my_reactions?.includes('â¤ï¸');
+  const totalReplies = comment.replies?.length || 0;
+  const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';
+  const heartCount = comment.reactions?.['❤️']?.length || 0;
+  const hasLiked = comment.my_reactions?.includes('❤️');
 
   const handleSendReply = async () => {
     if (!replyText.trim() && !replyMediaUrl) return;
     setPosting(true);
     try {
       await onReplySubmit(comment.id, replyText.trim(), replyMediaUrl || undefined);
-      setReplyText('');
-      setReplyMediaUrl(null);
-      setIsReplying(false);
-      setShowReplies(true); // Ouvre les réponses après avoir répondu
-    } finally {
-      setPosting(false);
-    }
+      setReplyText(''); setReplyMediaUrl(null); setIsReplying(false); setShowReplies(true);
+    } finally { setPosting(false); }
   }
 
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,9 +79,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
     try {
       const res = await articlesApi.uploadCover(file);
       setReplyMediaUrl(res.url);
-    } catch (err: any) {
-      toast.error("Erreur lors de l'upload");
-    } finally {
+    } catch { toast.error("Erreur upload"); } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -102,31 +101,20 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
               <span className="font-bold text-sm text-gray-900">{comment.author?.first_name} {comment.author?.last_name}</span>
               <span className="text-xs text-gray-500 ml-2">@{comment.author?.username}</span>
             </div>
-            <span className="text-[10px] font-medium text-gray-400">
-              {new Date(comment.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-            </span>
+            <span className="text-[10px] font-medium text-gray-400">{new Date(comment.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-          
           {comment.media_url && (
             <div className="mt-3 rounded-xl overflow-hidden border border-gray-200 max-w-sm">
               <img src={comment.media_url} alt="Pièce jointe" className="w-full h-auto max-h-60 object-cover" />
             </div>
           )}
-          
           <div className="mt-3 flex items-center gap-4">
-            <button 
-              onClick={() => setIsReplying(!isReplying)} 
-              className={`text-xs font-bold flex items-center gap-1 transition ${isReplying ? 'text-emerald-600' : 'text-gray-500 hover:text-emerald-600'}`}
-            >
+            <button onClick={() => setIsReplying(!isReplying)} className={`text-xs font-bold flex items-center gap-1 transition ${isReplying ? 'text-emerald-600' : 'text-gray-500 hover:text-emerald-600'}`}>
               <CornerDownRight size={12} /> Répondre
             </button>
-            <button 
-              onClick={() => onReact(comment.id, 'â¤ï¸')}
-              className={`text-xs font-bold flex items-center gap-1 transition ${hasLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-            >
-              <Heart size={12} fill={hasLiked ? 'currentColor' : 'none'} /> 
-              {heartCount > 0 ? heartCount : 'J\'aime'}
+            <button onClick={() => onReact(comment.id, '❤️')} className={`text-xs font-bold flex items-center gap-1 transition ${hasLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+              <Heart size={12} fill={hasLiked ? 'currentColor' : 'none'} /> {heartCount > 0 ? heartCount : 'J\'aime'}
             </button>
           </div>
         </div>
@@ -139,47 +127,28 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
               <div className="px-3 pt-3 pb-1">
                 <div className="relative inline-block">
                   <img src={replyMediaUrl} alt="Preview" className="h-16 rounded-lg border border-gray-200 object-cover" />
-                  <button type="button" onClick={() => setReplyMediaUrl(null)} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md">
-                    <X size={10} />
-                  </button>
+                  <button type="button" onClick={() => setReplyMediaUrl(null)} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><X size={10} /></button>
                 </div>
               </div>
             )}
-            
-            <textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Ã‰cris ta réponse ici..."
-              className="w-full bg-transparent p-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
-              rows={2}
-              autoFocus
-            />
-
+            <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Écris ta réponse ici..." className="w-full bg-transparent p-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none" rows={2} autoFocus />
             <div className="px-2 pb-2 flex items-center justify-between border-t border-gray-100/50">
               <div className="flex items-center gap-1">
                 <div className="relative emoji-picker-container">
-                  <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition" title="Emoji">
-                    <Smile size={16} />
-                  </button>
+                  <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition"><Smile size={16} /></button>
                   {showEmojiPicker && (
                     <div className="absolute bottom-full left-0 mb-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-2 grid grid-cols-5 gap-1 z-50">
-                      {EMOJIS.map(e => (
-                        <button key={e} type="button" onClick={() => { setReplyText(prev => prev + e); setShowEmojiPicker(false); }} className="text-xl hover:bg-gray-100 rounded-lg p-1 transition">{e}</button>
-                      ))}
+                      {EMOJIS.map(e => <button key={e} type="button" onClick={() => { setReplyText(prev => prev + e); setShowEmojiPicker(false); }} className="text-xl hover:bg-gray-100 rounded-lg p-1 transition">{e}</button>)}
                     </div>
                   )}
                 </div>
-                
                 <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleMediaUpload} />
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition disabled:opacity-50" title="Image">
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition disabled:opacity-50">
                   {uploading ? <Loader size={16} className="animate-spin" /> : <ImageIcon size={16} />}
                 </button>
               </div>
-
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setIsReplying(false)} className="text-xs font-bold text-gray-500 hover:text-red-500 px-2">
-                  Annuler
-                </button>
+                <button type="button" onClick={() => setIsReplying(false)} className="text-xs font-bold text-gray-500 hover:text-red-500 px-2">Annuler</button>
                 <button onClick={handleSendReply} disabled={posting || (!replyText.trim() && !replyMediaUrl)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm transition disabled:opacity-50" style={{ background: ANKU.green }}>
                   {posting ? <Loader size={14} className="animate-spin" /> : <Send size={14} />} Envoyer
                 </button>
@@ -189,32 +158,17 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, depth = 0 }: {
         </div>
       )}
 
-      {/* ðŸ†• Bouton Unique pour Afficher / Masquer les réponses */}
       {totalReplies > 0 && (
         <div className={`${paddingLeft} mt-1`}>
-          <button 
-            onClick={() => setShowReplies(!showReplies)}
-            className="text-xs font-bold text-gray-600 hover:text-emerald-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition w-fit"
-          >
-            {showReplies ? (
-              <>
-                <ChevronUp size={14} /> Masquer les réponses
-              </>
-            ) : (
-              <>
-                <ChevronDown size={14} /> Afficher {totalReplies} {totalReplies === 1 ? 'réponse' : 'réponses'}
-              </>
-            )}
+          <button onClick={() => setShowReplies(!showReplies)} className="text-xs font-bold text-gray-600 hover:text-emerald-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition w-fit">
+            {showReplies ? <><ChevronUp size={14} /> Masquer les réponses</> : <><ChevronDown size={14} /> Afficher {totalReplies} {totalReplies === 1 ? 'réponse' : 'réponses'}</>}
           </button>
         </div>
       )}
       
-      {/* Affichage des réponses si activé */}
       {showReplies && totalReplies > 0 && (
         <div className={`${paddingLeft} pl-4 border-l-2 border-gray-100 space-y-3 mt-2`}>
-          {comment.replies!.map(reply => (
-            <CommentNode key={reply.id} comment={reply} onReplySubmit={onReplySubmit} onReact={onReact} isTarget={isTarget} depth={depth + 1} />
-          ))}
+          {comment.replies!.map(reply => <CommentNode key={reply.id} comment={reply} onReplySubmit={onReplySubmit} onReact={onReact} targetId={targetId} depth={depth + 1} />)}
         </div>
       )}
     </div>
@@ -232,10 +186,9 @@ export default function ArticleDetail() {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [postingComment, setPostingComment] = useState(false)
-  
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [commentMediaUrl, setCommentMediaUrl] = useState<string | null>(null)
   const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
@@ -252,7 +205,7 @@ export default function ArticleDetail() {
           const commentsRes = await commentsApi.listByArticle(res.article.id)
           if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
         }
-      } catch (err: any) {
+      } catch {
         toast.error('Article introuvable.')
         navigate('/articles')
       } finally { setLoading(false) }
@@ -260,20 +213,22 @@ export default function ArticleDetail() {
     fetchArticleAndComments()
   }, [slug, navigate])
 
+  // 🆕 Scroll auto optimisé
   useEffect(() => {
-    if (loading) return;
+    if (loading || comments.length === 0) return;
     const hash = window.location.hash;
     if (!hash) return;
 
-    setTimeout(() => {
-      const id = hash.replace('#', '');
-      const el = document.getElementById(id);
+    const timer = setTimeout(() => {
+      const el = document.getElementById(hash.replace('#', ''));
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('bg-emerald-50', 'ring-2', 'ring-emerald-400', 'p-2', '-m-2');
         setTimeout(() => el.classList.remove('bg-emerald-50', 'ring-2', 'ring-emerald-400', 'p-2', '-m-2'), 2500);
       }
-    }, 300);
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [loading, comments])
 
   useEffect(() => {
@@ -289,9 +244,22 @@ export default function ArticleDetail() {
     if (!article || liking) return
     setLiking(true)
     try {
-      const res = await articlesApi.like(article.id)
-      setArticle(prev => prev ? { ...prev, liked_by_me: res.liked, likes_count: res.liked ? prev.likes_count + 1 : prev.likes_count - 1 } : null)
-    } catch (err: any) { toast.error('Erreur lors du like.') } finally { setLiking(false) }
+      await articlesApi.like(article.id)
+      setArticle(prev => prev ? { ...prev, liked_by_me: !prev.liked_by_me, likes_count: prev.liked_by_me ? (prev.likes_count || 1) - 1 : (prev.likes_count || 0) + 1 } : null)
+    } catch { toast.error('Erreur lors du like.') } finally { setLiking(false) }
+  }
+
+  const handleReplySubmit = async (parentId: number, content: string, mediaUrl?: string) => {
+    if (!article) return
+    try {
+      await commentsApi.create(article.id, content, parentId, mediaUrl)
+      const commentsRes = await commentsApi.listByArticle(article.id)
+      if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
+      toast.success('Réponse ajoutée !')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur")
+      throw err
+    }
   }
 
   const handleReactComment = async (commentId: number, emoji: string) => {
@@ -301,25 +269,7 @@ export default function ArticleDetail() {
         const commentsRes = await commentsApi.listByArticle(article.id)
         if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
       }
-    } catch (err: any) { toast.error('Erreur lors de la réaction') }
-  }
-
-  const handleReplySubmit = async (parentId: number, content: string, mediaUrl?: string) => {
-    if (!article) return
-    try {
-      await commentsApi.create(article.id, content, parentId, mediaUrl)
-      const commentsRes = await commentsApi.listByArticle(article.id)
-      if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
-      toast.success('réponse ajoutée !')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erreur")
-      throw err
-    }
-  }
-
-  const handleEmojiClick = (emoji: string) => {
-    setNewComment(prev => prev + emoji)
-    setShowEmojiPicker(false)
+    } catch { toast.error('Erreur lors de la réaction') }
   }
 
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,8 +279,8 @@ export default function ArticleDetail() {
     try {
       const res = await articlesApi.uploadCover(file)
       setCommentMediaUrl(res.url)
-      toast.success('Image ajoutée âœ…')
-    } catch (err: any) { toast.error("Erreur lors de l'upload") } finally {
+      toast.success('Image ajoutée ✅')
+    } catch { toast.error("Erreur upload") } finally {
       setUploadingMedia(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -341,15 +291,15 @@ export default function ArticleDetail() {
     if (!article || (!newComment.trim() && !commentMediaUrl) || postingComment) return
     setPostingComment(true)
     try {
-      const res = await commentsApi.create(article.id, newComment.trim(), undefined, commentMediaUrl || undefined)
-      if (res && res.comment) {
-        setComments(prev => [...prev, res.comment])
-        setNewComment('')
-        setCommentMediaUrl(null)
-        toast.success('Commentaire ajouté !')
-        setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-      }
-    } catch (err: any) { toast.error(err?.response?.data?.message || "Erreur") } finally { setPostingComment(false) }
+      await commentsApi.create(article.id, newComment.trim(), undefined, commentMediaUrl || undefined)
+      const commentsRes = await commentsApi.listByArticle(article.id)
+      if (commentsRes && commentsRes.comments) setComments(commentsRes.comments)
+      setNewComment(''); setCommentMediaUrl(null)
+      toast.success('Commentaire ajouté !')
+      setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Erreur")
+    } finally { setPostingComment(false) }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader size={32} className="animate-spin text-emerald-500" /></div>
@@ -359,9 +309,11 @@ export default function ArticleDetail() {
   const authorName = article.author ? `${article.author.first_name} ${article.author.last_name}` : 'Auteur inconnu'
   const readTime = Math.max(1, Math.ceil((article.content?.length || 0) / 1000))
   const publishDate = article.published_at ? new Date(article.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Date inconnue'
+  const totalCommentsCount = countAllComments(comments)
   
   const shareUrl = window.location.href
   const shareTitle = encodeURIComponent(article.title)
+  const targetId = window.location.hash.startsWith('#comment-') ? Number(window.location.hash.replace('#comment-', '')) : null
 
   const shareLinks = [
     { name: 'WhatsApp', icon: IconWhatsApp, url: `https://api.whatsapp.com/send?text=${shareTitle}%20${shareUrl}`, color: '#25D366' },
@@ -370,10 +322,8 @@ export default function ArticleDetail() {
     { name: 'Instagram', icon: IconInstagram, url: `https://www.instagram.com/`, color: '#E1306C' },
   ]
 
-  const totalCommentsCount = countAllComments(comments);
-
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-[#fcfbf9] pb-20 relative overflow-hidden">
       <AnimatedShopsBackground />
       <QuickMenu />
 
@@ -385,17 +335,13 @@ export default function ArticleDetail() {
         <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-gray-100 mb-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2" style={{ background: cat.color }}></div>
           <div className="flex items-center gap-3 mb-4 mt-2">
-            <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg text-white shadow-sm" style={{ background: cat.color }}>
-              {cat.label}
-            </span>
-            <span className="text-sm text-gray-500 font-medium flex items-center gap-1.5">
-              <Calendar size={14} /> {publishDate}
-            </span>
+            <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg text-white shadow-sm" style={{ background: cat.color }}>{cat.label}</span>
+            <span className="text-sm text-gray-500 font-medium flex items-center gap-1.5"><Calendar size={14} /> {publishDate}</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-serif font-black text-gray-900 leading-tight mb-4">{article.title}</h1>
           {article.excerpt && <p className="text-lg text-gray-600 leading-relaxed font-serif italic mb-6">{article.excerpt}</p>}
           <div className="flex items-center justify-between border-t border-gray-100 pt-6">
-            <Link to={`/u/${article.author?.username}`} className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity">
+            <Link to={`/u/${article.author?.username}`} className="flex items-center gap-3 group">
               {article.author?.avatar_url ? (
                 <img src={article.author.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm group-hover:border-emerald-400 transition-colors" />
               ) : (
@@ -441,6 +387,19 @@ export default function ArticleDetail() {
                       </a>
                     ))}
                     <div className="h-px bg-gray-100 my-1"></div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          toast.loading('Partage sur ANKU...', { id: 'share-anku' })
+                          await httpClient.post(`/posts/share-article/${article.id}`, { share_comment: "J'ai lu cet article sur le Kiosque !" })
+                          toast.success('Partagé sur ton profil ANKU ! 🎉', { id: 'share-anku' })
+                          setShowShareMenu(false)
+                        } catch { toast.error('Erreur lors du partage', { id: 'share-anku' }) }
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition"
+                    >
+                      <BookOpen size={18} /> Partager sur ANKU
+                    </button>
                     <button onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success('Lien copié !'); setShowShareMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition">
                       <LinkIcon size={18} className="text-gray-400" /> Copier le lien
                     </button>
@@ -465,42 +424,26 @@ export default function ArticleDetail() {
                   <div className="px-4 pt-4 pb-2">
                     <div className="relative inline-block">
                       <img src={commentMediaUrl} alt="Preview" className="h-24 rounded-lg border border-gray-200 object-cover" />
-                      <button type="button" onClick={() => setCommentMediaUrl(null)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md">
-                        <X size={12} />
-                      </button>
+                      <button type="button" onClick={() => setCommentMediaUrl(null)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"><X size={12} /></button>
                     </div>
                   </div>
                 )}
-
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Partage ton avis sur cet article..."
-                  className="w-full bg-transparent p-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
-                  rows={3}
-                  maxLength={1000}
-                />
-
+                <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Partage ton avis sur cet article..." className="w-full bg-transparent p-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none" rows={3} maxLength={1000} />
                 <div className="px-2 pb-2 flex items-center justify-between border-t border-gray-100/50">
                   <div className="flex items-center gap-1">
                     <div className="relative emoji-picker-container">
-                      <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition" title="Ajouter un emoji">
-                        <Smile size={20} />
-                      </button>
+                      <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition"><Smile size={20} /></button>
                       {showEmojiPicker && (
                         <div className="absolute bottom-full left-0 mb-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-2 grid grid-cols-5 gap-1 z-50">
-                          {EMOJIS.map(e => (
-                            <button key={e} type="button" onClick={() => handleEmojiClick(e)} className="text-2xl hover:bg-gray-100 rounded-lg p-1 transition">{e}</button>
-                          ))}
+                          {EMOJIS.map(e => <button key={e} type="button" onClick={() => { setNewComment(prev => prev + e); setShowEmojiPicker(false); }} className="text-2xl hover:bg-gray-100 rounded-lg p-1 transition">{e}</button>)}
                         </div>
                       )}
                     </div>
                     <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleMediaUpload} />
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingMedia} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition disabled:opacity-50" title="Ajouter une image">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingMedia} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition disabled:opacity-50">
                       {uploadingMedia ? <Loader size={20} className="animate-spin" /> : <ImageIcon size={20} />}
                     </button>
                   </div>
-
                   <button type="submit" disabled={postingComment || (!newComment.trim() && !commentMediaUrl)} className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition disabled:opacity-50" style={{ background: ANKU.green }}>
                     {postingComment ? <Loader size={16} className="animate-spin" /> : <Send size={16} />} Envoyer
                   </button>
@@ -511,17 +454,15 @@ export default function ArticleDetail() {
 
           <div className="flex flex-col gap-6">
             {comments.length === 0 ? (
-              <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                <p className="text-gray-500 font-medium">Sois le premier Ã  commenter cet article !</p>
-              </div>
+              <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200"><p className="text-gray-500 font-medium">Sois le premier à commenter !</p></div>
             ) : (
               comments.map((comment, index) => (
                 <div key={comment.id} className={index > 0 ? "pt-6 border-t border-gray-100" : ""}>
                   <CommentNode 
                     comment={comment} 
-                    onReplySubmit={handleReplySubmit}
-                    onReact={handleReactComment}
-                    isTarget={window.location.hash === `#comment-${comment.id}`}
+                    onReplySubmit={handleReplySubmit} 
+                    onReact={handleReactComment} 
+                    targetId={targetId}
                   />
                 </div>
               ))
@@ -533,5 +474,3 @@ export default function ArticleDetail() {
     </div>
   )
 }
-
-

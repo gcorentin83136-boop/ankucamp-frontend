@@ -1,7 +1,3 @@
-// ============================================================
-// ANKU — Résolveur de lien de notification
-// ============================================================
-
 import type { Notification } from '../types/notification'
 
 type Resolver = string | ((match: RegExpMatchArray) => string)
@@ -14,10 +10,9 @@ const ROUTE_MAP: Array<{ pattern: RegExp; to: Resolver }> = [
   { pattern: /^\/dashboard\/followers$/, to: '/dashboard/shop' },
   { pattern: /^\/dashboard$/, to: '/dashboard/shop' },
   { pattern: /^\/posts\/(\d+)$/, to: (m) => `/feed?post=${m[1]}` },
-  { pattern: /^\/articles\/([^/]+)$/, to: (m) => `/articles/${m[1]}` },
-  { pattern: /^\/articles\/([^/]+)$/, to: (m) => `/articles/${m[1]}` },
-  { pattern: /^\/messages\/(\d+)$/, to: (m) => `/messages?conversation=${m[1]}` },
-  { pattern: /^\/events\/(\d+)$/, to: (m) => `/events?event=${m[1]}` },
+  { pattern: /^\/articles\/([^/?#]+)$/, to: (m) => `/articles/${m[1]}` },
+  { pattern: /^\/messages\/(\d+)$/, to: (m) => `/messages?c=${m[1]}` },
+  { pattern: /^\/events\/(\d+)$/, to: (m) => `/events/${m[1]}` },
   { pattern: /^\/friends\/requests$/, to: '/friends?tab=requests' },
   { pattern: /^\/settings\/kyc$/, to: '/kyc' },
 ]
@@ -36,46 +31,51 @@ const STATIC_ROUTES = new Set<string>([
   '/dashboard/user/refunds', '/dashboard/user/follows',
 ])
 
-function splitLink(link: string): { path: string; search: string } {
-  const i = link.indexOf('?')
-  if (i < 0) return { path: link, search: '' }
-  return { path: link.slice(0, i), search: link.slice(i) }
-}
-
-function mergeQuery(target: string, extra: string): string {
-  if (!extra) return target
-  const [basePath, baseQuery] = target.split('?')
-  const base = new URLSearchParams(baseQuery || '')
-  const add = new URLSearchParams(extra.slice(1))
-  for (const [k, v] of add.entries()) {
-    if (!base.has(k)) base.set(k, v)
-  }
-  const qs = base.toString()
-  return qs ? `${basePath}?${qs}` : basePath
-}
-
-export function resolveNotificationLink(
-  notif: Pick<Notification, 'link'>
-): string | null {
+export function resolveNotificationLink(notif: Pick<Notification, 'link'>): string | null {
   if (!notif.link) return null
-  const { path, search } = splitLink(notif.link)
 
-  if (STATIC_ROUTES.has(path)) return search ? `${path}${search}` : path
+  // 1. Séparer le hash (#comment-123)
+  const hashIdx = notif.link.indexOf('#')
+  const hash = hashIdx >= 0 ? notif.link.slice(hashIdx) : ''
+  const linkWithoutHash = hashIdx >= 0 ? notif.link.slice(0, hashIdx) : notif.link
 
-  if (/^\/shops\/\d+$/.test(path)) return `${path}${search}`
-  if (/^\/products\/\d+$/.test(path)) return `${path}${search}`
-  if (/^\/u\/[^/?#]+$/.test(path)) return `${path}${search}`
+  // 2. Séparer la query string (?order=123)
+  const searchIdx = linkWithoutHash.indexOf('?')
+  const search = searchIdx >= 0 ? linkWithoutHash.slice(searchIdx) : ''
+  const path = searchIdx >= 0 ? linkWithoutHash.slice(0, searchIdx) : linkWithoutHash
 
-  for (const { pattern, to } of ROUTE_MAP) {
-    const m = path.match(pattern)
-    if (m) {
-      const target = typeof to === 'function' ? to(m) : to
-      return mergeQuery(target, search)
+  // 3. Trouver la route de base
+  let baseTarget = ''
+
+  if (STATIC_ROUTES.has(path)) {
+    baseTarget = path
+  } else if (/^\/shops\/\d+$/.test(path) || /^\/products\/\d+$/.test(path) || /^\/u\/[^/?#]+$/.test(path)) {
+    baseTarget = path
+  } else {
+    let matched = false
+    for (const { pattern, to } of ROUTE_MAP) {
+      const m = path.match(pattern)
+      if (m) {
+        baseTarget = typeof to === 'function' ? to(m) : to
+        matched = true
+        break
+      }
+    }
+    if (!matched) {
+      console.warn('⚠️ Lien de notification inconnu, fallback /notifications :', notif.link)
+      return '/notifications'
     }
   }
 
-  console.warn('⚠️ Lien de notification inconnu, fallback /notifications :', notif.link)
-  return '/notifications'
+  // 4. Reconstruire l'URL finale proprement
+  let finalUrl = baseTarget
+  if (search && !finalUrl.includes('?')) {
+    finalUrl += search
+  } else if (search && finalUrl.includes('?')) {
+    finalUrl += '&' + search.slice(1)
+  }
+
+  return finalUrl + hash
 }
 
 export default resolveNotificationLink
