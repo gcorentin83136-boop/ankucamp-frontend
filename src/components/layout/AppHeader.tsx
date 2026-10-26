@@ -47,7 +47,7 @@ export default function AppHeader() {
       fetchUnreadCount()
 
       // ðŸƒ BULLE DE NOTIFICATION (TOAST)
-      // Si on n'est pas dÃ©jÃ  dans cette conversation
+      // Si on n'est pas déjà dans cette conversation
       if (!(location.pathname === '/messages' && location.search.includes(`c=${msg.conversation_id}`))) {
         toast.custom((t) => (
           <MessageToast
@@ -115,7 +115,7 @@ export default function AppHeader() {
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex items-center gap-3 sm:gap-4">
         
-        <Link to="/" className="flex items-center gap-2 group shrink-0" title="Retour Ã  l'accueil">
+        <Link to="/" className="flex items-center gap-2 group shrink-0" title="Retour à l'accueil">
           <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-white group-hover:text-emerald-100 transition drop-shadow-sm">ANKU</span>
         </Link>
 
@@ -137,7 +137,7 @@ export default function AppHeader() {
             {open && (
               <div className="absolute top-full mt-2 left-0 right-0 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[70vh] overflow-y-auto">
                 {!hasResults ? (
-                  <div className="p-6 text-center"><p className="text-sm text-gray-500">Aucun rÃ©sultat pour Â« {q} Â»</p></div>
+                  <div className="p-6 text-center"><p className="text-sm text-gray-500">Aucun résultat pour Â« {q} Â»</p></div>
                 ) : (
                   <>
                     {results.users.length > 0 && (
@@ -182,7 +182,7 @@ export default function AppHeader() {
                         ))}
                       </div>
                     )}
-                    <button type="button" onClick={() => goTo(`/search?q=${encodeURIComponent(q)}`)} className="w-full border-t border-gray-100 py-3 text-xs font-bold transition hover:bg-emerald-50 flex items-center justify-center gap-1.5" style={{ color: '#4a7a35' }}>Voir tous les rÃ©sultats pour Â« {q} Â» â†’</button>
+                    <button type="button" onClick={() => goTo(`/search?q=${encodeURIComponent(q)}`)} className="w-full border-t border-gray-100 py-3 text-xs font-bold transition hover:bg-emerald-50 flex items-center justify-center gap-1.5" style={{ color: '#4a7a35' }}>Voir tous les résultats pour Â« {q} Â» â†’</button>
                   </>
                 )}
               </div>
@@ -193,8 +193,8 @@ export default function AppHeader() {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
           {isAuthenticated && user ? (
             <>
-              <button type="button" onClick={handleLogout} title="Se dÃ©connecter" className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-semibold transition backdrop-blur-sm">
-                <LogOut size={14} /><span className="hidden xl:inline">DÃ©connexion</span>
+              <button type="button" onClick={handleLogout} title="Se déconnecter" className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-semibold transition backdrop-blur-sm">
+                <LogOut size={14} /><span className="hidden xl:inline">Déconnexion</span>
               </button>
               
               <div className="flex items-center gap-1">

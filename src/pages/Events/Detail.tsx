@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Heart, Calendar, MapPin, Clock, Loader, Share2, BookOpen, Link as LinkIcon, MessageCircle, Send, CornerDownRight, Smile, Image as ImageIcon, X, ChevronDown, ChevronUp, Ticket } from 'lucide-react'
+import { ArrowLeft, Heart, Calendar, MapPin, Clock, Loader, Share2, BookOpen, Link as LinkIcon, MessageCircle, Send, CornerDownRight, Smile, Image as ImageIcon, X, ChevronDown, ChevronUp, Ticket, Users, CheckCircle2 } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import { eventCommentsApi } from '../../service/api/event-comments.api'
 import type { Comment } from '../../service/api/comments.api'
 import type { Event } from '../../types/event'
+import httpClient from '../../service/api/httpClient'
 import AnimatedShopsBackground from '../../components/shops/AnimatedShopsBackground'
 import QuickMenu from '../../components/shops/QuickMenu'
 
@@ -23,13 +24,14 @@ function countAllComments(comments: Comment[]): number {
   return count;
 }
 
-function CommentNode({ comment, onReplySubmit, onReact, isTarget, targetId, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, isTarget?: boolean, targetId?: number | null, depth?: number }) {
+function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, targetId?: number | null, depth?: number }) {
+  const isTarget = comment.id === targetId;
   const hasTargetInside = (c: Comment): boolean => {
     if (c.id === targetId) return true;
     if (c.replies) return c.replies.some(hasTargetInside);
     return false;
   };
-  const [showReplies, setShowReplies] = useState(isTarget || hasTargetInside(comment));
+  const [showReplies, setShowReplies] = useState(hasTargetInside(comment));
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [replyMediaUrl, setReplyMediaUrl] = useState<string | null>(null);
@@ -37,6 +39,8 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, targetId, dept
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (hasTargetInside(comment)) setShowReplies(true); }, [targetId]);
 
   const totalReplies = comment.replies?.length || 0;
   const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';
@@ -148,7 +152,7 @@ function CommentNode({ comment, onReplySubmit, onReact, isTarget, targetId, dept
       
       {showReplies && totalReplies > 0 && (
         <div className={`${paddingLeft} pl-4 border-l-2 border-gray-100 space-y-3 mt-2`}>
-          {comment.replies!.map(reply => <CommentNode key={reply.id} comment={reply} onReplySubmit={onReplySubmit} onReact={onReact} isTarget={isTarget} targetId={targetId} depth={depth + 1} />)}
+          {comment.replies!.map(reply => <CommentNode key={reply.id} comment={reply} onReplySubmit={onReplySubmit} onReact={onReact} targetId={targetId} depth={depth + 1} />)}
         </div>
       )}
     </div>
@@ -162,8 +166,11 @@ export default function EventDetail() {
   const [loading, setLoading] = useState(true)
   const [liking, setLiking] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
-  const [registering, setRegistering] = useState(false)
   
+  // 🆕 States pour la Popup d'inscription
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [registering, setRegistering] = useState(false)
+
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [postingComment, setPostingComment] = useState(false)
@@ -189,27 +196,24 @@ export default function EventDetail() {
       } catch {
         toast.error('Événement introuvable.')
         navigate('/events')
-      } finally {
-        setLoading(false)
-      }
+      } finally { setLoading(false) }
     }
     fetchEventData()
   }, [id, navigate])
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || comments.length === 0) return;
     const hash = window.location.hash;
     if (!hash) return;
-    
-    // On laisse un peu plus de temps pour que les sous-réponses s'ouvrent
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       const el = document.getElementById(hash.replace('#', ''));
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('bg-emerald-50', 'ring-2', 'ring-emerald-400', 'p-2', '-m-2');
         setTimeout(() => el.classList.remove('bg-emerald-50', 'ring-2', 'ring-emerald-400', 'p-2', '-m-2'), 2500);
       }
-    }, 600);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [loading, comments])
 
   useEffect(() => {
@@ -230,7 +234,7 @@ export default function EventDetail() {
     } catch { toast.error('Erreur lors du like.') } finally { setLiking(false) }
   }
 
-  const handleRegister = async () => {
+  const confirmRegistration = async () => {
     if (!event || registering) return
     setRegistering(true)
     try {
@@ -243,6 +247,7 @@ export default function EventDetail() {
         setEvent(prev => prev ? { ...prev, is_registered: true, registered_count: (prev.registered_count || 0) + 1 } : null)
         toast.success('Inscription confirmée ! 🎉')
       }
+      setShowRegisterModal(false)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Erreur")
     } finally { setRegistering(false) }
@@ -310,6 +315,7 @@ export default function EventDetail() {
   
   const shareUrl = window.location.href
   const shareTitle = encodeURIComponent(event.title)
+  const targetId = window.location.hash.startsWith('#comment-') ? Number(window.location.hash.replace('#comment-', '')) : null
 
   const shareLinks = [
     { name: 'WhatsApp', icon: IconWhatsApp, url: `https://api.whatsapp.com/send?text=${shareTitle}%20${shareUrl}`, color: '#25D366' },
@@ -319,7 +325,7 @@ export default function EventDetail() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-[#fcfbf9] pb-20 relative overflow-hidden">
       <AnimatedShopsBackground />
       <QuickMenu />
 
@@ -416,8 +422,8 @@ export default function EventDetail() {
           </div>
           
           <button
-            onClick={handleRegister}
-            disabled={registering || (!!isFull && !event.is_registered)}
+            onClick={() => setShowRegisterModal(true)}
+            disabled={!!isFull && !event.is_registered}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold transition-all shadow-sm ${
               event.is_registered 
                 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
@@ -426,7 +432,7 @@ export default function EventDetail() {
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
             }`}
           >
-            {registering ? <Loader size={18} className="animate-spin" /> : event.is_registered ? 'Inscrit(e) ✅' : isFull ? 'Complet' : <><Ticket size={18} /> Participer</>}
+            {event.is_registered ? 'Inscrit(e) ✅' : isFull ? 'Complet' : <><Ticket size={18} /> Participer</>}
           </button>
         </div>
 
@@ -481,8 +487,7 @@ export default function EventDetail() {
                     comment={comment} 
                     onReplySubmit={handleReplySubmit} 
                     onReact={handleReactComment} 
-                    isTarget={window.location.hash === `#comment-${comment.id}`}
-                    targetId={window.location.hash.startsWith('#comment-') ? Number(window.location.hash.replace('#comment-', '')) : null}
+                    targetId={targetId}
                   />
                 </div>
               ))
@@ -491,6 +496,36 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
+
+      {/* 🆕 POPUP DE CONFIRMATION D'INSCRIPTION */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+                <Ticket size={32} />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2">
+                {event.is_registered ? "Annuler l'inscription ?" : "Confirmer l'inscription ?"}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {event.is_registered 
+                  ? `Tu ne participeras plus à "${event.title}".`
+                  : `Tu vas participer à "${event.title}" le ${dateStr}.`}
+              </p>
+              
+              <div className="flex gap-3">
+                <button onClick={() => setShowRegisterModal(false)} disabled={registering} className="flex-1 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
+                  Annuler
+                </button>
+                <button onClick={confirmRegistration} disabled={registering} className="flex-1 py-2.5 rounded-xl font-bold text-white shadow-md transition flex items-center justify-center" style={{ background: ANKU.green }}>
+                  {registering ? <Loader size={18} className="animate-spin" /> : "Confirmer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

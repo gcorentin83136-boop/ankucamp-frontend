@@ -95,7 +95,7 @@ export default function SearchFiltersPanel({
           )}
         </div>
         <span className="text-xs text-gray-500">
-          {open ? 'RÃ©duire' : 'DÃ©velopper'}
+          {open ? 'Réduire' : 'Développer'}
         </span>
       </button>
 
@@ -146,19 +146,19 @@ export default function SearchFiltersPanel({
               className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-emerald-400"
             >
               <option value="relevance">Pertinence</option>
-              <option value="recent">Plus rÃ©cents</option>
+              <option value="recent">Plus récents</option>
               {tab === 'users' && <option value="alphabetical">A â†’ Z</option>}
               {tab === 'shops' && (
                 <>
-                  <option value="rating">Mieux notÃ©s</option>
+                  <option value="rating">Mieux notés</option>
                   <option value="products_count">Plus de produits</option>
                 </>
               )}
               {tab === 'products' && (
                 <>
                   <option value="price_asc">Prix croissant</option>
-                  <option value="price_desc">Prix dÃ©croissant</option>
-                  <option value="rating">Mieux notÃ©s</option>
+                  <option value="price_desc">Prix décroissant</option>
+                  <option value="rating">Mieux notés</option>
                 </>
               )}
             </select>
@@ -169,7 +169,7 @@ export default function SearchFiltersPanel({
                 onClick={onReset}
                 className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1"
               >
-                <X size={12} /> RÃ©initialiser
+                <X size={12} /> Réinitialiser
               </button>
             )}
           </div>
@@ -190,7 +190,7 @@ export default function SearchFiltersPanel({
             {(tab === 'shops' || tab === 'products') && (
               <div>
                 <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                  CatÃ©gorie
+                  Catégorie
                 </label>
                 <select
                   value={filters.category_id ?? ''}

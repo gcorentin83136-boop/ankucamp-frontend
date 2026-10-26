@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../context/AuthContext'
@@ -56,10 +56,10 @@ export default function Home() {
   const showKycBanner = isAuthenticated && user?.role === 'professionnel' && user.verification_status !== 'verified'
 
   const kycBannerConfig = user?.verification_status === 'pending'
-      ? { icon: 'â³', title: 'VÃ©rification en cours', sub: 'Ton dossier KYC est en cours de traitement', shortTitle: 'VÃ©rification en cours' }
+      ? { icon: '⏳', title: 'Vérification en cours', sub: 'Ton dossier KYC est en cours de traitement', shortTitle: 'Vérification en cours' }
       : user?.verification_status === 'rejected'
-      ? { icon: 'âŒ', title: 'VÃ©rification refusÃ©e', sub: 'Clique pour soumettre Ã  nouveau', shortTitle: 'VÃ©rification refusÃ©e' }
-      : { icon: 'ðŸ§¾', title: 'VÃ©rifie ton compte pro', sub: 'Soumets ton SIRET pour dÃ©bloquer toutes les fonctionnalitÃ©s Pro', shortTitle: 'VÃ©rifie ton compte pro' }
+      ? { icon: '❌', title: 'Vérification refusée', sub: 'Clique pour soumettre à nouveau', shortTitle: 'Vérification refusée' }
+      : { icon: '🧾', title: 'Vérifie ton compte pro', sub: 'Soumets ton SIRET pour débloquer toutes les fonctionnalités Pro', shortTitle: 'Vérifie ton compte pro' }
 
   const handleLogout = async () => {
     await logout()
@@ -90,8 +90,8 @@ export default function Home() {
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
               {isAuthenticated && user ? (
                 <>
-                  <button type="button" onClick={handleLogout} title="Se dÃ©connecter" className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-400/40 hover:border-red-400/70 rounded-full transition text-red-200 hover:text-white text-xs sm:text-sm font-semibold">
-                    <LogOut size={13} className="sm:hidden" /><LogOut size={14} className="hidden sm:block" /><span className="hidden md:inline">DÃ©connexion</span>
+                  <button type="button" onClick={handleLogout} title="Se déconnecter" className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-400/40 hover:border-red-400/70 rounded-full transition text-red-200 hover:text-white text-xs sm:text-sm font-semibold">
+                    <LogOut size={13} className="sm:hidden" /><LogOut size={14} className="hidden sm:block" /><span className="hidden md:inline">Déconnexion</span>
                   </button>
                   <UserMenu />
                   <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* BANDEAU KYC, HERO, CARTES, FOOTER restent inchangÃ©s */}
+        {/* BANDEAU KYC, HERO, CARTES, FOOTER restent inchangés */}
         {showKycBanner && (
           <Link to="/kyc" className="relative w-full shrink-0 overflow-hidden group">
             <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.35) 0%, rgba(5,150,105,0.25) 50%, rgba(16,185,129,0.35) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }} />
@@ -134,7 +134,7 @@ export default function Home() {
                   </span>
                   <span className="text-white/85 text-[10px] sm:text-sm hidden sm:inline">{kycBannerConfig.sub}</span>
                 </div>
-                <span className="text-white font-bold text-base sm:text-xl group-hover:translate-x-1 transition-transform shrink-0 hidden sm:inline">â†’</span>
+                <span className="text-white font-bold text-base sm:text-xl group-hover:translate-x-1 transition-transform shrink-0 hidden sm:inline">→</span>
               </div>
             </div>
           </Link>
@@ -143,7 +143,7 @@ export default function Home() {
         <section className="flex-1 flex items-center justify-center px-3 sm:px-4 py-3 sm:py-4 min-h-0">
           <div className="w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-5 md:px-10 md:py-7 bg-black/15 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] shadow-[0_25px_80px_rgba(0,0,0,0.35)] flex flex-col items-center text-center">
             <span className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-full bg-emerald-500/60 border border-emerald-300/90 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.15em] mb-2 sm:mb-3 text-white" style={{ boxShadow: '0 0 12px rgba(16,185,129,0.5), inset 0 0 8px rgba(16,185,129,0.3)' }}>
-              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white animate-pulse" /> RÃ©seau social engagÃ©
+              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white animate-pulse" /> Réseau social engagé
             </span>
             <div className="relative mb-2 sm:mb-3 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-black/40 blur-2xl" style={{ transform: 'scale(1.6)', zIndex: 0 }} />
@@ -151,19 +151,19 @@ export default function Home() {
             </div>
             {isAuthenticated && user ? (
               <>
-                <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.1] tracking-tight mb-1.5 sm:mb-3 max-w-2xl text-white">Bonjour <span className="text-emerald-400">{user.first_name}</span> ðŸ‘‹</h1>
-                <p className="text-[11px] sm:text-sm md:text-base max-w-xl leading-relaxed mb-0 sm:mb-4 text-white/95">Ravi de te revoir sur ANKU. Explore, partage, Ã©change â€” ta communautÃ© t'attend.</p>
+                <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.1] tracking-tight mb-1.5 sm:mb-3 max-w-2xl text-white">Bonjour <span className="text-emerald-400">{user.first_name}</span> 👋</h1>
+                <p className="text-[11px] sm:text-sm md:text-base max-w-xl leading-relaxed mb-0 sm:mb-4 text-white/95">Ravi de te revoir sur ANKU. Explore, partage, échange — ta communauté t'attend.</p>
               </>
             ) : (
               <>
-                <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.1] tracking-tight mb-1.5 sm:mb-3 max-w-2xl text-white">Le rÃ©seau qui donne du <span className="text-emerald-400">sens</span><br />Ã  vos Ã©changes</h1>
-                <p className="text-[11px] sm:text-sm md:text-base max-w-xl leading-relaxed mb-0 sm:mb-4 text-white/95">ANKU connecte les <strong className="text-emerald-300">agriculteurs</strong>, les <strong className="text-emerald-300">producteurs locaux</strong> et les <strong className="text-emerald-300">particuliers</strong> autour de valeurs simples : circuit court, transparence et communautÃ©.</p>
+                <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.1] tracking-tight mb-1.5 sm:mb-3 max-w-2xl text-white">Le réseau qui donne du <span className="text-emerald-400">sens</span><br />à vos échanges</h1>
+                <p className="text-[11px] sm:text-sm md:text-base max-w-xl leading-relaxed mb-0 sm:mb-4 text-white/95">ANKU connecte les <strong className="text-emerald-300">agriculteurs</strong>, les <strong className="text-emerald-300">producteurs locaux</strong> et les <strong className="text-emerald-300">particuliers</strong> autour de valeurs simples : circuit court, transparence et communauté.</p>
               </>
             )}
             {!isAuthenticated && (
               <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2.5 w-full sm:w-auto mt-2 sm:mt-0">
                 <Link to="/register" className="w-full sm:w-auto px-5 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-white rounded-full transition shadow-lg shadow-emerald-500/50 hover:scale-105 transform text-center">Rejoindre ANKU</Link>
-                <Link to="/login" className="w-full sm:w-auto px-5 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-2 border-white/60 hover:border-white hover:bg-white/15 text-white rounded-full transition backdrop-blur-sm text-center">J'ai dÃ©jÃ  un compte</Link>
+                <Link to="/login" className="w-full sm:w-auto px-5 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-2 border-white/60 hover:border-white hover:bg-white/15 text-white rounded-full transition backdrop-blur-sm text-center">J'ai déjà un compte</Link>
               </div>
             )}
           </div>
@@ -173,8 +173,8 @@ export default function Home() {
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
             {isAuthenticated && user
               ? [
-                  { Icon: Store, title: 'Boutiques', desc: 'DÃ©couvre les producteurs, artisans et crÃ©ateurs prÃ¨s de chez toi.', to: '/shops', gradient: 'from-emerald-400 to-emerald-600' },
-                  { Icon: Users, title: 'RÃ©seau social', desc: 'Publie, Ã©change et crÃ©e du lien avec la communautÃ©.', to: '/feed', gradient: 'from-blue-400 to-blue-600' },
+                  { Icon: Store, title: 'Boutiques', desc: 'Découvre les producteurs, artisans et créateurs près de chez toi.', to: '/shops', gradient: 'from-emerald-400 to-emerald-600' },
+                  { Icon: Users, title: 'Réseau social', desc: 'Publie, échange et crée du lien avec la communauté.', to: '/feed', gradient: 'from-blue-400 to-blue-600' },
                   { Icon: LayoutDashboard, title: 'Tableau de bord', desc: 'Tes commandes, wishlist, messages et raccourcis.', to: '/dashboard/user', gradient: 'from-violet-400 to-violet-600' },
                 ].map((item) => {
                   const Icon = item.Icon
@@ -193,9 +193,9 @@ export default function Home() {
                   )
                 })
               : [
-                  { icon: 'ðŸŒ±', title: 'Circuit court', desc: 'Achetez directement auprÃ¨s des producteurs prÃ¨s de chez vous.' },
-                  { icon: 'ðŸ¤', title: 'Vraie communautÃ©', desc: 'Ã‰changez et crÃ©ez du lien avec des personnes qui partagent vos valeurs.' },
-                  { icon: 'ðŸ”', title: 'Transparence totale', desc: 'Origine des produits, avis vÃ©rifiÃ©s : consommez en confiance.' },
+                  { icon: '🌱', title: 'Circuit court', desc: 'Achetez directement auprès des producteurs près de chez vous.' },
+                  { icon: '🤝', title: 'Vraie communauté', desc: 'Échangez et créez du lien avec des personnes qui partagent vos valeurs.' },
+                  { icon: '🔍', title: 'Transparence totale', desc: 'Origine des produits, avis vérifiés : consommez en confiance.' },
                 ].map((item) => (
                   <div key={item.title} className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl bg-black/15 backdrop-blur-xl border-2 border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.25)] hover:bg-black/25 hover:border-emerald-400/70 transition-all duration-300 group">
                     <div className="flex items-center md:items-start gap-2.5 sm:gap-4">
@@ -213,11 +213,11 @@ export default function Home() {
         <footer className="w-full px-3 sm:px-6 py-2 sm:py-2.5 backdrop-blur-xl bg-black/20 border-t border-emerald-500/20 shrink-0">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-2">
             <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-white/90">
-              <Link to="/legal/cgu" className="hover:text-emerald-300 transition">CGU</Link><span className="text-white/30">â€¢</span>
-              <Link to="/legal/cookies" className="hover:text-emerald-300 transition">Cookies</Link><span className="text-white/30">â€¢</span>
+              <Link to="/legal/cgu" className="hover:text-emerald-300 transition">CGU</Link><span className="text-white/30">•</span>
+              <Link to="/legal/cookies" className="hover:text-emerald-300 transition">Cookies</Link><span className="text-white/30">•</span>
               <Link to="/contact" className="hover:text-emerald-300 transition">Contacter ANKU</Link>
             </div>
-            <p className="text-[9px] sm:text-[11px] text-white/70">Â© {new Date().getFullYear()} ANKU â€” RÃ©seau social engagÃ©</p>
+            <p className="text-[9px] sm:text-[11px] text-white/70">© {new Date().getFullYear()} ANKU — Réseau social engagé</p>
           </div>
         </footer>
       </div>
