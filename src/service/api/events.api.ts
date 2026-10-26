@@ -39,6 +39,15 @@ export const eventsApi = {
     return data
   },
 
+  listMyRegistrations: async (): Promise<EventsListResponse> => {
+    const { data } = await httpClient.get<EventsListResponse>('/events/me/registrations')
+    return data
+  },
+
+  adminListAll: async (): Promise<EventsListResponse> => {
+    const { data } = await httpClient.get<EventsListResponse>('/events/admin/all')
+    return data
+  },
   feed: async (): Promise<EventsListResponse> => {
     const { data } = await httpClient.get<EventsListResponse>('/events/feed')
     return data

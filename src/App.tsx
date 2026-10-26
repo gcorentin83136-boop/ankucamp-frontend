@@ -37,6 +37,7 @@ import PaymentSettings from './pages/Settings/PaymentSettings'
 import AdminGuard from './components/admin/AdminGuard'
 import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/Admin/Dashboard'
+import AdminEvents from './pages/Admin/Events'
 import AdminKyc from './pages/Admin/Kyc'
 import AdminModeration from './pages/Admin/Moderation'
 import AdminRefunds from './pages/Admin/Refunds'
@@ -233,7 +234,7 @@ function App() {
         <Route path="kyc" element={<AdminKyc />} />
         <Route path="moderation" element={<AdminModeration />} />
         <Route path="refunds" element={<AdminRefunds />} />
-        <Route path="users" element={<AdminUsers />} />
+        <Route path="users" element={<AdminUsers />} />`n        <Route path="events" element={<AdminEvents />} />
         <Route path="categories" element={<AdminCategories />} />
         <Route path="promo" element={<AdminPromo />} />
         <Route path="audit" element={<AdminAudit />} />

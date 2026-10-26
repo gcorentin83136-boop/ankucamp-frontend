@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Calendar, Loader, MapPin, Users, Clock, Plus } from 'lucide-react'
@@ -36,7 +36,7 @@ export default function BuyerEvents() {
     ;(async () => {
       setLoading(true)
       try {
-        const res = await eventsApi.listMine()
+        const res = await eventsApi.listMyRegistrations()
         setEvents(res.events)
       } catch (err: any) {
         toast.error(err?.response?.data?.message || 'Erreur')
@@ -56,7 +56,7 @@ export default function BuyerEvents() {
               <h2 className="text-lg font-bold text-gray-900">Mes événements</h2>
             </div>
             <p className="text-sm text-gray-600 mt-1">
-              {events.length} événement{events.length > 1 ? 's' : ''} que tu organises
+              {events.length} événement{events.length > 1 ? 's' : ''} auxquels tu participes
             </p>
           </div>
           <Link to="/events" className="rounded-full px-4 py-2 text-sm font-bold text-white flex items-center gap-2" style={{ background: ANKU.green }}>
@@ -73,7 +73,7 @@ export default function BuyerEvents() {
         <div className="rounded-2xl bg-white p-10 shadow-sm border border-gray-200 text-center">
           <Calendar size={40} className="mx-auto text-gray-300 mb-3" />
           <p className="text-sm font-semibold text-gray-700">Aucun événement</p>
-          <p className="text-xs text-gray-500 mt-1">Tu n’organises encore aucun événement</p>
+          <p className="text-xs text-gray-500 mt-1">Tu n'es inscrit à aucun événement pour le moment</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
@@ -90,6 +90,11 @@ export default function BuyerEvents() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-bold text-gray-900 truncate">{e.title}</p>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">{TYPE_LABELS[e.type] ?? e.type}</span>
+                  {new Date(e.end_at || e.start_at) < new Date() ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Passé</span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">À venir</span>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
                   <Clock size={10} /> {formatDate(e.start_at)} · {formatTime(e.start_at)}
