@@ -26,11 +26,7 @@ import {
   Upload,
 } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
-import type {
-  Event,
-  EventType,
-  CreateEventPayload,
-} from '../../types/event'
+import type { Event, EventType, CreateEventPayload, EventRegistration } from '../../types/event'
 import StatCard from '../../components/seller/StatCard'
 
 const ANKU = {
@@ -736,6 +732,88 @@ function EventModal({
 }
 
 // ============================================================
+// MODAL PARTICIPANTS
+// ============================================================
+function EventParticipantsModal({
+  event,
+  onClose,
+}: {
+  event: Event | null
+  onClose: () => void
+}) {
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!event) return
+    const fetchRegs = async () => {
+      setLoading(true)
+      try {
+        const res = await eventsApi.registrations(event.id)
+        setRegistrations(res.registrations || [])
+      } catch (err) {
+        toast.error("Erreur lors du chargement des participants")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchRegs()
+  }, [event])
+
+  if (!event) return null
+
+  const modal = (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <header className="px-5 py-4 border-b flex items-center justify-between bg-gray-50 shrink-0">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Participants</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{event.title}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 bg-white border border-gray-200">
+            <X size={16} />
+          </button>
+        </header>
+
+        <div className="p-5 overflow-y-auto flex-1">
+          {loading ? (
+            <div className="text-center py-10"><Loader size={24} className="animate-spin text-emerald-500 mx-auto" /></div>
+          ) : registrations.length === 0 ? (
+            <div className="text-center py-10">
+              <Users size={32} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-sm text-gray-500">Aucun participant pour le moment.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {registrations.map((reg) => (
+                <div key={reg.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white hover:bg-gray-50 transition">
+                  {reg.user?.avatar_url ? (
+                    <img src={reg.user.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                      {reg.user?.first_name?.[0]}{reg.user?.last_name?.[0]}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{reg.user?.first_name} {reg.user?.last_name}</p>
+                    <p className="text-xs text-gray-500">@{reg.user?.username}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${reg.status === 'registered' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {reg.status === 'registered' ? 'Inscrit' : reg.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  return typeof window !== 'undefined' ? createPortal(modal, document.body) : null
+}
+
+// ============================================================
 // MODAL DÉTAIL
 // ============================================================
 function EventDetailModal({
@@ -745,6 +823,7 @@ function EventDetailModal({
   onEdit,
   onCancel,
   onShare,
+  onViewParticipants,
 }: {
   event: Event | null
   isOwn: boolean
@@ -752,6 +831,7 @@ function EventDetailModal({
   onEdit: (e: Event) => void
   onCancel: (e: Event) => void
   onShare: (e: Event) => void
+  onViewParticipants: (e: Event) => void
 }) {
   if (!event) return null
 
@@ -1093,6 +1173,7 @@ export default function SellerEvents() {
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [shareTarget, setShareTarget] = useState<Event | null>(null)
+  const [participantsTarget, setParticipantsTarget] = useState<Event | null>(null)
 
   const fetchMine = async () => {
     setLoadingMine(true)
@@ -1401,6 +1482,10 @@ export default function SellerEvents() {
           setShareTarget(e)
           setDetailEvent(null)
         }}
+        onViewParticipants={(e) => {
+          setParticipantsTarget(e)
+          setDetailEvent(null)
+        }}
       />
 
       <DeleteEventModal
@@ -1413,6 +1498,11 @@ export default function SellerEvents() {
       <ShareEventModal
         event={shareTarget}
         onClose={() => setShareTarget(null)}
+      />
+
+      <EventParticipantsModal
+        event={participantsTarget}
+        onClose={() => setParticipantsTarget(null)}
       />
     </div>
   )
