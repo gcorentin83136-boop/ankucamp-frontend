@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
-import { Calendar, Loader, MapPin, Users, Clock, Plus, X, Ticket, UserMinus } from 'lucide-react'
+import { Calendar, Loader, MapPin, Users, Clock, Plus, X, UserMinus } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
-import type { Event, EventRegistration } from '../../types/event'
+import type { Event } from '../../types/event'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
 
@@ -25,77 +25,42 @@ const TYPE_LABELS: Record<string, string> = {
   porte_ouverte: 'Porte ouverte', degustation: 'Dégustation', autre: 'Autre',
 }
 
-// 🆕 MODAL POUR LE BUYER
+// 🆕 MODAL BUYER (Nombre de participants + Annulation)
 function BuyerEventModal({ event, onClose, onCancel }: { event: Event | null, onClose: () => void, onCancel: (id: number) => void }) {
-  const [participants, setParticipants] = useState<EventRegistration[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!event) return
-    setLoading(true)
-    eventsApi.registrations(event.id)
-      .then(res => setParticipants(res.registrations || []))
-      .catch(() => toast.error("Erreur chargement participants"))
-      .finally(() => setLoading(false))
-  }, [event])
-
   if (!event) return null
 
   const modal = (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-        <header className="px-5 py-4 border-b flex items-center justify-between bg-gray-50 shrink-0">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">{event.title}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{formatDate(event.start_at)} à {formatTime(event.start_at)}</p>
+      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden">
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+            <Calendar size={32} />
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 bg-white border border-gray-200">
-            <X size={16} />
-          </button>
-        </header>
+          <h3 className="text-xl font-black text-gray-900 mb-2">{event.title}</h3>
+          <p className="text-sm text-gray-500 mb-6">
+            {formatDate(event.start_at)} à {formatTime(event.start_at)}<br/>
+            {event.city}
+          </p>
 
-        <div className="p-5 overflow-y-auto flex-1">
-          <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <Users size={16} className="text-emerald-500" /> Participants ({event.registered_count || 0})
-          </h4>
+          <div className="bg-gray-50 rounded-xl p-4 mb-6 flex items-center justify-center gap-3 border border-gray-100">
+            <Users size={20} className="text-emerald-500" />
+            <span className="text-lg font-bold text-gray-800">
+              {event.registered_count || 0} {event.capacity ? `/ ${event.capacity}` : ''} participants
+            </span>
+          </div>
           
-          {loading ? (
-            <div className="text-center py-6"><Loader size={24} className="animate-spin text-emerald-500 mx-auto" /></div>
-          ) : participants.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">Aucun autre participant pour l'instant.</p>
-          ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-              {participants.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl border border-gray-100 bg-white">
-                  {p.user?.avatar_url ? (
-                    <img src={p.user.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
-                      {p.user?.first_name?.[0]}{p.user?.last_name?.[0]}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{p.user?.first_name} {p.user?.last_name}</p>
-                    <p className="text-[10px] text-gray-500">@{p.user?.username}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
+              Fermer
+            </button>
+            <button onClick={() => onCancel(event.id)} className="flex-1 py-2.5 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 transition flex items-center justify-center gap-2">
+              <UserMinus size={16} /> Annuler
+            </button>
+          </div>
         </div>
-
-        <footer className="p-4 border-t bg-gray-50 flex gap-2 shrink-0">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 transition">
-            Fermer
-          </button>
-          <button onClick={() => onCancel(event.id)} className="flex-1 py-2.5 rounded-xl font-bold text-red-600 bg-red-50 hover:bg-red-100 transition flex items-center justify-center gap-2">
-            <UserMinus size={16} /> Annuler
-          </button>
-        </footer>
       </div>
     </div>
   )
-
   return typeof window !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
@@ -116,9 +81,7 @@ export default function BuyerEvents() {
     }
   }
 
-  useEffect(() => {
-    fetchMyEvents()
-  }, [])
+  useEffect(() => { fetchMyEvents() }, [])
 
   const handleCancelRegistration = async (id: number) => {
     if (!confirm("Annuler ton inscription à cet événement ?")) return
@@ -126,7 +89,7 @@ export default function BuyerEvents() {
       await eventsApi.unregister(id)
       toast.success('Inscription annulée')
       setSelectedEvent(null)
-      fetchMyEvents() // Rafraîchir la liste
+      fetchMyEvents()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
     }
@@ -198,11 +161,7 @@ export default function BuyerEvents() {
         </div>
       )}
 
-      <BuyerEventModal 
-        event={selectedEvent} 
-        onClose={() => setSelectedEvent(null)} 
-        onCancel={handleCancelRegistration} 
-      />
+      <BuyerEventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onCancel={handleCancelRegistration} />
     </div>
   )
 }
