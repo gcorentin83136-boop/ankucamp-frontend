@@ -818,7 +818,7 @@ function EventParticipantsModal({
 // ============================================================
 // MODAL DÉTAIL
 // ============================================================
-function EventDetailModal({   // on force l'utilisation pour ESLint : si on appelle la prop, c'est bon   const handleOpen = () => onViewParticipants(null as any); 
+function EventDetailModal({
   event,
   isOwn,
   onClose,
@@ -910,6 +910,18 @@ function EventDetailModal({   // on force l'utilisation pour ESLint : si on appe
             </div>
           </div>
 
+          {event.end_at && (
+            <div className="rounded-xl border border-gray-200 p-3">
+              <p className="text-[10px] uppercase text-gray-500 font-semibold flex items-center gap-1">
+                <Clock size={10} /> Fin
+              </p>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">
+                {formatDate(event.end_at)}
+              </p>
+              <p className="text-xs text-gray-500">{formatTime(event.end_at)}</p>
+            </div>
+          )}
+
           {event.address && (
             <div className="rounded-xl border border-gray-200 p-3">
               <p className="text-[10px] uppercase text-gray-500 font-semibold flex items-center gap-1">
@@ -949,6 +961,9 @@ function EventDetailModal({   // on force l'utilisation pour ESLint : si on appe
                 />
               </div>
             )}
+            <button onClick={() => onViewParticipants(event)} className="w-full mt-3 py-2 rounded-xl text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition flex items-center justify-center gap-2">
+              Voir la liste des participants
+            </button>
           </div>
 
           {/* Actions */}
@@ -1500,11 +1515,6 @@ export default function SellerEvents() {
       <ShareEventModal
         event={shareTarget}
         onClose={() => setShareTarget(null)}
-      />
-
-      <EventParticipantsModal
-        event={participantsTarget}
-        onClose={() => setParticipantsTarget(null)}
       />
 
       <EventParticipantsModal
