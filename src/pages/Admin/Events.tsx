@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Calendar, Loader, MapPin, Users, Clock, Eye, ShieldAlert } from 'lucide-react'
+import { Calendar, Loader, MapPin, Users, Clock, ShieldAlert } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import type { Event } from '../../types/event'
 
-const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
 
 export default function AdminEvents() {
   const [loading, setLoading] = useState(true)

@@ -56,7 +56,7 @@ function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: {
     if (hasTargetInside(comment)) {
       setShowReplies(true);
     }
-  }, [targetId]);
+  }, [targetId, comment]);
 
   const totalReplies = comment.replies?.length || 0;
   const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';

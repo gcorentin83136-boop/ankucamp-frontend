@@ -1238,7 +1238,6 @@ export default function SellerEvents() {
   const [deleting, setDeleting] = useState(false)
   const [shareTarget, setShareTarget] = useState<Event | null>(null)
   const [participantsTarget, setParticipantsTarget] = useState<Event | null>(null)
-  const [participantsTarget, setParticipantsTarget] = useState<Event | null>(null)
 
   const fetchMine = async () => {
     setLoadingMine(true)

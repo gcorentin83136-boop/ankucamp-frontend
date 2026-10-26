@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Heart, Calendar, MapPin, Clock, Loader, Share2, BookOpen, Link as LinkIcon, X, Ticket } from 'lucide-react'
+import { ArrowLeft, Heart, Calendar, MapPin, Loader, Share2, BookOpen, Link as LinkIcon, Ticket } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import type { Event } from '../../types/event'
 import AnimatedShopsBackground from '../../components/shops/AnimatedShopsBackground'
@@ -75,7 +75,7 @@ export default function EventDetail() {
 
   const dateStr = new Date(event.start_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
   const isFull = event.capacity && event.registered_count && event.registered_count >= event.capacity
-  const isPast = new Date(event.end_at || event.start_at).getTime() < Date.now()
+  const isPast = new Date(event.end_at || event.start_at).getTime() < new Date().getTime()
   
   const shareUrl = window.location.href
   const shareTitle = encodeURIComponent(event.title)
