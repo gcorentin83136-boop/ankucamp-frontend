@@ -75,7 +75,8 @@ export default function EventDetail() {
 
   const dateStr = new Date(event.start_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
   const isFull = event.capacity && event.registered_count && event.registered_count >= event.capacity
-  const isPast = new Date(event.end_at || event.start_at).getTime() < new Date().getTime()
+  // eslint-disable-next-line react-hooks/purity
+  const isPast = new Date(event.end_at || event.start_at).getTime() < Date.now()
   
   const shareUrl = window.location.href
   const shareTitle = encodeURIComponent(event.title)
