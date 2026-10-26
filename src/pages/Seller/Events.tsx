@@ -737,9 +737,11 @@ function EventModal({
 function EventParticipantsModal({
   event,
   onClose,
+  onCountUpdate,
 }: {
   event: Event | null
   onClose: () => void
+  onCountUpdate?: (count: number) => void
 }) {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
   const [loading, setLoading] = useState(true)
@@ -750,7 +752,10 @@ function EventParticipantsModal({
       setLoading(true)
       try {
         const res = await eventsApi.registrations(event.id)
-        setRegistrations(res.registrations || [])
+        const regs = res.registrations || []
+        setRegistrations(regs)
+        // 🆕 On met à jour le compteur dans le parent
+        if (onCountUpdate) onCountUpdate(regs.length)
       } catch {
         toast.error("Erreur lors du chargement des participants")
       } finally {
@@ -758,12 +763,12 @@ function EventParticipantsModal({
       }
     }
     fetchRegs()
-  }, [event])
+  }, [event, onCountUpdate])
 
   if (!event) return null
 
   const modal = (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
         <header className="px-5 py-4 border-b flex items-center justify-between bg-gray-50 shrink-0">
           <div>
@@ -1501,7 +1506,7 @@ export default function SellerEvents() {
         }}
         onViewParticipants={(e) => {
           setParticipantsTarget(e)
-          setDetailEvent(null)
+          // 🆕 On NE ferme PAS le détail ici (on le laisse ouvert derrière)
         }}
       />
 
@@ -1520,6 +1525,13 @@ export default function SellerEvents() {
       <EventParticipantsModal
         event={participantsTarget}
         onClose={() => setParticipantsTarget(null)}
+        onCountUpdate={(newCount) => {
+          // 🆕 Met à jour le compteur dans la liste et dans le détail
+          if (participantsTarget) {
+            setMine(prev => prev.map(ev => ev.id === participantsTarget.id ? { ...ev, registered_count: newCount } : ev))
+            setDetailEvent(prev => prev && prev.id === participantsTarget.id ? { ...prev, registered_count: newCount } : prev)
+          }
+        }}
       />
     </div>
   )
