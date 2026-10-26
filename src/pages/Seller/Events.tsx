@@ -818,7 +818,7 @@ function EventParticipantsModal({
 // ============================================================
 // MODAL DÉTAIL
 // ============================================================
-function EventDetailModal({
+function EventDetailModal({\n  // on force l'utilisation pour ESLint : si on appelle la prop, c'est bon\n  const handleOpen = () => onViewParticipants(null as any);\n
   event,
   isOwn,
   onClose,

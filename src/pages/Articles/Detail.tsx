@@ -10,7 +10,6 @@ import AnimatedShopsBackground from '../../components/shops/AnimatedShopsBackgro
 import QuickMenu from '../../components/shops/QuickMenu'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
-
 const CATEGORIES: Record<string, { label: string, color: string }> = {
   recette: { label: 'Recette', color: '#e67e22' },
   conseil: { label: 'Conseil', color: '#3498db' },
@@ -32,16 +31,12 @@ function countAllComments(comments: Comment[]): number {
   return count;
 }
 
-// Composant récursif avec gestion du targetId
 function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, targetId?: number | null, depth?: number }) {
-  const isTarget = comment.id === targetId;
-  
   const hasTargetInside = (c: Comment): boolean => {
     if (c.id === targetId) return true;
     if (c.replies) return c.replies.some(hasTargetInside);
     return false;
   };
-  
   const [showReplies, setShowReplies] = useState(hasTargetInside(comment));
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -51,12 +46,9 @@ function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: {
   const [posting, setPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // On force l'ouverture si la cible change (ex: on clique sur une autre notification)
   useEffect(() => {
-    if (hasTargetInside(comment)) {
-      setShowReplies(true);
-    }
-  }, [targetId, comment]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (hasTargetInside(comment)) setShowReplies(true);
+  }, [targetId, comment]);
 
   const totalReplies = comment.replies?.length || 0;
   const paddingLeft = depth === 0 ? 'ml-0' : depth > 2 ? 'ml-4' : 'ml-8';
@@ -213,12 +205,10 @@ export default function ArticleDetail() {
     fetchArticleAndComments()
   }, [slug, navigate])
 
-  // 🆕 Scroll auto optimisé
   useEffect(() => {
     if (loading || comments.length === 0) return;
     const hash = window.location.hash;
     if (!hash) return;
-
     const timer = setTimeout(() => {
       const el = document.getElementById(hash.replace('#', ''));
       if (el) {
@@ -227,7 +217,6 @@ export default function ArticleDetail() {
         setTimeout(() => el.classList.remove('bg-emerald-50', 'ring-2', 'ring-emerald-400', 'p-2', '-m-2'), 2500);
       }
     }, 500);
-
     return () => clearTimeout(timer);
   }, [loading, comments])
 
@@ -458,12 +447,7 @@ export default function ArticleDetail() {
             ) : (
               comments.map((comment, index) => (
                 <div key={comment.id} className={index > 0 ? "pt-6 border-t border-gray-100" : ""}>
-                  <CommentNode 
-                    comment={comment} 
-                    onReplySubmit={handleReplySubmit} 
-                    onReact={handleReactComment} 
-                    targetId={targetId}
-                  />
+                  <CommentNode comment={comment} onReplySubmit={handleReplySubmit} onReact={handleReactComment} targetId={targetId} />
                 </div>
               ))
             )}
