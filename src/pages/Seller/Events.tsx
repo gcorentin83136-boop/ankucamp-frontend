@@ -1,7 +1,7 @@
 // ============================================================
 // PARTIE 2 — Page principale, onglets, modal détail
 // ============================================================
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import {
@@ -745,25 +745,35 @@ function EventParticipantsModal({
 }) {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // 🆕 Utilisation d'une ref pour éviter la boucle infinie
+  const onCountUpdateRef = useRef(onCountUpdate)
+  useEffect(() => {
+    onCountUpdateRef.current = onCountUpdate
+  }, [onCountUpdate])
 
   useEffect(() => {
     if (!event) return
+    let isMounted = true
     const fetchRegs = async () => {
       setLoading(true)
       try {
         const res = await eventsApi.registrations(event.id)
-        const regs = res.registrations || []
-        setRegistrations(regs)
-        // 🆕 On met à jour le compteur dans le parent
-        if (onCountUpdate) onCountUpdate(regs.length)
+        if (isMounted) {
+          const regs = res.registrations || []
+          setRegistrations(regs)
+          // 🆕 On utilise la ref ici pour ne pas déclencher de rechargement
+          if (onCountUpdateRef.current) onCountUpdateRef.current(regs.length)
+        }
       } catch {
-        toast.error("Erreur lors du chargement des participants")
+        if (isMounted) toast.error("Erreur lors du chargement des participants")
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
     fetchRegs()
-  }, [event, onCountUpdate])
+    return () => { isMounted = false }
+  }, [event]) // 👈 Dépend uniquement de l'événement
 
   if (!event) return null
 
@@ -1273,6 +1283,14 @@ export default function SellerEvents() {
     }
   }
 
+  // 🆕 Fonction de mise à jour du compteur stabilisée avec useCallback
+  const handleCountUpdate = useCallback((newCount: number) => {
+    if (participantsTarget) {
+      setMine(prev => prev.map(ev => ev.id === participantsTarget.id ? { ...ev, registered_count: newCount } : ev))
+      setDetailEvent(prev => prev && prev.id === participantsTarget.id ? { ...prev, registered_count: newCount } : prev)
+    }
+  }, [participantsTarget])
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -1525,13 +1543,7 @@ export default function SellerEvents() {
       <EventParticipantsModal
         event={participantsTarget}
         onClose={() => setParticipantsTarget(null)}
-        onCountUpdate={(newCount) => {
-          // 🆕 Met à jour le compteur dans la liste et dans le détail
-          if (participantsTarget) {
-            setMine(prev => prev.map(ev => ev.id === participantsTarget.id ? { ...ev, registered_count: newCount } : ev))
-            setDetailEvent(prev => prev && prev.id === participantsTarget.id ? { ...prev, registered_count: newCount } : prev)
-          }
-        }}
+        onCountUpdate={handleCountUpdate}
       />
     </div>
   )
