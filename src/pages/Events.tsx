@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Search, Calendar, MapPin, Clock, Heart, Filter, Ticket, Loader } from 'lucide-react'
+import { Search, Calendar, MapPin, Clock, Heart, Filter, Ticket, Loader, MessageCircle } from 'lucide-react'
 import eventsApi from '../service/api/events.api'
 import type { Event, EventType } from '../types/event'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
@@ -43,10 +43,7 @@ export default function Events() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // 🆕 ON ENLÈVE 'upcoming: true' POUR VOIR TOUS LES ÉVÉNEMENTS (pour le test)
         const res = await eventsApi.list({ limit: 50, upcoming: false })
-        console.log("🔍 DONNÉES REÇUES DU BACKEND :", res)
-        
         if (res && res.events) {
           setEvents(res.events)
         }
@@ -264,36 +261,45 @@ export default function Events() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={(e) => handleLike(e, ev.id, ev.is_liked)}
-                        className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl border transition ${ev.is_liked ? 'bg-red-50 border-red-200 text-red-500' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-red-500'}`}
-                      >
-                        <Heart size={16} fill={ev.is_liked ? 'currentColor' : 'none'} />
+                    {/* ACTIONS : Like, Commenter, Participer */}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-50 mb-3">
+                      <button onClick={(e) => handleLike(e, ev.id, ev.is_liked)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${ev.is_liked ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:bg-gray-100'}`}>
+                        <Heart size={14} fill={ev.is_liked ? 'currentColor' : 'none'} /> {ev.likes_count || 0}
                       </button>
                       
-                      <button
-                        onClick={(e) => handleRegister(e, ev.id, ev.is_registered)}
-                        disabled={!!isFull && !ev.is_registered}
-                        className={`flex-1 flex items-center justify-center gap-2 h-10 rounded-xl font-bold text-sm transition shadow-sm ${
-                          ev.is_registered 
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
-                            : isFull
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                        }`}
+                      <button 
+                        onClick={(e) => { 
+                          e.preventDefault(); 
+                          e.stopPropagation(); 
+                          navigate(`/events/${ev.id}#comments`); 
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
                       >
-                        {registeringId === ev.id ? (
-                          <Loader size={16} className="animate-spin" />
-                        ) : ev.is_registered ? (
-                          <>Inscrit(e) ✅</>
-                        ) : isFull ? (
-                          'Complet'
-                        ) : (
-                          <><Ticket size={16} /> Participer</>
-                        )}
+                        <MessageCircle size={14} /> Commenter
                       </button>
                     </div>
+
+                    <button
+                      onClick={(e) => handleRegister(e, ev.id, ev.is_registered)}
+                      disabled={!!isFull && !ev.is_registered}
+                      className={`w-full flex items-center justify-center gap-2 h-10 rounded-xl font-bold text-sm transition shadow-sm ${
+                        ev.is_registered 
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
+                          : isFull
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                      }`}
+                    >
+                      {registeringId === ev.id ? (
+                        <Loader size={16} className="animate-spin" />
+                      ) : ev.is_registered ? (
+                        <>Inscrit(e) ✅</>
+                      ) : isFull ? (
+                        'Complet'
+                      ) : (
+                        <><Ticket size={16} /> Participer</>
+                      )}
+                    </button>
                   </div>
                 </div>
               )
