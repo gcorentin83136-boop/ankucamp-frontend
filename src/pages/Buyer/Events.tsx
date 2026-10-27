@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
-import { Calendar, Loader, MapPin, Users, Clock, Plus, X, UserMinus } from 'lucide-react'
+import { Calendar, Loader, MapPin, Users, Clock, Plus, UserMinus } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import type { Event } from '../../types/event'
 

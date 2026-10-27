@@ -23,13 +23,15 @@ function countAllComments(comments: Comment[]): number {
   return count;
 }
 
+// 🆕 FONCTION EXTRAITE DU COMPOSANT POUR ESLINT
+function checkHasTargetInside(c: Comment, targetId?: number | null): boolean {
+  if (c.id === targetId) return true;
+  if (c.replies) return c.replies.some((reply) => checkHasTargetInside(reply, targetId));
+  return false;
+}
+
 function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: { comment: Comment, onReplySubmit: (id: number, content: string, mediaUrl?: string) => Promise<void>, onReact: (id: number, emoji: string) => void, targetId?: number | null, depth?: number }) {
-  const hasTargetInside = (c: Comment): boolean => {
-    if (c.id === targetId) return true;
-    if (c.replies) return c.replies.some(hasTargetInside);
-    return false;
-  };
-  const [showReplies, setShowReplies] = useState(hasTargetInside(comment));
+  const [showReplies, setShowReplies] = useState(() => checkHasTargetInside(comment, targetId));
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [replyMediaUrl, setReplyMediaUrl] = useState<string | null>(null);
@@ -38,9 +40,8 @@ function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: {
   const [posting, setPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (hasTargetInside(comment)) setShowReplies(true);
+    if (checkHasTargetInside(comment, targetId)) setShowReplies(true);
   }, [targetId, comment]);
 
   const totalReplies = comment.replies?.length || 0;
