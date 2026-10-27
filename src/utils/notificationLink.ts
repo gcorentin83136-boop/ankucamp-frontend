@@ -75,7 +75,7 @@ export function resolveNotificationLink(notif: Pick<Notification, 'link'>): stri
     finalUrl += '&' + search.slice(1)
   }
 
-  return finalUrl + hash
+  return finalUrl.includes("#") ? finalUrl : finalUrl + hash
 }
 
 export default resolveNotificationLink
