@@ -36,6 +36,16 @@ export interface Post {
   is_liked_by_me?: boolean
   is_mine?: boolean
   media?: PostMediaItem[]
+
+  // 🆕 Champs pour les partages
+  shared_from_post_id?: number | null
+  shared_event_id?: number | null
+  shared_product_id?: number | null
+  shared_article_id?: number | null
+  share_comment?: string | null
+  shared_event?: any | null
+  shared_article?: any | null
+  shared_from?: any | null
 }
 
 export interface PostComment {

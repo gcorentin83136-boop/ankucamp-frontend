@@ -19,6 +19,7 @@ import {
   Lock,
   ChevronDown,
   Play,
+  Clock,
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
@@ -566,6 +567,9 @@ function PostCard({
   const media = parseMedia(post)
   const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
+  const sharedEvent = (post as any).shared_event
+  const sharedArticle = (post as any).shared_article
+
   const toggleLike = async () => {
     try {
       const res = await postsApi.like(post.id)
@@ -685,6 +689,58 @@ function PostCard({
             <p className="text-sm text-gray-800 whitespace-pre-line">
               {post.content}
             </p>
+          </div>
+        )}
+
+        {/* 🆕 CARTE ÉVÉNEMENT PARTAGÉ */}
+        {sharedEvent && (
+          <div className="px-4 pb-3">
+            <Link
+              to={`/events/${sharedEvent.id}`}
+              className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50"
+            >
+              {sharedEvent.cover_url && (
+                <img src={sharedEvent.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />
+              )}
+              <div className="flex-1 min-w-0 w-full">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1">
+                  <Calendar size={10} /> Événement partagé
+                </p>
+                <p className="text-sm font-bold text-gray-900 truncate">{sharedEvent.title}</p>
+                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <Clock size={12} /> {new Date(sharedEvent.start_at).toLocaleDateString('fr-FR')}
+                </p>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <MapPin size={12} /> {sharedEvent.city || 'Lieu non précisé'}
+                </p>
+              </div>
+            </Link>
+          </div>
+        )}
+
+        {/* 🆕 CARTE ARTICLE PARTAGÉ */}
+        {sharedArticle && (
+          <div className="px-4 pb-3">
+            <Link
+              to={`/articles/${sharedArticle.slug}`}
+              className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50"
+            >
+              {sharedArticle.cover_url && (
+                <img src={sharedArticle.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />
+              )}
+              <div className="flex-1 min-w-0 w-full">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1">
+                  <Newspaper size={10} /> Article partagé
+                </p>
+                <p className="text-sm font-bold text-gray-900 truncate">{sharedArticle.title}</p>
+                {sharedArticle.excerpt && <p className="text-xs text-gray-500 truncate mt-1">{sharedArticle.excerpt}</p>}
+                {sharedArticle.author && (
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Par {sharedArticle.author.first_name} {sharedArticle.author.last_name}
+                  </p>
+                )}
+              </div>
+            </Link>
           </div>
         )}
 
