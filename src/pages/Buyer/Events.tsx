@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
-import { Calendar, Loader, MapPin, Users, Clock, Plus, UserMinus } from 'lucide-react'
+import { Calendar, Loader, MapPin, Users, Clock, Plus, X, UserMinus } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import type { Event } from '../../types/event'
 
@@ -25,12 +25,11 @@ const TYPE_LABELS: Record<string, string> = {
   porte_ouverte: 'Porte ouverte', degustation: 'Dégustation', autre: 'Autre',
 }
 
-// 🆕 MODAL BUYER (Nombre de participants + Annulation)
 function BuyerEventModal({ event, onClose, onCancel }: { event: Event | null, onClose: () => void, onCancel: (id: number) => void }) {
   if (!event) return null
 
   const modal = (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden">
         <div className="p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
@@ -65,6 +64,7 @@ function BuyerEventModal({ event, onClose, onCancel }: { event: Event | null, on
 }
 
 export default function BuyerEvents() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<Event[]>([])
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
@@ -82,6 +82,21 @@ export default function BuyerEvents() {
   }
 
   useEffect(() => { fetchMyEvents() }, [])
+
+  // 🆕 OUVERTURE AUTOMATIQUE DEPUIS L'URL (?event=ID)
+  useEffect(() => {
+    const eventIdToOpen = searchParams.get('event')
+    if (eventIdToOpen && events.length > 0) {
+      const ev = events.find(e => e.id === Number(eventIdToOpen))
+      if (ev) {
+        setSelectedEvent(ev)
+        // Nettoyage de l'URL
+        const newParams = new URLSearchParams(searchParams)
+        newParams.delete('event')
+        setSearchParams(newParams, { replace: true })
+      }
+    }
+  }, [searchParams, events, setSearchParams])
 
   const handleCancelRegistration = async (id: number) => {
     if (!confirm("Annuler ton inscription à cet événement ?")) return
