@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Heart, Calendar, MapPin, Clock, Loader, Share2, BookOpen, Link as LinkIcon, MessageCircle, Send, CornerDownRight, Smile, Image as ImageIcon, X, ChevronDown, ChevronUp, Ticket } from 'lucide-react'
+import { ArrowLeft, Heart, Calendar, MapPin, Loader, Share2, BookOpen, Link as LinkIcon, MessageCircle, Send, CornerDownRight, Smile, Image as ImageIcon, X, ChevronDown, ChevronUp, Ticket } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import { eventCommentsApi } from '../../service/api/event-comments.api'
 import type { Comment } from '../../service/api/comments.api'
@@ -38,6 +38,7 @@ function CommentNode({ comment, onReplySubmit, onReact, targetId, depth = 0 }: {
   const [posting, setPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (hasTargetInside(comment)) setShowReplies(true);
   }, [targetId, comment]);
@@ -169,7 +170,6 @@ export default function EventDetail() {
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   const [registering, setRegistering] = useState(false)
   
-  // 🆕 States pour les commentaires
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [postingComment, setPostingComment] = useState(false)
@@ -201,7 +201,6 @@ export default function EventDetail() {
     fetchEventData()
   }, [id, navigate])
 
-  // 🆕 Scroll automatique vers les commentaires
   useEffect(() => {
     if (loading || comments.length === 0) return;
     const hash = window.location.hash;
@@ -254,7 +253,6 @@ export default function EventDetail() {
     } finally { setRegistering(false) }
   }
 
-  // 🆕 Gestion des commentaires
   const handleReplySubmit = async (parentId: number, content: string, mediaUrl?: string) => {
     if (!event) return
     try {
@@ -313,7 +311,8 @@ export default function EventDetail() {
 
   const dateStr = new Date(event.start_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
   const isFull = event.capacity && event.registered_count && event.registered_count >= event.capacity
-  const isPast = new Date(event.end_at || event.start_at).getTime() < Date.now()
+  // eslint-disable-next-line react-hooks/purity
+  const isPast = new Date(event.end_at || event.start_at).getTime() < new Date().getTime()
   const totalCommentsCount = countAllComments(comments)
   
   const shareUrl = window.location.href
@@ -447,7 +446,6 @@ export default function EventDetail() {
           </button>
         </div>
 
-        {/* 🆕 SECTION COMMENTAIRES */}
         <div id="comments" className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-gray-100">
           <h2 className="text-2xl font-serif font-black text-gray-900 mb-6 flex items-center gap-2">
             <MessageCircle size={24} className="text-emerald-500" /> Discussions ({totalCommentsCount})
@@ -504,7 +502,6 @@ export default function EventDetail() {
         </div>
       </div>
 
-      {/* POPUP DE CONFIRMATION D'INSCRIPTION */}
       {showRegisterModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
