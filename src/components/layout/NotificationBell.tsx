@@ -68,9 +68,12 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  
+  // 🆕 Ajout de la propriété "width" pour gérer le responsive dynamique
   const [dropdownPos, setDropdownPos] = useState<{
     top: number
     right: number
+    width: number
   } | null>(null)
 
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -114,10 +117,23 @@ export default function NotificationBell() {
   const updatePosition = useCallback(() => {
     if (!buttonRef.current) return
     const rect = buttonRef.current.getBoundingClientRect()
-    setDropdownPos({
-      top: rect.bottom + 8,
-      right: window.innerWidth - rect.right,
-    })
+    const isMobile = window.innerWidth < 640
+    
+    if (isMobile) {
+      // Sur mobile : on prend presque toute la largeur, avec 16px de marge de chaque côté
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: 16,
+        width: window.innerWidth - 32,
+      })
+    } else {
+      // Sur desktop : on s'aligne à droite du bouton avec une largeur fixe
+      setDropdownPos({
+        top: rect.bottom + 8,
+        right: Math.max(12, window.innerWidth - rect.right),
+        width: 384, // équivalent à w-96
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -196,10 +212,12 @@ export default function NotificationBell() {
     open && dropdownPos ? (
       <div
         ref={dropdownRef}
-        className="fixed z-[9999] bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 sm:w-96 overflow-hidden"
+        className="fixed z-[9999] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
         style={{
           top: dropdownPos.top,
           right: dropdownPos.right,
+          width: dropdownPos.width,
+          maxHeight: 'calc(100vh - 80px)', // Empêche de dépasser en bas de l'écran
         }}
       >
         {/* Header */}
@@ -218,7 +236,7 @@ export default function NotificationBell() {
         </div>
 
         {/* Liste */}
-        <div className="max-h-96 overflow-y-auto">
+        <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
           {loading ? (
             <div className="py-10 text-center">
               <Loader
