@@ -28,6 +28,7 @@ import {
 import eventsApi from '../../service/api/events.api'
 import type { Event, EventType, CreateEventPayload, EventRegistration } from '../../types/event'
 import StatCard from '../../components/seller/StatCard'
+import EmojiPicker from '../../components/common/EmojiPicker'
 
 const ANKU = {
   green: '#6aa84f',
@@ -63,30 +64,10 @@ const STATUS_CONFIG: Record<
   { label: string; color: string; bg: string; icon: any }
 > = {
   draft: { label: 'Brouillon', color: '#6b7280', bg: '#f3f4f6', icon: Pencil },
-  published: {
-    label: 'Publié',
-    color: '#0891b2',
-    bg: '#cffafe',
-    icon: Globe,
-  },
-  ongoing: {
-    label: 'En cours',
-    color: '#d97706',
-    bg: '#fef3c7',
-    icon: Clock,
-  },
-  past: {
-    label: 'Terminé',
-    color: '#059669',
-    bg: '#d1fae5',
-    icon: UserCheck,
-  },
-  cancelled: {
-    label: 'Annulé',
-    color: '#dc2626',
-    bg: '#fee2e2',
-    icon: Ban,
-  },
+  published: { label: 'Publié', color: '#0891b2', bg: '#cffafe', icon: Globe },
+  ongoing: { label: 'En cours', color: '#d97706', bg: '#fef3c7', icon: Clock },
+  past: { label: 'Terminé', color: '#059669', bg: '#d1fae5', icon: UserCheck },
+  cancelled: { label: 'Annulé', color: '#dc2626', bg: '#fee2e2', icon: Ban },
 }
 
 function formatDate(iso: string | null): string {
@@ -123,7 +104,6 @@ function formatEuro(v: number | null): string {
   if (v === null || v === undefined) return 'Gratuit'
   return `${v.toFixed(2).replace('.', ',')} €`
 }
-
 
 function computeStatus(e: Event): StatusKey {
   if (e.status === 'cancelled') return 'cancelled'
@@ -200,8 +180,10 @@ function EventModal({
     capacity: '',
     is_free: true,
     price: '',
-    status: 'published' as 'draft' | 'published',
   })
+  
+  // 🆕 Mode de publication (Brouillon / Publier / Publier sur ANKU)
+  const [publishMode, setPublishMode] = useState<'draft' | 'published' | 'anku'>('published')
 
   useEffect(() => {
     if (!open) return
@@ -230,8 +212,8 @@ function EventModal({
         capacity: event.capacity ? String(event.capacity) : '',
         is_free: event.is_free,
         price: event.price ? String(event.price) : '',
-        status: event.status === 'draft' ? 'draft' : 'published',
       })
+      setPublishMode(event.status === 'draft' ? 'draft' : 'published')
     } else {
       setForm({
         title: '',
@@ -248,8 +230,8 @@ function EventModal({
         capacity: '',
         is_free: true,
         price: '',
-        status: 'published',
       })
+      setPublishMode('published')
     }
   }, [open, event])
 
@@ -315,16 +297,26 @@ function EventModal({
         capacity: form.capacity ? parseInt(form.capacity) : null,
         is_free: form.is_free,
         price: form.is_free ? null : parseFloat(form.price),
-        status: form.status,
+        status: publishMode === 'draft' ? 'draft' : 'published',
       }
+
+      let createdEventId = event?.id
 
       if (isEdit && event) {
         await eventsApi.update(event.id, payload)
         toast.success('Événement modifié ✅')
       } else {
-        await eventsApi.create(payload)
+        const res = await eventsApi.create(payload)
+        createdEventId = res.event.id
         toast.success('Événement créé ✅')
       }
+
+      // 🆕 Si on a choisi "Publier sur ANKU", on partage l'événement
+      if (publishMode === 'anku' && createdEventId) {
+        await eventsApi.share(createdEventId, { share_comment: null })
+        toast.success('Événement partagé sur ANKU ! 🎉')
+      }
+
       onSaved()
       onClose()
     } catch (err: any) {
@@ -662,39 +654,47 @@ function EventModal({
             </div>
           )}
 
+          {/* 🆕 3 BOUTONS DE PUBLICATION */}
           <div className="rounded-2xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-700 mb-2">
               Visibilité
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2">
               <button
                 type="button"
-                onClick={() => setForm({ ...form, status: 'draft' })}
+                onClick={() => setPublishMode('draft')}
                 className={`flex-1 rounded-xl py-2 text-sm font-bold transition ${
-                  form.status === 'draft'
+                  publishMode === 'draft'
                     ? 'text-white'
                     : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
                 }`}
-                style={{
-                  background: form.status === 'draft' ? ANKU.green : undefined,
-                }}
+                style={{ background: publishMode === 'draft' ? ANKU.green : undefined }}
               >
                 Brouillon
               </button>
               <button
                 type="button"
-                onClick={() => setForm({ ...form, status: 'published' })}
+                onClick={() => setPublishMode('published')}
                 className={`flex-1 rounded-xl py-2 text-sm font-bold transition ${
-                  form.status === 'published'
+                  publishMode === 'published'
                     ? 'text-white'
                     : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
                 }`}
-                style={{
-                  background:
-                    form.status === 'published' ? ANKU.green : undefined,
-                }}
+                style={{ background: publishMode === 'published' ? ANKU.green : undefined }}
               >
                 Publier
+              </button>
+              <button
+                type="button"
+                onClick={() => setPublishMode('anku')}
+                className={`flex-1 rounded-xl py-2 text-sm font-bold transition flex items-center justify-center gap-1 ${
+                  publishMode === 'anku'
+                    ? 'text-white'
+                    : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                }`}
+                style={{ background: publishMode === 'anku' ? ANKU.green : undefined }}
+              >
+                <Share2 size={14} /> Publier sur ANKU
               </button>
             </div>
           </div>
@@ -745,8 +745,7 @@ function EventParticipantsModal({
 }) {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
   const [loading, setLoading] = useState(true)
-  
-  // 🆕 Utilisation d'une ref pour éviter la boucle infinie
+
   const onCountUpdateRef = useRef(onCountUpdate)
   useEffect(() => {
     onCountUpdateRef.current = onCountUpdate
@@ -762,7 +761,6 @@ function EventParticipantsModal({
         if (isMounted) {
           const regs = res.registrations || []
           setRegistrations(regs)
-          // 🆕 On utilise la ref ici pour ne pas déclencher de rechargement
           if (onCountUpdateRef.current) onCountUpdateRef.current(regs.length)
         }
       } catch {
@@ -773,7 +771,7 @@ function EventParticipantsModal({
     }
     fetchRegs()
     return () => { isMounted = false }
-  }, [event]) // 👈 Dépend uniquement de l'événement
+  }, [event])
 
   if (!event) return null
 
@@ -827,8 +825,6 @@ function EventParticipantsModal({
 
   return typeof window !== 'undefined' ? createPortal(modal, document.body) : null
 }
-
-
 
 // ============================================================
 // MODAL DÉTAIL
@@ -1148,13 +1144,22 @@ function ShareEventModal({
           <label className="block text-xs font-semibold text-gray-700">
             Ajoute un commentaire (optionnel)
           </label>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            rows={3}
-            placeholder="Ex : Venez nombreux, ça va être génial !"
-            className={inputCls + ' resize-none'}
-          />
+          
+          <div className="relative bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden focus-within:border-emerald-400 focus-within:bg-white transition shadow-sm">
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+              placeholder="Ex : Venez nombreux, ça va être génial !"
+              className="w-full bg-transparent p-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none"
+            />
+            <div className="px-2 pb-2 flex items-center border-t border-gray-100/50">
+              <EmojiPicker
+                align="left"
+                onSelect={(emoji) => setComment((c) => c + emoji)}
+              />
+            </div>
+          </div>
         </div>
         <footer
           className="px-5 py-4 border-t flex justify-end gap-2"
@@ -1283,7 +1288,6 @@ export default function SellerEvents() {
     }
   }
 
-  // 🆕 Fonction de mise à jour du compteur stabilisée avec useCallback
   const handleCountUpdate = useCallback((newCount: number) => {
     if (participantsTarget) {
       setMine(prev => prev.map(ev => ev.id === participantsTarget.id ? { ...ev, registered_count: newCount } : ev))
@@ -1524,7 +1528,6 @@ export default function SellerEvents() {
         }}
         onViewParticipants={(e) => {
           setParticipantsTarget(e)
-          // 🆕 On NE ferme PAS le détail ici (on le laisse ouvert derrière)
         }}
       />
 

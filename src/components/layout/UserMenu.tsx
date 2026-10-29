@@ -6,10 +6,9 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  User, ShoppingBag,
-  Store, Calendar, Settings, Shield, FileCheck,
+  User, Store, Settings, Shield, FileCheck,
   Sparkles, LogOut, ChevronDown, Home as HomeIcon,
-  FileText, LayoutDashboard, Award, Ticket,
+  LayoutDashboard
 } from 'lucide-react'
 import { useAuthStore } from '../../context/AuthContext'
 
@@ -165,25 +164,19 @@ export default function UserMenu() {
     {
       title: 'Mon espace',
       items: [
-        { icon: LayoutDashboard, label: 'Mon tableau de bord', to: '/dashboard/user' },
-        { icon: Store, label: 'Boutiques ANKU', to: '/shops' },
+        { icon: LayoutDashboard, label: 'Mon espace client', to: '/dashboard/user' },
+        { icon: HomeIcon, label: "Fil d'actualité", to: '/feed' },
         { icon: User, label: 'Mon profil ANKU', to: '/u/' + (user?.username ?? '') },
-        { icon: HomeIcon, label: "Mon fil d'actualité", to: '/feed' },
+        { icon: Store, label: 'Boutiques ANKU', to: '/shops' },
       ],
     },
   ]
 
   if (isPro) {
     sections.push({
-      title: 'Ma boutique',
+      title: 'Espace Pro',
       items: [
-        { icon: LayoutDashboard, label: 'Tableau de bord', to: '/dashboard/shop' },
-        { icon: Store, label: 'Ma boutique', to: '/dashboard/shop/settings' },
-        { icon: ShoppingBag, label: 'Commandes reçues', to: '/dashboard/shop/orders' },
-        { icon: Ticket, label: 'Codes promo', to: '/dashboard/shop/promo' },
-        { icon: Calendar, label: 'Événements créés', to: '/dashboard/shop/events' },
-        { icon: FileText, label: 'Mes articles publiés', to: '/dashboard/shop/articles' },
-        { icon: Award, label: 'Avis reçus', to: '/dashboard/shop/reviews' },
+        { icon: LayoutDashboard, label: 'Mon espace Pro', to: '/dashboard/shop' },
       ],
     })
   }

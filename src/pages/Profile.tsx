@@ -410,20 +410,15 @@ export default function Profile() {
         {/* Bannière + avatar */}
         <div className="rounded-3xl overflow-hidden border border-white/60 shadow-sm bg-white/95 backdrop-blur">
           <div
-            className="h-40 sm:h-52 relative"
+            className="h-40 sm:h-52 relative bg-cover bg-center"
             style={{
-              background: me.cover_url
-                ? undefined
+              backgroundImage: me.cover_url
+                ? `url(${me.cover_url})`
+                : me.avatar_url
+                ? `url(${me.avatar_url})`
                 : `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
             }}
           >
-            {me.cover_url && (
-              <img
-                src={me.cover_url}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           </div>
 

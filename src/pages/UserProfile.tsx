@@ -681,6 +681,9 @@ export default function UserProfile() {
   const isVerified = user.verification_status === 'verified'
   const isMe = user.id === authUserId
 
+  const currentCover = isEditing ? editCover : user.cover_url
+  const currentAvatar = isEditing ? editAvatar : user.avatar_url
+
   return (
     <div className="relative min-h-screen">
       <AppHeader />
@@ -689,15 +692,17 @@ export default function UserProfile() {
       <div className="relative max-w-5xl mx-auto py-6 px-3 sm:px-5 space-y-5">
         {/* Bannière + avatar */}
         <div className="rounded-3xl overflow-hidden border border-white/60 shadow-sm bg-white/95 backdrop-blur">
-          {/* COVER */}
+          {/* COVER - Affiche la couverture, ou la photo de profil en fond si pas de couverture */}
           <div
             className={
-              'h-40 sm:h-52 relative group ' +
+              'h-40 sm:h-52 relative group bg-cover bg-center ' +
               (isEditing ? 'cursor-pointer' : '')
             }
             style={{
-              background: (isEditing ? editCover : user.cover_url)
-                ? undefined
+              backgroundImage: currentCover
+                ? `url(${currentCover})`
+                : currentAvatar
+                ? `url(${currentAvatar})`
                 : `linear-gradient(135deg, ${ANKU.green} 0%, ${ANKU.greenDark} 100%)`,
             }}
             onClick={
@@ -706,14 +711,6 @@ export default function UserProfile() {
                 : undefined
             }
           >
-            {(isEditing ? editCover : user.cover_url) && (
-              <img
-                src={(isEditing ? editCover : user.cover_url) as string}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            )}
-
             {isEditing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-gray-800 shadow-lg">
@@ -724,7 +721,7 @@ export default function UserProfile() {
                   )}
                   {uploadingCover
                     ? 'Upload…'
-                    : editCover
+                    : currentCover
                     ? 'Changer la couverture'
                     : 'Ajouter une couverture'}
                 </div>
@@ -769,9 +766,9 @@ export default function UserProfile() {
                     : undefined
                 }
               >
-                {(isEditing ? editAvatar : user.avatar_url) ? (
+                {currentAvatar ? (
                   <img
-                    src={(isEditing ? editAvatar : user.avatar_url) as string}
+                    src={currentAvatar}
                     alt=""
                     className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-white shadow-lg"
                   />
