@@ -22,8 +22,10 @@ import {
   CheckCircle2,
   Archive,
   Calendar,
+  Share2,
 } from 'lucide-react'
 import articlesApi from '../../service/api/articles.api'
+import httpClient from '../../service/api/httpClient'
 import type {
   Article,
   ArticleStatus,
@@ -657,6 +659,7 @@ export default function SellerArticles() {
   const [filter, setFilter] = useState<ArticleStatus | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const [sharing, setSharing] = useState<number | null>(null)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Article | null>(null)
@@ -739,6 +742,26 @@ export default function SellerArticles() {
       )
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Erreur')
+    }
+  }
+
+  // 🆕 Partage sur ANKU
+  const handleShare = async (article: Article) => {
+    if (sharing === article.id) return
+    setSharing(article.id)
+    try {
+      toast.loading('Partage sur ANKU...', { id: 'share-article' })
+      await httpClient.post(`/posts/share-article/${article.id}`, {
+        share_comment: "J'ai lu cet article sur le Kiosque ANKU !",
+      })
+      toast.success('Article partagé sur ANKU ! 🎉', { id: 'share-article' })
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Erreur lors du partage',
+        { id: 'share-article' }
+      )
+    } finally {
+      setSharing(null)
     }
   }
 
@@ -1001,6 +1024,20 @@ export default function SellerArticles() {
                     size={15}
                     fill={a.liked_by_me ? 'currentColor' : 'none'}
                   />
+                </button>
+                {/* 🆕 Bouton Partager sur ANKU */}
+                <button
+                  type="button"
+                  onClick={() => handleShare(a)}
+                  disabled={sharing === a.id}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
+                  title="Partager sur ANKU"
+                >
+                  {sharing === a.id ? (
+                    <Loader size={15} className="animate-spin" />
+                  ) : (
+                    <Share2 size={15} />
+                  )}
                 </button>
                 <button
                   type="button"

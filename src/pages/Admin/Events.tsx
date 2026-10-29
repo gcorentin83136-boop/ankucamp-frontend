@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Calendar, Loader, MapPin, Users, Clock, ShieldAlert } from 'lucide-react'
+import { Calendar, Loader, MapPin, Users, Clock, ShieldAlert, Share2 } from 'lucide-react'
 import eventsApi from '../../service/api/events.api'
 import type { Event } from '../../types/event'
 
@@ -8,6 +8,7 @@ import type { Event } from '../../types/event'
 export default function AdminEvents() {
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<Event[]>([])
+  const [sharing, setSharing] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -22,6 +23,26 @@ export default function AdminEvents() {
     }
     fetchAll()
   }, [])
+
+  // 🆕 Partage sur ANKU
+  const handleShare = async (event: Event) => {
+    if (sharing === event.id) return
+    setSharing(event.id)
+    try {
+      toast.loading('Partage sur ANKU...', { id: 'share-admin-event' })
+      await eventsApi.share(event.id, {
+        share_comment: "Découvrez cet événement sur ANKU !",
+      })
+      toast.success('Événement partagé sur ANKU ! 🎉', { id: 'share-admin-event' })
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Erreur lors du partage',
+        { id: 'share-admin-event' }
+      )
+    } finally {
+      setSharing(null)
+    }
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
@@ -68,8 +89,23 @@ export default function AdminEvents() {
                   <span className="flex items-center gap-1"><Users size={12} /> {e.registered_count || 0} inscrits</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Par {e.organizer?.first_name} {e.organizer?.last_name}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-gray-500 hidden sm:inline">Par {e.organizer?.first_name} {e.organizer?.last_name}</span>
+                {/* 🆕 Bouton Partager sur ANKU */}
+                <button
+                  type="button"
+                  onClick={() => handleShare(e)}
+                  disabled={sharing === e.id}
+                  className="rounded-full px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition flex items-center gap-1 disabled:opacity-50"
+                  title="Partager sur ANKU"
+                >
+                  {sharing === e.id ? (
+                    <Loader size={12} className="animate-spin" />
+                  ) : (
+                    <Share2 size={12} />
+                  )}
+                  Partager
+                </button>
               </div>
             </div>
           ))}
