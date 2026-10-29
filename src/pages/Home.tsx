@@ -1,4 +1,4 @@
-/* eslint-disable */
+﻿/* eslint-disable */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../context/AuthContext'
@@ -59,12 +59,19 @@ export default function Home() {
       ? { icon: '⏳', title: 'Vérification en cours', sub: 'Ton dossier KYC est en cours de traitement', shortTitle: 'Vérification en cours' }
       : user?.verification_status === 'rejected'
       ? { icon: '❌', title: 'Vérification refusée', sub: 'Clique pour soumettre à nouveau', shortTitle: 'Vérification refusée' }
-      : { icon: '🧾', title: 'Vérifie ton compte pro', sub: 'Soumets ton SIRET pour débloquer toutes les fonctionnalités Pro', shortTitle: 'Vérifie ton compte pro' }
+      : { icon: '📝', title: 'Vérifie ton compte pro', sub: 'Soumets ton SIRET pour débloquer toutes les fonctionnalités Pro', shortTitle: 'Vérifie ton compte pro' }
 
   const handleLogout = async () => {
     await logout()
     window.location.href = '/'
   }
+
+  // 🆕 Déterminer la route et le texte du 3ème bouton selon le rôle
+  const isPro = user?.role === 'professionnel' || user?.role === 'admin'
+  const spaceTarget = isPro ? '/dashboard/shop' : '/dashboard/user'
+  const spaceDesc = isPro
+    ? 'Gère ta boutique, tes événements, tes articles et tes commandes.'
+    : 'Tes commandes, wishlist, messages et raccourcis.'
 
   return (
     <div className="relative min-h-screen md:h-screen w-full overflow-y-auto md:overflow-hidden bg-black">
@@ -75,11 +82,11 @@ export default function Home() {
       <div className="fixed inset-0 z-[2] pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 12%, rgba(0,0,0,0) 88%, rgba(0,0,0,0.15) 100%)' }} />
 
       <div className="relative z-10 min-h-screen md:h-screen flex flex-col">
-        
+
         {/* NAVBAR */}
         <nav className="w-full px-3 sm:px-6 py-2 sm:py-3 backdrop-blur-xl bg-black/20 border-b border-emerald-500/20 shrink-0">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-            
+
             <div className="flex items-center gap-3 sm:gap-4">
               <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
                 <img src="/images/anku-logo.png" alt="ANKU" className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain transition-transform group-hover:scale-110" style={{ filter: 'drop-shadow(0 0 12px rgba(110,231,183,0.6))' }} />
@@ -117,7 +124,7 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* BANDEAU KYC, HERO, CARTES, FOOTER restent inchangés */}
+        {/* BANDEAU KYC */}
         {showKycBanner && (
           <Link to="/kyc" className="relative w-full shrink-0 overflow-hidden group">
             <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.35) 0%, rgba(5,150,105,0.25) 50%, rgba(16,185,129,0.35) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }} />
@@ -140,55 +147,67 @@ export default function Home() {
           </Link>
         )}
 
-        <section className="flex-1 flex items-center justify-center px-3 sm:px-4 py-3 sm:py-4 min-h-0">
-          <div className="w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-5 md:px-10 md:py-7 bg-black/15 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] shadow-[0_25px_80px_rgba(0,0,0,0.35)] flex flex-col items-center text-center">
-            <span className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-full bg-emerald-500/60 border border-emerald-300/90 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.15em] mb-2 sm:mb-3 text-white" style={{ boxShadow: '0 0 12px rgba(16,185,129,0.5), inset 0 0 8px rgba(16,185,129,0.3)' }}>
-              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white animate-pulse" /> Réseau social engagé
+        {/* ✨ SECTION HERO & CARTES ✨ */}
+        <section className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 min-h-0">
+          
+          <div className="relative z-10 text-center flex flex-col items-center mb-12 sm:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-300 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Réseau social engagé
             </span>
-            <div className="relative mb-2 sm:mb-3 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-black/40 blur-2xl" style={{ transform: 'scale(1.6)', zIndex: 0 }} />
-              <img src="/images/anku-logo.png" alt="ANKU" className="relative w-16 h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 object-contain" style={{ zIndex: 1, filter: 'drop-shadow(0 0 24px rgba(110,231,183,0.8)) drop-shadow(0 0 50px rgba(16,185,129,0.5))' }} />
-            </div>
+            
             {isAuthenticated && user ? (
               <>
-                <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.1] tracking-tight mb-1.5 sm:mb-3 max-w-2xl text-white">Bonjour <span className="text-emerald-400">{user.first_name}</span> 👋</h1>
-                <p className="text-[11px] sm:text-sm md:text-base max-w-xl leading-relaxed mb-0 sm:mb-4 text-white/95">Ravi de te revoir sur ANKU. Explore, partage, échange — ta communauté t'attend.</p>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight drop-shadow-2xl">
+                  Bonjour <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500">{user.first_name}</span> <span className="inline-block hover:animate-wave origin-bottom-right">👋</span>
+                </h1>
+                <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
+                  Ravi de te revoir sur ANKU. Explore, partage, échange — ta communauté t'attend.
+                </p>
               </>
             ) : (
               <>
-                <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-[1.1] tracking-tight mb-1.5 sm:mb-3 max-w-2xl text-white">Le réseau qui donne du <span className="text-emerald-400">sens</span><br />à vos échanges</h1>
-                <p className="text-[11px] sm:text-sm md:text-base max-w-xl leading-relaxed mb-0 sm:mb-4 text-white/95">ANKU connecte les <strong className="text-emerald-300">agriculteurs</strong>, les <strong className="text-emerald-300">producteurs locaux</strong> et les <strong className="text-emerald-300">particuliers</strong> autour de valeurs simples : circuit court, transparence et communauté.</p>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight drop-shadow-2xl">
+                  Le réseau qui donne du <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500">sens</span><br />à vos échanges
+                </h1>
+                <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
+                  ANKU connecte les <strong className="text-emerald-300">agriculteurs</strong>, les <strong className="text-emerald-300">producteurs locaux</strong> et les <strong className="text-emerald-300">particuliers</strong> autour de valeurs simples : circuit court, transparence et communauté.
+                </p>
               </>
             )}
+
             {!isAuthenticated && (
-              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2.5 w-full sm:w-auto mt-2 sm:mt-0">
-                <Link to="/register" className="w-full sm:w-auto px-5 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-white rounded-full transition shadow-lg shadow-emerald-500/50 hover:scale-105 transform text-center">Rejoindre ANKU</Link>
-                <Link to="/login" className="w-full sm:w-auto px-5 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-2 border-white/60 hover:border-white hover:bg-white/15 text-white rounded-full transition backdrop-blur-sm text-center">J'ai déjà un compte</Link>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-8">
+                <Link to="/register" className="w-full sm:w-auto px-8 py-3 text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-white rounded-full transition shadow-lg shadow-emerald-500/50 hover:scale-105 transform text-center">Rejoindre ANKU</Link>
+                <Link to="/login" className="w-full sm:w-auto px-8 py-3 text-sm font-bold border-2 border-white/60 hover:border-white hover:bg-white/15 text-white rounded-full transition backdrop-blur-sm text-center">J'ai déjà un compte</Link>
               </div>
             )}
           </div>
-        </section>
 
-        <section className="w-full px-3 sm:px-4 pb-3 sm:pb-5 shrink-0">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
+          {/* Cartes Glassmorphism */}
+          <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
             {isAuthenticated && user
               ? [
-                  { Icon: Store, title: 'Boutiques', desc: 'Découvre les producteurs, artisans et créateurs près de chez toi.', to: '/shops', gradient: 'from-emerald-400 to-emerald-600' },
-                  { Icon: Users, title: 'Réseau social', desc: 'Publie, échange et crée du lien avec la communauté.', to: '/feed', gradient: 'from-blue-400 to-blue-600' },
-                  { Icon: LayoutDashboard, title: 'Tableau de bord', desc: 'Tes commandes, wishlist, messages et raccourcis.', to: '/dashboard/user', gradient: 'from-violet-400 to-violet-600' },
+                  { Icon: Store, title: 'Boutiques', desc: 'Découvre les producteurs, artisans et créateurs près de chez toi.', to: '/shops', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/30' },
+                  { Icon: Users, title: 'Réseau social', desc: 'Publie, échange et crée du lien avec la communauté.', to: '/feed', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/30' },
+                  { Icon: LayoutDashboard, title: 'Mon espace', desc: spaceDesc, to: spaceTarget, gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-500/30' },
                 ].map((item) => {
                   const Icon = item.Icon
                   return (
-                    <Link key={item.title} to={item.to} className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl bg-black/15 backdrop-blur-xl border-2 border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.25)] hover:bg-black/25 hover:border-emerald-400/70 transition-all duration-300 group">
-                      <div className="flex items-center md:items-start gap-2.5 sm:gap-4">
-                        <div className={'w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-2xl bg-gradient-to-br border border-white/30 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ' + item.gradient}>
-                          <Icon size={18} className="text-white sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-xs sm:text-sm md:text-base font-bold mb-0.5 sm:mb-1.5 text-white flex items-center gap-1.5">{item.title}<ChevronRight size={12} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></h3>
-                          <p className="text-[10px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed text-white/95">{item.desc}</p>
-                        </div>
+                    <Link 
+                      key={item.title} 
+                      to={item.to} 
+                      className="group relative flex flex-col items-start p-6 sm:p-8 rounded-[2rem] bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 hover:border-emerald-400/50 shadow-[0_8px_32px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.3)]"
+                    >
+                      <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-5 sm:mb-6 shadow-lg ${item.shadow} group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon size={28} className="text-white" />
                       </div>
+                      <h3 className="text-lg sm:text-xl font-bold text-white mb-2 flex items-center gap-2 w-full">
+                        {item.title}
+                        <ChevronRight size={18} className="text-emerald-400 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ml-auto" />
+                      </h3>
+                      <p className="text-sm text-gray-300 leading-relaxed group-hover:text-gray-100 transition-colors">
+                        {item.desc}
+                      </p>
                     </Link>
                   )
                 })
@@ -197,14 +216,17 @@ export default function Home() {
                   { icon: '🤝', title: 'Vraie communauté', desc: 'Échangez et créez du lien avec des personnes qui partagent vos valeurs.' },
                   { icon: '🔍', title: 'Transparence totale', desc: 'Origine des produits, avis vérifiés : consommez en confiance.' },
                 ].map((item) => (
-                  <div key={item.title} className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl bg-black/15 backdrop-blur-xl border-2 border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.25)] hover:bg-black/25 hover:border-emerald-400/70 transition-all duration-300 group">
-                    <div className="flex items-center md:items-start gap-2.5 sm:gap-4">
-                      <div className="w-9 h-9 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-2xl bg-emerald-500/30 border border-emerald-400/60 flex items-center justify-center text-lg sm:text-xl md:text-2xl shrink-0 group-hover:scale-110 transition-transform">{item.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xs sm:text-sm md:text-base font-bold mb-0.5 sm:mb-1.5 text-white">{item.title}</h3>
-                        <p className="text-[10px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed text-white/95">{item.desc}</p>
-                      </div>
+                  <div 
+                    key={item.title} 
+                    className="group relative flex flex-col items-start p-6 sm:p-8 rounded-[2rem] bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-white/30 shadow-lg transition-all duration-300 hover:-translate-y-2"
+                  >
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-2xl sm:text-3xl mb-5 sm:mb-6 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                      {item.icon}
                     </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{item.title}</h3>
+                    <p className="text-sm text-gray-300 leading-relaxed group-hover:text-gray-100 transition-colors">
+                      {item.desc}
+                    </p>
                   </div>
                 ))}
           </div>
@@ -226,4 +248,4 @@ export default function Home() {
       <CompleteProfileModal open={showCompleteProfile} onClose={() => setShowCompleteProfile(false)} />
     </div>
   )
-  }
+}

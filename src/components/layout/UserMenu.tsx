@@ -160,36 +160,45 @@ export default function UserMenu() {
     navigate('/')
   }
 
-  const sections: { title: string; items: MenuItem[] }[] = [
-    {
-      title: 'Mon espace',
-      items: [
-        { icon: LayoutDashboard, label: 'Mon espace client', to: '/dashboard/user' },
-        { icon: HomeIcon, label: "Fil d'actualité", to: '/feed' },
-        { icon: User, label: 'Mon profil ANKU', to: '/u/' + (user?.username ?? '') },
-        { icon: Store, label: 'Boutiques ANKU', to: '/shops' },
-      ],
-    },
-  ]
+  // 🆕 Réorganisation de l'ordre des sections
+  const sections: { title: string; items: MenuItem[] }[] = []
 
+  // 1. Admin en premier
+  if (isAdmin) {
+    sections.push({
+      title: 'Administration',
+      items: [{ icon: Shield, label: 'Dashboard ANKU', to: '/admin', highlight: true }],
+    })
+  }
+
+  // 2. Espace Pro (Seller) en premier pour les pros
   if (isPro) {
     sections.push({
       title: 'Espace Pro',
-      items: [
-        { icon: LayoutDashboard, label: 'Mon espace Pro', to: '/dashboard/shop' },
-      ],
+      items: [{ icon: LayoutDashboard, label: 'Mon espace Pro', to: '/dashboard/shop' }],
     })
   }
 
+  // 3. Mon espace (client) - toujours présent
+  sections.push({
+    title: 'Mon espace',
+    items: [
+      { icon: LayoutDashboard, label: 'Mon espace client', to: '/dashboard/user' },
+      { icon: HomeIcon, label: "Fil d'actualité", to: '/feed' },
+      { icon: User, label: 'Mon profil ANKU', to: '/u/' + (user?.username ?? '') },
+      { icon: Store, label: 'Boutiques ANKU', to: '/shops' },
+    ],
+  })
+
+  // 4. Devenir Pro (pour les non-pros)
   if (!isPro) {
     sections.push({
       title: 'Professionnel',
-      items: [
-        { icon: Sparkles, label: 'Devenir Pro', to: '/become-pro', highlight: true },
-      ],
+      items: [{ icon: Sparkles, label: 'Devenir Pro', to: '/become-pro', highlight: true }],
     })
   }
 
+  // 5. Vérification (pour les pros non-admins)
   if (isPro && !isAdmin) {
     sections.push({
       title: 'Vérification',
@@ -202,13 +211,6 @@ export default function UserMenu() {
           highlight: !isVerified,
         },
       ],
-    })
-  }
-
-  if (isAdmin) {
-    sections.push({
-      title: 'Administration',
-      items: [{ icon: Shield, label: 'Dashboard Admin', to: '/admin', highlight: true }],
     })
   }
 
