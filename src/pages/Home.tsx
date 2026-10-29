@@ -66,12 +66,26 @@ export default function Home() {
     window.location.href = '/'
   }
 
-  // 🆕 Déterminer la route et le texte du 3ème bouton selon le rôle
-  const isPro = user?.role === 'professionnel' || user?.role === 'admin'
-  const spaceTarget = isPro ? '/dashboard/shop' : '/dashboard/user'
-  const spaceDesc = isPro
-    ? 'Gère ta boutique, tes événements, tes articles et tes commandes.'
-    : 'Tes commandes, wishlist, messages et raccourcis.'
+  // 🆕 Logique dynamique pour la 3ème carte
+  const isAdmin = user?.role === 'admin'
+  const isPro = user?.role === 'professionnel' || isAdmin
+
+  let spaceTitle = 'Mon espace'
+  let spaceTarget = '/dashboard/user'
+  let spaceDesc = 'Tes commandes, wishlist, messages et raccourcis.'
+  let spaceGradient = 'from-violet-400 to-violet-600'
+  let spaceShadow = 'shadow-violet-500/30'
+
+  if (isAdmin) {
+    spaceTitle = 'Dashboard Admin'
+    spaceTarget = '/admin'
+    spaceDesc = 'Gère la plateforme, les utilisateurs, les signalements et les boutiques.'
+    spaceGradient = 'from-red-500 to-rose-600'
+    spaceShadow = 'shadow-red-500/30'
+  } else if (isPro) {
+    spaceTarget = '/dashboard/shop'
+    spaceDesc = 'Gère ta boutique, tes événements, tes articles et tes commandes.'
+  }
 
   return (
     <div className="relative min-h-screen md:h-screen w-full overflow-y-auto md:overflow-hidden bg-black">
@@ -189,7 +203,7 @@ export default function Home() {
               ? [
                   { Icon: Store, title: 'Boutiques', desc: 'Découvre les producteurs, artisans et créateurs près de chez toi.', to: '/shops', gradient: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/30' },
                   { Icon: Users, title: 'Réseau social', desc: 'Publie, échange et crée du lien avec la communauté.', to: '/feed', gradient: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-500/30' },
-                  { Icon: LayoutDashboard, title: 'Mon espace', desc: spaceDesc, to: spaceTarget, gradient: 'from-violet-400 to-violet-600', shadow: 'shadow-violet-500/30' },
+                  { Icon: LayoutDashboard, title: spaceTitle, desc: spaceDesc, to: spaceTarget, gradient: spaceGradient, shadow: spaceShadow },
                 ].map((item) => {
                   const Icon = item.Icon
                   return (
