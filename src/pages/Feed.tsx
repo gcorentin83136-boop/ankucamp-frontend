@@ -845,7 +845,6 @@ function PostCard({
           postId={post.id}
           shareText={post.content?.slice(0, 100) ?? ''}
           onClose={() => setShareOpen(false)}
-          // onShared={onPostUpdated} <-- SUPPRIMÉ ICI
           onShareToAnku={async () => {
             try {
               await postsApi.share(post.id, { share_comment: null, visibility: 'public' })
