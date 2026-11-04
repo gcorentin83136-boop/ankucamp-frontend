@@ -66,7 +66,7 @@ export default function Home() {
     window.location.href = '/'
   }
 
-  // 🆕 Logique dynamique pour la 3ème carte
+  // Logique dynamique pour la 3ème carte
   const isAdmin = user?.role === 'admin'
   const isPro = user?.role === 'professionnel' || isAdmin
 
@@ -102,9 +102,20 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0">
-                <img src="/images/anku-logo.png" alt="ANKU" className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 object-contain transition-transform group-hover:scale-110" style={{ filter: 'drop-shadow(0 0 12px rgba(110,231,183,0.6))' }} />
-                <span className="text-base xs:text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-white hidden sm:inline">ANKU</span>
+              {/* 🆕 LE LOGO EST MAINTENANT DANS UNE PILULE EN VERRE FUMÉ */}
+              <Link 
+                to="/" 
+                className="flex items-center gap-2 sm:gap-3 group shrink-0 bg-black/30 hover:bg-black/50 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl border border-white/10 transition-all shadow-lg"
+              >
+                <img 
+                  src="/images/anku-logo.png" 
+                  alt="ANKU" 
+                  className="w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9 object-contain transition-transform group-hover:scale-110" 
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(110,231,183,0.8))' }} 
+                />
+                <span className="text-base xs:text-lg sm:text-xl font-extrabold tracking-tight text-white hidden sm:inline drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                  ANKU
+                </span>
               </Link>
             </div>
 
@@ -161,30 +172,31 @@ export default function Home() {
           </Link>
         )}
 
-        {/* ✨ SECTION HERO & CARTES ✨ */}
-        <section className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 min-h-0">
+        {/* SECTION HERO & CARTES */}
+        <section className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 min-h-0 gap-6 sm:gap-10">
           
-          <div className="relative z-10 text-center flex flex-col items-center mb-12 sm:mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-300 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+          {/* GRAND CARRÉ BLUR POUR LE TEXTE */}
+          <div className="relative z-10 w-full max-w-4xl mx-auto rounded-[3rem] bg-black/40 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-6 sm:p-10 md:p-14 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-300 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Réseau social engagé
             </span>
             
             {isAuthenticated && user ? (
               <>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight drop-shadow-2xl">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-xl">
                   Bonjour <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500">{user.first_name}</span> <span className="inline-block hover:animate-wave origin-bottom-right">👋</span>
                 </h1>
-                <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
+                <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
                   Ravi de te revoir sur ANKU. Explore, partage, échange — ta communauté t'attend.
                 </p>
               </>
             ) : (
               <>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight drop-shadow-2xl">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-xl">
                   Le réseau qui donne du <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500">sens</span><br />à vos échanges
                 </h1>
-                <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-lg">
-                  ANKU connecte les <strong className="text-emerald-300">agriculteurs</strong>, les <strong className="text-emerald-300">producteurs locaux</strong> et les <strong className="text-emerald-300">particuliers</strong> autour de valeurs simples : circuit court, transparence et communauté.
+                <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+                  ANKU connecte les <strong className="text-emerald-300">agriculteurs</strong>, les <strong className="text-emerald-300">producteurs locaux</strong> et les <strong className="text-emerald-300">particuliers</strong> autour de valeurs simples.
                 </p>
               </>
             )}
@@ -197,7 +209,7 @@ export default function Home() {
             )}
           </div>
 
-          {/* Cartes Glassmorphism */}
+          {/* CARTES */}
           <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
             {isAuthenticated && user
               ? [
@@ -210,7 +222,7 @@ export default function Home() {
                     <Link 
                       key={item.title} 
                       to={item.to} 
-                      className="group relative flex flex-col items-start p-6 sm:p-8 rounded-[2rem] bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 hover:border-emerald-400/50 shadow-[0_8px_32px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.3)]"
+                      className="group relative flex flex-col items-start p-6 sm:p-8 rounded-[2rem] bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-emerald-400/50 shadow-[0_8px_32px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.3)]"
                     >
                       <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-5 sm:mb-6 shadow-lg ${item.shadow} group-hover:scale-110 transition-transform duration-300`}>
                         <Icon size={28} className="text-white" />
@@ -219,7 +231,7 @@ export default function Home() {
                         {item.title}
                         <ChevronRight size={18} className="text-emerald-400 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ml-auto" />
                       </h3>
-                      <p className="text-sm text-gray-300 leading-relaxed group-hover:text-gray-100 transition-colors">
+                      <p className="text-sm text-gray-200 leading-relaxed group-hover:text-white transition-colors">
                         {item.desc}
                       </p>
                     </Link>
@@ -232,13 +244,13 @@ export default function Home() {
                 ].map((item) => (
                   <div 
                     key={item.title} 
-                    className="group relative flex flex-col items-start p-6 sm:p-8 rounded-[2rem] bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-white/30 shadow-lg transition-all duration-300 hover:-translate-y-2"
+                    className="group relative flex flex-col items-start p-6 sm:p-8 rounded-[2rem] bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-white/40 shadow-lg transition-all duration-300 hover:-translate-y-2"
                   >
                     <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-2xl sm:text-3xl mb-5 sm:mb-6 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-inner">
                       {item.icon}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{item.title}</h3>
-                    <p className="text-sm text-gray-300 leading-relaxed group-hover:text-gray-100 transition-colors">
+                    <p className="text-sm text-gray-200 leading-relaxed group-hover:text-white transition-colors">
                       {item.desc}
                     </p>
                   </div>

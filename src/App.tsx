@@ -9,6 +9,9 @@ import { CallProvider } from './context/CallContext'
 import CallUI from './components/chat/CallUI'
 import './index.css'
 
+// 🆕 Import du composant ScrollToTop
+import ScrollToTop from '../src/components/layout/ScrollToTop'
+
 import Home from './pages/Home'
 import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
@@ -158,95 +161,106 @@ function App() {
 
   return (
     <CallProvider>
-    <FloatingChatBubble />
-    <CallUI />
-    <Routes>
-      <Route path="/" element={<Home />} />
+      {/* 🆕 Le composant magique qui règle le scroll */}
+      <ScrollToTop />
+      
+      <FloatingChatBubble />
+      <CallUI />
+      
+      <Routes>
+        <Route path="/" element={<Home />} />
 
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-      <Route path="/auth/reset-password" element={<ResetPassword />} />
-      <Route path="/auth/activate" element={<ActivateAccount />} />
-      <Route path="/auth/callback" element={<OAuthCallback />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/activate" element={<ActivateAccount />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
 
-      <Route path="/legal/cgu" element={<CGU />} />
-      <Route path="/legal/cookies" element={<Cookies />} />
-      <Route path="/contact" element={<Contact />} />
+        <Route path="/legal/cgu" element={<CGU />} />
+        <Route path="/legal/cookies" element={<Cookies />} />
+        <Route path="/contact" element={<Contact />} />
 
-      <Route path="/kyc" element={<ProtectedRoute requiresPro><Kyc /></ProtectedRoute>} />
-      <Route path="/become-pro" element={<ProtectedRoute><BecomePro /></ProtectedRoute>} />
+        <Route path="/kyc" element={<ProtectedRoute requiresPro><Kyc /></ProtectedRoute>} />
+        <Route path="/become-pro" element={<ProtectedRoute><BecomePro /></ProtectedRoute>} />
 
-      <Route path="/settings" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
-        <Route index element={<SettingsHub />} />
-        <Route path="account" element={<AccountSettings />} />
-        <Route path="security" element={<SecuritySettings />} />
-        <Route path="sessions" element={<SessionsSettings />} />
-        <Route path="privacy" element={<PrivacySettings />} />
-        <Route path="notifications" element={<NotificationsSettings />} />
-        <Route path="blocked" element={<BlockedUsers />} />
-        <Route path="payment" element={<PaymentSettings />} />
-        <Route path="danger" element={<DangerZone />} />
-      </Route>
+        <Route path="/settings" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
+          <Route index element={<SettingsHub />} />
+          <Route path="account" element={<AccountSettings />} />
+          <Route path="security" element={<SecuritySettings />} />
+          <Route path="sessions" element={<SessionsSettings />} />
+          <Route path="privacy" element={<PrivacySettings />} />
+          <Route path="notifications" element={<NotificationsSettings />} />
+          <Route path="blocked" element={<BlockedUsers />} />
+          <Route path="payment" element={<PaymentSettings />} />
+          <Route path="danger" element={<DangerZone />} />
+        </Route>
 
-      <Route path="/profile" element={<ProtectedRoute><MyProfileRedirect /></ProtectedRoute>} />
-      <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
-      <Route path="/u/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-      <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-      <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-      <Route path="/follows" element={<ProtectedRoute><Follows /></ProtectedRoute>} />
-      <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-      <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><MyProfileRedirect /></ProtectedRoute>} />
+        <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
+        <Route path="/u/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+        <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        <Route path="/follows" element={<ProtectedRoute><Follows /></ProtectedRoute>} />
+        <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
 
-      <Route path="/articles" element={<ArticlesFeed />} />`n      <Route path="/articles/:slug" element={<ArticleDetail />} />`n      <Route path="/events" element={<Events />} />`n      <Route path="/events/:id" element={<EventDetail />} />
-      <Route path="/shops" element={<ShopsList />} />
-      <Route path="/shops/:id" element={<ShopDetail />} />
-      <Route path="/products/:id" element={<ProductDetail />} />
+        {/* 🆕 Correction des \n qui trainaient */}
+        <Route path="/articles" element={<ArticlesFeed />} />
+        <Route path="/articles/:slug" element={<ArticleDetail />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<EventDetail />} />
+        
+        <Route path="/shops" element={<ShopsList />} />
+        <Route path="/shops/:id" element={<ShopDetail />} />
+        <Route path="/products/:id" element={<ProductDetail />} />
 
-      <Route path="/dashboard/shop" element={<ProtectedRoute requiresPro><SellerLayout /></ProtectedRoute>}>
-        <Route index element={<SellerDashboard />} />
-        <Route path="settings" element={<SellerSettings />} />
-        <Route path="products" element={<SellerProducts />} />
-        <Route path="orders" element={<SellerOrders />} />
-        <Route path="promo" element={<SellerPromo />} />
-        <Route path="events" element={<SellerEvents />} />
-        <Route path="articles" element={<SellerArticles />} />
-        <Route path="reviews" element={<SellerReviews />} />
-        <Route path="invoices" element={<SellerInvoices />} />
-      </Route>
+        <Route path="/dashboard/shop" element={<ProtectedRoute requiresPro><SellerLayout /></ProtectedRoute>}>
+          <Route index element={<SellerDashboard />} />
+          <Route path="settings" element={<SellerSettings />} />
+          <Route path="products" element={<SellerProducts />} />
+          <Route path="orders" element={<SellerOrders />} />
+          <Route path="promo" element={<SellerPromo />} />
+          <Route path="events" element={<SellerEvents />} />
+          <Route path="articles" element={<SellerArticles />} />
+          <Route path="reviews" element={<SellerReviews />} />
+          <Route path="invoices" element={<SellerInvoices />} />
+        </Route>
 
-      <Route path="/dashboard/user" element={<ProtectedRoute><BuyerLayout /></ProtectedRoute>}>
-        <Route index element={<BuyerDashboard />} />
-        <Route path="orders" element={<BuyerOrders />} />
-        <Route path="wishlist" element={<BuyerWishlist />} />
-        <Route path="reviews" element={<BuyerReviews />} />
-        <Route path="events" element={<BuyerEvents />} />
-        <Route path="articles" element={<BuyerArticles />} />
-        <Route path="refunds" element={<BuyerRefunds />} />
-        <Route path="follows" element={<BuyerFollows />} />
-      </Route>
+        <Route path="/dashboard/user" element={<ProtectedRoute><BuyerLayout /></ProtectedRoute>}>
+          <Route index element={<BuyerDashboard />} />
+          <Route path="orders" element={<BuyerOrders />} />
+          <Route path="wishlist" element={<BuyerWishlist />} />
+          <Route path="reviews" element={<BuyerReviews />} />
+          <Route path="events" element={<BuyerEvents />} />
+          <Route path="articles" element={<BuyerArticles />} />
+          <Route path="refunds" element={<BuyerRefunds />} />
+          <Route path="follows" element={<BuyerFollows />} />
+        </Route>
 
-      <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="kyc" element={<AdminKyc />} />
-        <Route path="moderation" element={<AdminModeration />} />
-        <Route path="refunds" element={<AdminRefunds />} />
-        <Route path="users" element={<AdminUsers />} />`n        <Route path="events" element={<AdminEvents />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="promo" element={<AdminPromo />} />
-        <Route path="audit" element={<AdminAudit />} />
-        <Route path="backup" element={<AdminBackup />} />
-      </Route>
+        <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="kyc" element={<AdminKyc />} />
+          <Route path="moderation" element={<AdminModeration />} />
+          <Route path="refunds" element={<AdminRefunds />} />
+          <Route path="users" element={<AdminUsers />} />
+          {/* 🆕 Correction du \n qui trainait */}
+          <Route path="events" element={<AdminEvents />} />
+          <Route path="categories" element={<AdminCategories />} />
+          <Route path="promo" element={<AdminPromo />} />
+          <Route path="audit" element={<AdminAudit />} />
+          <Route path="backup" element={<AdminBackup />} />
+        </Route>
 
-      <Route path="/payment/success" element={<PaymentSuccess />} />
-      <Route path="/payment/cancel" element={<PaymentCancel />} />
-      <Route path="/dashboard/stripe/return" element={<Navigate to="/settings/payment?stripe=return" replace />} />
-      <Route path="/dashboard/stripe/refresh" element={<Navigate to="/settings/payment?stripe=refresh" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<PaymentCancel />} />
+        <Route path="/dashboard/stripe/return" element={<Navigate to="/settings/payment?stripe=return" replace />} />
+        <Route path="/dashboard/stripe/refresh" element={<Navigate to="/settings/payment?stripe=refresh" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </CallProvider>
   )
 }
