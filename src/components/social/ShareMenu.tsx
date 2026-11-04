@@ -56,7 +56,7 @@ export default function ShareMenu({
   postId: number
   shareText?: string
   onClose: () => void
-  onShareToAnku?: () => void
+  onShareToAnku?: () => void | Promise<void> // 🆕 Accepte les fonctions async
 }) {
   const [copied, setCopied] = useState(false)
 
