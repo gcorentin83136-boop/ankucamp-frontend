@@ -428,12 +428,12 @@ function MyShopPreview() {
     }
     ;(async () => {
       try {
-        // 🆕 .catch pour éviter l'erreur rouge dans la console si 400
-        const { data } = await httpClient
+        // 🆕 On capture l'erreur 400 si l'admin n'a pas de boutique
+        const res = await httpClient
           .get<{ shops: any[] }>('/shops/mine')
           .catch(() => ({ data: { shops: [] } }))
         
-        setShop((data.shops ?? [])[0] ?? null)
+        setShop((res.data.shops ?? [])[0] ?? null)
       } catch {
         // ignore
       } finally {
