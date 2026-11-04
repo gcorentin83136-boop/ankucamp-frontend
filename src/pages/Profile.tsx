@@ -185,7 +185,7 @@ function PostCard({
         {/* Content */}
         {post.content && (
           <div className="px-4 pb-3">
-            <p className="text-sm text-gray-800 whitespace-pre-line">
+            <p className="text-sm text-gray-800 whitespace-pre-line break-words">
               {post.content}
             </p>
           </div>
@@ -257,7 +257,7 @@ function PostCard({
       </article>
 
       <ImageLightbox
-        images={imageOnlyUrls}
+        images={media}
         index={lightboxIndex}
         onClose={() => setLightboxIndex(-1)}
         onNavigate={setLightboxIndex}
@@ -268,7 +268,7 @@ function PostCard({
           postId={post.id}
           shareText={post.content?.slice(0, 100) ?? ''}
           onClose={() => setShareOpen(false)}
-          onShared={onPostUpdated}
+          // onShared={onPostUpdated} // 🆕 SUPPRIMÉ ICI
         />
       )}
     </>
@@ -596,7 +596,7 @@ export default function Profile() {
               placeholder={`Quoi de neuf, ${me.first_name} ?`}
               rows={content.length > 60 ? 5 : 2}
               maxLength={5000}
-              className="flex-1 bg-transparent outline-none text-[15px] placeholder-gray-400 resize-none pt-2 leading-relaxed"
+              className="flex-1 bg-transparent outline-none text-[15px] placeholder-gray-400 resize-none pt-2 leading-relaxed break-words"
             />
           </div>
 
