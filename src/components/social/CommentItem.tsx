@@ -41,6 +41,14 @@ export default function CommentItem({
   const isMine = comment.author_id === currentUserId
   const [replyOpen, setReplyOpen] = useState(false)
 
+  // 🆕 Gestion des données venant soit de comment.author, soit des champs plats
+  const author = comment.author || {
+    first_name: (comment as any).author_first_name,
+    last_name: (comment as any).author_last_name,
+    username: (comment as any).author_username,
+    avatar_url: (comment as any).author_avatar_url,
+  }
+
   const handleDelete = async () => {
     if (!confirm('Supprimer ce commentaire ?')) return
     try {
@@ -65,12 +73,12 @@ export default function CommentItem({
     <div>
       <div className="flex gap-2">
         <Link
-          to={comment.author?.username ? `/u/${comment.author.username}` : '#'}
+          to={author?.username ? `/u/${author.username}` : '#'}
           className="shrink-0"
         >
-          {comment.author?.avatar_url ? (
+          {author?.avatar_url ? (
             <img
-              src={comment.author.avatar_url}
+              src={author.avatar_url}
               alt=""
               className="w-8 h-8 rounded-full object-cover"
             />
@@ -79,8 +87,7 @@ export default function CommentItem({
               className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
               style={{ background: ANKU.greenDark }}
             >
-              {(comment.author?.first_name?.[0] ?? '') +
-                (comment.author?.last_name?.[0] ?? '')}
+              {(author?.first_name?.[0] ?? '') + (author?.last_name?.[0] ?? '')}
             </div>
           )}
         </Link>
@@ -88,14 +95,10 @@ export default function CommentItem({
           <div className="bg-white rounded-2xl px-3 py-2 border border-gray-100">
             <div className="flex items-center justify-between gap-2">
               <Link
-                to={
-                  comment.author?.username
-                    ? `/u/${comment.author.username}`
-                    : '#'
-                }
+                to={author?.username ? `/u/${author.username}` : '#'}
                 className="text-xs font-bold text-gray-900 hover:underline truncate"
               >
-                {comment.author?.first_name} {comment.author?.last_name}
+                {author?.first_name} {author?.last_name}
               </Link>
               <span className="text-[10px] text-gray-400 shrink-0">
                 {formatTime(comment.created_at)}
@@ -114,16 +117,15 @@ export default function CommentItem({
             )}
           </div>
           <div className="flex items-center gap-3 text-[10px] font-bold text-gray-500 mt-1 ml-1">
-            {!isReply && (
-              <button
-                type="button"
-                onClick={() => setReplyOpen((v) => !v)}
-                className="hover:text-emerald-600 transition inline-flex items-center gap-1"
-              >
-                <CornerDownRight size={10} />
-                Répondre
-              </button>
-            )}
+            {/* 🆕 On enlève le !isReply pour pouvoir répondre aux réponses */}
+            <button
+              type="button"
+              onClick={() => setReplyOpen((v) => !v)}
+              className="hover:text-emerald-600 transition inline-flex items-center gap-1"
+            >
+              <CornerDownRight size={10} />
+              Répondre
+            </button>
             {isMine && (
               <button
                 type="button"
@@ -148,8 +150,8 @@ export default function CommentItem({
         </div>
       </div>
 
-      {/* Réponses imbriquées (1 niveau) */}
-      {!isReply && comment.replies && comment.replies.length > 0 && (
+      {/* Réponses imbriquées */}
+      {comment.replies && comment.replies.length > 0 && (
         <div className="ml-10 mt-2 space-y-2">
           {comment.replies.map((r) => (
             <CommentItem
@@ -169,7 +171,7 @@ export default function CommentItem({
         <div className="ml-10 mt-2">
           <CommentInput
             autoFocus
-            placeholder={`Répondre à ${comment.author?.first_name ?? ''}…`}
+            placeholder={`Répondre à ${author?.first_name ?? ''}…`}
             onSubmit={handleSubmitReply}
             onCancel={() => setReplyOpen(false)}
           />

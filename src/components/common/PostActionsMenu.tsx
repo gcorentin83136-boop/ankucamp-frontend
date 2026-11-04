@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreHorizontal, Flag, Link2, Trash2, Ban, ShieldOff } from 'lucide-react'
+import { MoreHorizontal, Flag, Link2, Trash2, Ban, ShieldOff, Globe } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PostActionsMenu({
@@ -9,6 +9,7 @@ export default function PostActionsMenu({
   onCopyLink,
   onBlock,
   onRestrict,
+  onChangeVisibility,
 }: {
   isOwn: boolean
   onReport: () => void
@@ -16,6 +17,7 @@ export default function PostActionsMenu({
   onCopyLink?: () => void
   onBlock?: () => void
   onRestrict?: () => void
+  onChangeVisibility?: () => void
 }) {
   const [open, setOpen] = useState(false)
 
@@ -24,7 +26,7 @@ export default function PostActionsMenu({
       onCopyLink()
     } else {
       navigator.clipboard.writeText(window.location.href)
-      toast.success('Lien copie')
+      toast.success('Lien copié')
     }
     setOpen(false)
   }
@@ -55,6 +57,20 @@ export default function PostActionsMenu({
               <Link2 size={12} />
               Copier le lien
             </button>
+
+            {isOwn && onChangeVisibility && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeVisibility()
+                  setOpen(false)
+                }}
+                className="w-full text-left rounded-lg px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition flex items-center gap-2"
+              >
+                <Globe size={12} />
+                Modifier la visibilité
+              </button>
+            )}
 
             {!isOwn && onBlock && (
               <button

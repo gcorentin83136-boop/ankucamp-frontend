@@ -34,63 +34,67 @@ export default function MediaUploader({
   const canAddImage = imageCount < MAX_IMAGES
   const canAddVideo = videoCount < MAX_VIDEOS
 
-  // ----- Images (UPLOAD PARALLÈLE 🚀) -----
+  // 🆕 Accepte images ET vidéos
   const handleImagesSelect = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    if (imageCount + files.length > MAX_IMAGES) {
-      toast.error(`Maximum ${MAX_IMAGES} images par post`)
-      return
-    }
-
     setUploading(true)
     try {
-      // 1) Filtre les fichiers invalides
-      const validFiles: File[] = []
+      const validImages: File[] = []
+      const validVideos: File[] = []
+      
       for (const file of Array.from(files)) {
-        if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} n'est pas une image`)
-          continue
+        if (file.type.startsWith('image/')) {
+          if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+            toast.error(`${file.name} dépasse ${MAX_IMAGE_SIZE_MB} MB`)
+            continue
+          }
+          validImages.push(file)
+        } else if (file.type.startsWith('video/')) {
+          if (videoCount + validVideos.length >= MAX_VIDEOS) {
+            toast.error(`Maximum ${MAX_VIDEOS} vidéo par post`)
+            continue
+          }
+          if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+            toast.error(`${file.name} dépasse ${MAX_VIDEO_SIZE_MB} MB`)
+            continue
+          }
+          validVideos.push(file)
         }
-        if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-          toast.error(`${file.name} dépasse ${MAX_IMAGE_SIZE_MB} MB`)
-          continue
-        }
-        validFiles.push(file)
       }
 
-      // 2) Upload en parallèle
-      const results = await Promise.allSettled(
-        validFiles.map((file) => uploadsApi.uploadPostMedia(file))
-      )
-
-      // 3) Agrège les résultats
       const newItems: MediaItem[] = []
       let failed = 0
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          newItems.push({ url: r.value.url, type: 'image' })
-        } else {
-          failed++
+
+      if (validImages.length > 0) {
+        const results = await Promise.allSettled(
+          validImages.map((file) => uploadsApi.uploadPostMedia(file))
+        )
+        for (const r of results) {
+          if (r.status === 'fulfilled') newItems.push({ url: r.value.url, type: 'image' })
+          else failed++
+        }
+      }
+
+      if (validVideos.length > 0) {
+        const results = await Promise.allSettled(
+          validVideos.map((file) => uploadsApi.uploadPostVideo(file))
+        )
+        for (const r of results) {
+          if (r.status === 'fulfilled') newItems.push({ url: r.value.url, type: 'video' })
+          else failed++
         }
       }
 
       if (newItems.length > 0) {
         onChange([...media, ...newItems])
-        if (failed > 0) {
-          toast.error(
-            `${failed} image${failed > 1 ? 's' : ''} n'ont pas pu être uploadée${failed > 1 ? 's' : ''}`
-          )
-        } else {
-          toast.success(
-            `${newItems.length} image${newItems.length > 1 ? 's' : ''} ajoutée${newItems.length > 1 ? 's' : ''}`
-          )
-        }
+        if (failed > 0) toast.error(`${failed} fichier(s) n'ont pas pu être uploadés`)
+        else toast.success(`${newItems.length} média(s) ajouté(s)`)
       } else if (failed > 0) {
-        toast.error('Aucune image n\'a pu être uploadée')
+        toast.error('Aucun média n\'a pu être uploadé')
       }
     } finally {
       setUploading(false)
@@ -98,7 +102,7 @@ export default function MediaUploader({
     }
   }
 
-  // ----- Vidéo -----
+  // Upload vidéo via le bouton dédié
   const handleVideoSelect = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -189,14 +193,13 @@ export default function MediaUploader({
             </div>
           ))}
 
-          {/* Bouton "+" pour ajouter une image (si on peut encore et si >1 média) */}
-          {!singleImageOnly && canAddImage && (
+          {!singleImageOnly && (canAddImage || canAddVideo) && (
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
               disabled={uploading}
               className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-emerald-400 hover:text-emerald-500 transition disabled:opacity-50 w-full"
-              title="Ajouter une image"
+              title="Ajouter un média"
             >
               {uploading ? (
                 <Loader size={18} className="animate-spin" />
@@ -204,7 +207,7 @@ export default function MediaUploader({
                 <>
                   <Plus size={18} />
                   <span className="text-[10px] font-bold">
-                    {imageCount}/{MAX_IMAGES}
+                    {media.length}/20
                   </span>
                 </>
               )}
@@ -217,7 +220,7 @@ export default function MediaUploader({
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         multiple
         onChange={handleImagesSelect}
         className="hidden"
@@ -230,7 +233,7 @@ export default function MediaUploader({
         className="hidden"
       />
 
-      {/* Boutons d'action — icônes uniquement */}
+      {/* Boutons d'action */}
       {showButtons && (canAddImage || canAddVideo) && (
         <div className="flex items-center gap-0.5">
           {canAddImage && (
@@ -239,7 +242,7 @@ export default function MediaUploader({
               onClick={() => imageInputRef.current?.click()}
               disabled={uploading}
               className="w-9 h-9 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50"
-              title={`Ajouter des photos (${imageCount}/${MAX_IMAGES})`}
+              title="Ajouter des photos ou vidéos"
             >
               {uploading ? (
                 <Loader size={18} className="animate-spin" />

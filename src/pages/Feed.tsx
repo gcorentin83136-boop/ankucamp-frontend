@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, useCallback } from 'react'
+import { Link, useSearchParams, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Users,
@@ -191,7 +191,6 @@ function MediaGrid({
 }) {
   if (media.length === 0) return null
 
-  const totalImages = media.filter((u) => !isVideoUrl(u))
   const hasMoreThan4 = media.length > 4
   const visible = media.slice(0, 4)
   const remaining = media.length - 4
@@ -234,18 +233,11 @@ function MediaGrid({
         {visible.map((url, i) => {
           const isLast = i === 3 && hasMoreThan4
           const isVideo = isVideoUrl(url)
-          const imageIdx = isVideo ? -1 : totalImages.indexOf(url)
           return (
             <button
               key={i}
               type="button"
-              onClick={() => {
-                if (isVideo) {
-                  onOpenLightbox(i)
-                } else {
-                  onOpenLightbox(imageIdx >= 0 ? imageIdx : i)
-                }
-              }}
+              onClick={() => onOpenLightbox(i)}
               className="relative w-full aspect-square overflow-hidden bg-gray-100"
             >
               {isVideo ? (
@@ -544,11 +536,13 @@ function PostCard({
   currentUserId,
   onPostUpdated,
   autoOpenComments,
+  onChangeVisibility,
 }: {
   post: Post
   currentUserId: number | undefined
   onPostUpdated: () => void
   autoOpenComments?: boolean
+  onChangeVisibility?: () => void
 }) {
   const isOwn = post.author_id === currentUserId
 
@@ -556,6 +550,7 @@ function PostCard({
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
   const [commentsOpen, setCommentsOpen] = useState(autoOpenComments ?? false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [showFullText, setShowFullText] = useState(false)
 
   const [lightboxIndex, setLightboxIndex] = useState(-1)
   const [reportOpen, setReportOpen] = useState(false)
@@ -565,10 +560,17 @@ function PostCard({
   const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
 
   const media = parseMedia(post)
-  const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
   const sharedEvent = (post as any).shared_event
   const sharedArticle = (post as any).shared_article
+
+  // 🆕 Logique de troncature du texte (sécurisée contre le null)
+  const MAX_CHARS = 300
+  const contentStr = post.content || ''
+  const isLongText = contentStr.length > MAX_CHARS
+  const displayContent = isLongText && !showFullText
+    ? contentStr.slice(0, MAX_CHARS) + '...'
+    : contentStr
 
   const toggleLike = async () => {
     try {
@@ -681,14 +683,25 @@ function PostCard({
             onDelete={isOwn ? deletePost : undefined}
             onBlock={!isOwn ? handleBlockAuthor : undefined}
             onRestrict={!isOwn ? handleRestrictAuthor : undefined}
+            onChangeVisibility={isOwn ? onChangeVisibility : undefined}
           />
         </div>
 
         {post.content && (
           <div className="px-4 pb-3">
-            <p className="text-sm text-gray-800 whitespace-pre-line">
-              {post.content}
+            <p className="text-sm text-gray-800 whitespace-pre-line break-words">
+              {displayContent}
             </p>
+            {isLongText && (
+              <button
+                type="button"
+                onClick={() => setShowFullText(!showFullText)}
+                className="text-xs font-bold mt-1 hover:underline"
+                style={{ color: ANKU.green }}
+              >
+                {showFullText ? 'Voir moins' : 'Voir plus'}
+              </button>
+            )}
           </div>
         )}
 
@@ -815,8 +828,9 @@ function PostCard({
         targetLabel={reportTargetLabel}
       />
 
+      {/* 🆕 On passe TOUS les médias (images + vidéos) au Lightbox */}
       <ImageLightbox
-        images={imageOnlyUrls}
+        images={media}
         index={lightboxIndex}
         onClose={() => setLightboxIndex(-1)}
         onNavigate={setLightboxIndex}
@@ -828,6 +842,15 @@ function PostCard({
           shareText={post.content?.slice(0, 100) ?? ''}
           onClose={() => setShareOpen(false)}
           onShared={onPostUpdated}
+          onShareToAnku={async () => {
+            try {
+              await postsApi.share(post.id, { share_comment: null, visibility: 'public' })
+              toast.success('Post partagé sur ton profil ! 🎉')
+              onPostUpdated()
+            } catch (err: any) {
+              toast.error(err?.response?.data?.message || 'Erreur lors du partage')
+            }
+          }}
         />
       )}
     </>
@@ -840,6 +863,7 @@ function PostCard({
 export default function Feed() {
   const auth = useAuthStore()
   const user = (auth as any)?.user
+  const location = useLocation()
 
   const [loading, setLoading] = useState(true)
   const [posts, setPosts] = useState<Post[]>([])
@@ -849,12 +873,14 @@ export default function Feed() {
 
   const [searchParams] = useSearchParams()
   const targetPostId = searchParams.get('post')
-  const targetLoadedRef = useRef(false)
 
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<PostVisibility>('public')
   const [media, setMedia] = useState<MediaItem[]>([])
   const [publishing, setPublishing] = useState(false)
+
+  // 🆕 État pour la modification de visibilité
+  const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
 
   const loadPosts = useCallback(
     async (reset = false) => {
@@ -878,27 +904,26 @@ export default function Feed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 🆕 Scroll auto basé sur le hash (#post-xx) ou le paramètre (?post=xx)
   useEffect(() => {
-    if (!targetPostId || targetLoadedRef.current) return
-    const id = Number(targetPostId)
-    if (!Number.isFinite(id)) return
+    const hash = location.hash
+    const paramId = searchParams.get('post')
+    const targetId = hash ? hash.replace('#post-', '') : paramId
+    
+    if (!targetId) return
 
-    const el = document.getElementById(`post-${id}`)
+    const el = document.getElementById(`post-${targetId}`)
     if (el) {
-      targetLoadedRef.current = true
       const t = setTimeout(() => {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         el.classList.add('ring-4', 'ring-emerald-400', 'ring-offset-2')
         setTimeout(() => {
           el.classList.remove('ring-4', 'ring-emerald-400', 'ring-offset-2')
         }, 2500)
-      }, 200)
+      }, 300)
       return () => clearTimeout(t)
     }
-    if (!loading && hasMore) {
-      loadPosts(false)
-    }
-  }, [targetPostId, posts.length, loading, hasMore, loadPosts])
+  }, [location.hash, searchParams, posts])
 
   const handlePublish = async () => {
     if (!content.trim() && media.length === 0) {
@@ -923,6 +948,18 @@ export default function Feed() {
     }
   }
 
+  const handleUpdateVisibility = async (newVis: PostVisibility) => {
+    if (!editVisibilityPost) return
+    try {
+      await postsApi.update(editVisibilityPost.id, { visibility: newVis })
+      toast.success('Visibilité mise à jour ✅')
+      setEditVisibilityPost(null)
+      await loadPosts(true)
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erreur')
+    }
+  }
+
   return (
     <div className="relative min-h-screen">
       <AppHeader />
@@ -932,15 +969,15 @@ export default function Feed() {
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
           <aside className="hidden lg:block">
             <div className="sticky top-20 space-y-4">
-              <ProfileCard />
-              <FriendsPreview />
-              <MyShopPreview />
+              {/* 🆕 Réorganisation : Raccourcis -> Boutique -> Amis -> Profil */}
               <QuickLinks />
+              <MyShopPreview />
+              <FriendsPreview />
+              <ProfileCard />
             </div>
           </aside>
 
           <main className="space-y-4 min-w-0">
-            {/* Raccourcis mobile */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
               {SHORTCUTS.map((s) => {
                 const Icon = s.icon
@@ -964,7 +1001,6 @@ export default function Feed() {
               })}
             </div>
 
-            {/* Publier */}
             <div className="rounded-3xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden">
               <div className="p-4 flex items-start gap-3">
                 {user?.avatar_url ? (
@@ -988,7 +1024,7 @@ export default function Feed() {
                   placeholder={`Quoi de neuf, ${user?.first_name ?? 'toi'} ?`}
                   rows={content.length > 60 ? 5 : 2}
                   maxLength={5000}
-                  className="flex-1 bg-transparent outline-none text-[15px] placeholder-gray-400 resize-none pt-2 leading-relaxed"
+                  className="flex-1 bg-transparent outline-none text-[15px] placeholder-gray-400 resize-none pt-2 leading-relaxed break-words"
                 />
               </div>
 
@@ -1042,7 +1078,6 @@ export default function Feed() {
               </div>
             </div>
 
-            {/* Fil d'actu */}
             {loading ? (
               <div className="rounded-2xl border border-gray-200 bg-white/95 backdrop-blur p-10 text-center">
                 <Loader
@@ -1077,6 +1112,7 @@ export default function Feed() {
                     currentUserId={user?.id}
                     onPostUpdated={() => loadPosts(true)}
                     autoOpenComments={String(p.id) === targetPostId}
+                    onChangeVisibility={() => setEditVisibilityPost(p)}
                   />
                 ))}
 
@@ -1098,6 +1134,51 @@ export default function Feed() {
           </main>
         </div>
       </div>
+
+      {/* 🆕 MODAL DE MODIFICATION DE VISIBILITÉ */}
+      {editVisibilityPost && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <h3 className="text-base font-bold text-gray-900">Modifier la visibilité</h3>
+            </div>
+            <div className="p-5 space-y-2">
+              {[
+                { value: 'public', label: 'Public', icon: Globe, desc: 'Visible par tout le monde' },
+                { value: 'friends', label: 'Amis', icon: Users, desc: 'Visible par tes amis' },
+                { value: 'private', label: 'Privé', icon: Lock, desc: 'Visible uniquement par toi' },
+              ].map((opt) => {
+                const Icon = opt.icon
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleUpdateVisibility(opt.value as PostVisibility)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 transition text-left"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                      <Icon size={18} className="text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{opt.label}</p>
+                      <p className="text-[10px] text-gray-500">{opt.desc}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50">
+              <button
+                type="button"
+                onClick={() => setEditVisibilityPost(null)}
+                className="w-full py-2.5 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 transition"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

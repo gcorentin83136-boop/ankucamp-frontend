@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { X, Send, Check, Share2, MessageCircle } from 'lucide-react'
+import { X, Send, Check, Share2, MessageCircle, BookOpen } from 'lucide-react'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
 
-// ============================================================
-// SVG inline des logos (pour éviter une lib externe)
-// ============================================================
 function IconFacebook() {
   return (
     <svg viewBox="0 0 24 24" fill="#1877F2" className="w-5 h-5">
@@ -14,7 +11,6 @@ function IconFacebook() {
     </svg>
   )
 }
-
 function IconTwitter() {
   return (
     <svg viewBox="0 0 24 24" fill="#000" className="w-5 h-5">
@@ -22,7 +18,6 @@ function IconTwitter() {
     </svg>
   )
 }
-
 function IconWhatsApp() {
   return (
     <svg viewBox="0 0 24 24" fill="#25D366" className="w-5 h-5">
@@ -30,7 +25,6 @@ function IconWhatsApp() {
     </svg>
   )
 }
-
 function IconTelegram() {
   return (
     <svg viewBox="0 0 24 24" fill="#0088cc" className="w-5 h-5">
@@ -38,7 +32,6 @@ function IconTelegram() {
     </svg>
   )
 }
-
 function IconLinkedIn() {
   return (
     <svg viewBox="0 0 24 24" fill="#0A66C2" className="w-5 h-5">
@@ -46,7 +39,6 @@ function IconLinkedIn() {
     </svg>
   )
 }
-
 function IconMessenger() {
   return (
     <svg viewBox="0 0 24 24" fill="#0084FF" className="w-5 h-5">
@@ -55,23 +47,21 @@ function IconMessenger() {
   )
 }
 
-// ============================================================
-// MENU DE PARTAGE
-// ============================================================
 export default function ShareMenu({
   postId,
   shareText = '',
   onClose,
   onShared,
+  onShareToAnku,
 }: {
   postId: number
   shareText?: string
   onClose: () => void
   onShared?: () => void
+  onShareToAnku?: () => void
 }) {
   const [copied, setCopied] = useState(false)
 
-  // URL publique du post
   const url = `${window.location.origin}/feed#post-${postId}`
   const text = shareText
     ? `${shareText}\n\n${url}`
@@ -89,21 +79,6 @@ export default function ShareMenu({
       setTimeout(() => setCopied(false), 2000)
     } catch {
       toast.error('Impossible de copier')
-    }
-  }
-
-  // Partage natif (mobile)
-  const handleNativeShare = async () => {
-    if (!navigator.share) return
-    try {
-      await navigator.share({
-        title: 'ANKU',
-        text: shareText || 'Découvre ce post sur ANKU',
-        url,
-      })
-      onShared?.()
-    } catch {
-      // user a annulé
     }
   }
 
@@ -162,7 +137,8 @@ export default function ShareMenu({
         </svg>
       ),
       onClick: () => {
-        window.location.href = `mailto:?subject=${encodeURIComponent('Partage ANKU')}&body=${encodeURIComponent(text)}`
+        // 🆕 Utilisation du lien Gmail web au lieu de mailto:
+        openInNewTab(`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Partage ANKU')}&body=${encodeURIComponent(text)}`)
       },
     },
     {
@@ -187,7 +163,6 @@ export default function ShareMenu({
         className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <Share2 size={18} style={{ color: ANKU.greenDark }} />
@@ -202,31 +177,33 @@ export default function ShareMenu({
           </button>
         </div>
 
-        {/* Partage natif (mobile uniquement) */}
-        {typeof navigator !== 'undefined' && 'share' in navigator && (
+        {/* 🆕 Bouton Partager sur ANKU */}
+        {onShareToAnku && (
           <button
             type="button"
-            onClick={handleNativeShare}
+            onClick={() => {
+              onShareToAnku()
+              onClose()
+            }}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition border-b border-gray-100"
           >
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0"
               style={{ background: ANKU.green }}
             >
-              <Send size={16} />
+              <BookOpen size={16} />
             </div>
             <div className="text-left">
               <p className="text-sm font-bold text-gray-900">
-                Partage natif
+                Partager sur ANKU
               </p>
               <p className="text-[11px] text-gray-500">
-                Choisis l'app de ton choix
+                Publier ce post sur ton profil
               </p>
             </div>
           </button>
         )}
 
-        {/* Grille de boutons réseaux */}
         <div className="p-4">
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-3">
             Partager sur
@@ -251,7 +228,6 @@ export default function ShareMenu({
           </div>
         </div>
 
-        {/* Copier le lien */}
         <div className="p-4 pt-0">
           <button
             type="button"
