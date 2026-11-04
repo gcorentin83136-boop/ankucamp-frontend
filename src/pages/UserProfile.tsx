@@ -150,7 +150,6 @@ function PostCard({
   const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
 
   const media = parseMedia(post)
-  const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
   const toggleLike = async () => {
     try {
@@ -222,7 +221,7 @@ function PostCard({
 
         {post.content && (
           <div className="px-4 pb-3">
-            <p className="text-sm text-gray-800 whitespace-pre-line">
+            <p className="text-sm text-gray-800 whitespace-pre-line break-words">
               {post.content}
             </p>
           </div>
@@ -300,7 +299,7 @@ function PostCard({
       />
 
       <ImageLightbox
-        images={imageOnlyUrls}
+        images={media}
         index={lightboxIndex}
         onClose={() => setLightboxIndex(-1)}
         onNavigate={setLightboxIndex}
@@ -311,7 +310,6 @@ function PostCard({
           postId={post.id}
           shareText={post.content?.slice(0, 100) ?? ''}
           onClose={() => setShareOpen(false)}
-          onShared={onPostUpdated}
         />
       )}
     </>

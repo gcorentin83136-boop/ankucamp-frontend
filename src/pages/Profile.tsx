@@ -129,7 +129,6 @@ function PostCard({
   const [lightboxIndex, setLightboxIndex] = useState(-1)
 
   const media = parseMedia(post)
-  const imageOnlyUrls = media.filter((u) => !isVideoUrl(u))
 
   const toggleLike = async () => {
     try {
@@ -268,7 +267,6 @@ function PostCard({
           postId={post.id}
           shareText={post.content?.slice(0, 100) ?? ''}
           onClose={() => setShareOpen(false)}
-          // onShared={onPostUpdated} // 🆕 SUPPRIMÉ ICI
         />
       )}
     </>
