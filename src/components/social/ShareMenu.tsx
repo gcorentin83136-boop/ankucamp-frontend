@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { X, Send, Check, Share2, MessageCircle, BookOpen } from 'lucide-react'
+import { X, Check, Share2, MessageCircle, BookOpen } from 'lucide-react'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
 
@@ -51,13 +51,11 @@ export default function ShareMenu({
   postId,
   shareText = '',
   onClose,
-  onShared,
   onShareToAnku,
 }: {
   postId: number
   shareText?: string
   onClose: () => void
-  onShared?: () => void
   onShareToAnku?: () => void
 }) {
   const [copied, setCopied] = useState(false)
@@ -137,7 +135,6 @@ export default function ShareMenu({
         </svg>
       ),
       onClick: () => {
-        // 🆕 Utilisation du lien Gmail web au lieu de mailto:
         openInNewTab(`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Partage ANKU')}&body=${encodeURIComponent(text)}`)
       },
     },
@@ -177,7 +174,6 @@ export default function ShareMenu({
           </button>
         </div>
 
-        {/* 🆕 Bouton Partager sur ANKU */}
         {onShareToAnku && (
           <button
             type="button"

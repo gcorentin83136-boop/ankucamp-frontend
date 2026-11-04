@@ -29,13 +29,11 @@ export default function CommentItem({
   comment,
   currentUserId,
   onRefresh,
-  isReply = false,
   onReport,
 }: {
   comment: PostComment
   currentUserId: number | undefined
   onRefresh: () => void
-  isReply?: boolean
   onReport?: (commentId: number) => void
 }) {
   const isMine = comment.author_id === currentUserId
@@ -159,7 +157,6 @@ export default function CommentItem({
               comment={r}
               currentUserId={currentUserId}
               onRefresh={onRefresh}
-              isReply
               onReport={onReport}
             />
           ))}
