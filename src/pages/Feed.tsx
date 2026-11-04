@@ -428,7 +428,11 @@ function MyShopPreview() {
     }
     ;(async () => {
       try {
-        const { data } = await httpClient.get<{ shops: any[] }>('/shops/mine')
+        // 🆕 .catch pour éviter l'erreur rouge dans la console si 400
+        const { data } = await httpClient
+          .get<{ shops: any[] }>('/shops/mine')
+          .catch(() => ({ data: { shops: [] } }))
+        
         setShop((data.shops ?? [])[0] ?? null)
       } catch {
         // ignore
