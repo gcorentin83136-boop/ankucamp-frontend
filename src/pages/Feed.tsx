@@ -3,17 +3,20 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Users, MessageSquare, Calendar, Newspaper, Store, Star, Send, Loader, 
-  UserPlus, Globe, Lock, ChevronDown, Plus, Camera
+  UserPlus, Globe, Lock, ChevronDown, Plus
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
 import httpClient from '../service/api/httpClient'
+import reelsApi from '../service/api/reels.api'
 import AppHeader from '../components/layout/AppHeader'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostCard from '../components/social/PostCard'
 import PostModal from '../components/social/PostModal'
 import MediaUploader, { type MediaItem } from '../components/common/MediaUploader'
 import EmojiPicker from '../components/common/EmojiPicker'
+import CreateReelModal from '../components/reels/CreateReelModal'
+import ReelViewerModal from '../components/reels/ReelViewerModal'
 import type { Post, PostVisibility } from '../types/post'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
@@ -26,33 +29,6 @@ const SHORTCUTS = [
   { to: '/shops', label: 'Boutiques', icon: Store, color: '#6aa84f' },
   { to: '/dashboard/user/reviews', label: 'Mes avis', icon: Star, color: '#f59e0b' },
 ]
-
-const MOCK_REELS = [
-  { id: 1, name: 'Artisanat', image: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80' },
-  { id: 2, name: 'Boissons', image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80' },
-  { id: 3, name: 'Boulangerie', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80' },
-  { id: 4, name: 'Café & Thé', image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80' },
-  { id: 5, name: 'Épicerie', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80' },
-]
-
-function CreateReelModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-            <Camera size={32} />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Créer un Anku Live</h3>
-          <p className="text-sm text-gray-500 mb-6">L'enregistrement de vidéos courtes arrive très bientôt sur ANKU ! 🌱</p>
-          <button onClick={onClose} className="w-full py-3 rounded-xl font-bold text-white transition" style={{ background: ANKU.green }}>
-            Compris
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function VisibilityDropdown({ value, onChange }: { value: PostVisibility, onChange: (v: PostVisibility) => void }) {
   const [open, setOpen] = useState(false)
@@ -159,6 +135,10 @@ export default function Feed() {
   const [content, setContent] = useState(''); const [visibility, setVisibility] = useState<PostVisibility>('public'); const [media, setMedia] = useState<MediaItem[]>([]); const [publishing, setPublishing] = useState(false);
   const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
   const [modalPostId, setModalPostId] = useState<number | null>(null); const [modalCommentId, setModalCommentId] = useState<number | null>(null)
+  
+  // 🆕 ÉTATS POUR LES REELS
+  const [reels, setReels] = useState<any[]>([])
+  const [activeReelId, setActiveReelId] = useState<number | null>(null)
   const [showCreateReelModal, setShowCreateReelModal] = useState(false)
 
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -170,6 +150,13 @@ export default function Feed() {
       const newParams = new URLSearchParams(searchParams); newParams.delete('post'); newParams.delete('comment'); setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams])
+
+  // 🆕 CHARGEMENT DES REELS
+  const loadReels = useCallback(() => {
+    reelsApi.feed().then(res => setReels(res.reels)).catch(() => {})
+  }, [])
+
+  useEffect(() => { loadReels() }, [loadReels])
 
   const loadPosts = useCallback(async (reset = false) => {
     if (loading && !reset) return; if (reset) setLoading(true);
@@ -226,10 +213,10 @@ export default function Feed() {
               ))}
             </div>
 
-            {/* 🆕 RANGÉE DE STORIES / REELS */}
+            {/* RANGÉE DE STORIES / REELS */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               
-              {/* 🆕 BOUTON CRÉER UN ANKU LIVE (SANS TEXTE) */}
+              {/* BOUTON CRÉER UN ANKU LIVE */}
               <button 
                 onClick={() => setShowCreateReelModal(true)}
                 className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-emerald-300 bg-emerald-50/50 shadow-sm flex items-center justify-center hover:bg-emerald-50 transition group"
@@ -239,21 +226,30 @@ export default function Feed() {
                 </div>
               </button>
 
-              {MOCK_REELS.map((reel) => (
-                <Link 
+              {/* LISTE DES REELS */}
+              {reels.map((reel) => (
+                <button 
                   key={reel.id} 
-                  to={`/reels?id=${reel.id}`}
-                  className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm group"
+                  onClick={() => setActiveReelId(reel.id)}
+                  className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm group text-left"
                 >
-                  <img src={reel.image} alt={reel.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  {reel.media_type === 'video' ? (
+                    <video src={reel.media_url} className="absolute inset-0 w-full h-full object-cover" muted />
+                  ) : (
+                    <img src={reel.media_url} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 flex flex-col items-center gap-1.5">
                     <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden bg-gray-200">
-                      <img src={reel.avatar} alt="" className="w-full h-full object-cover" />
+                      {reel.author?.avatar_url ? (
+                        <img src={reel.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-emerald-600" />
+                      )}
                     </div>
-                    <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{reel.name}</span>
+                    <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{reel.author?.first_name}</span>
                   </div>
-                </Link>
+                </button>
               ))}
             </div>
 
@@ -331,7 +327,21 @@ export default function Feed() {
         </div>
       )}
 
-      {showCreateReelModal && <CreateReelModal onClose={() => setShowCreateReelModal(false)} />}
+      {/* 🆕 MODALES REELS */}
+      {showCreateReelModal && (
+        <CreateReelModal 
+          onClose={() => { 
+            setShowCreateReelModal(false); 
+            loadReels(); 
+          }} 
+        />
+      )}
+      {activeReelId && (
+        <ReelViewerModal 
+          initialReelId={activeReelId} 
+          onClose={() => setActiveReelId(null)} 
+        />
+      )}
     </div>
   )
 }

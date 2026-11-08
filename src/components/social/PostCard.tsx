@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
-  Calendar, Newspaper, Heart, MessageCircle, Share2, MapPin, Lock, Play, Clock
+  Calendar, Newspaper, Heart, MessageCircle, Share2, MapPin, Lock, Play, Clock, Video
 } from 'lucide-react'
 import postsApi from '../../service/api/posts.api'
 import blocksApi from '../../service/api/blocks.api'
@@ -11,12 +11,13 @@ import ReportModal from '../common/ReportModal'
 import ImageLightbox from '../common/ImageLightbox'
 import CommentsSection from './CommentsSection'
 import ShareMenu from './ShareMenu'
+import CreateReelModal from '../reels/CreateReelModal'
 import type { Post } from '../../types/post'
 import type { ReportTargetType } from '../../types/report'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
 
-export function formatDate(iso: string) { /* ... (inchangé) ... */ 
+export function formatDate(iso: string) {
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return iso
@@ -43,7 +44,6 @@ export function parseMedia(p: Post): string[] {
 export function isVideoUrl(url: string): boolean { return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') }
 
 function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox: (i: number) => void }) {
-  // ... (inchangé) ...
   if (media.length === 0) return null
   const hasMoreThan4 = media.length > 4
   const visible = media.slice(0, 4)
@@ -91,7 +91,6 @@ export default function PostCard({
   onSeeAllComments?: () => void
   highlightCommentId?: number | null
 }) {
-  // ... (état inchangé) ...
   const isOwn = post.author_id === currentUserId
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
@@ -103,15 +102,18 @@ export default function PostCard({
   const [reportTargetId, setReportTargetId] = useState<number>(0)
   const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
   
+  // 🆕 État pour la modale Live
+  const [showReelModal, setShowReelModal] = useState(false)
+
   const media = parseMedia(post)
   const sharedEvent = (post as any).shared_event
   const sharedArticle = (post as any).shared_article
+  const sharedReel = (post as any).shared_reel
   const MAX_CHARS = 300
   const contentStr = post.content || ''
   const isLongText = contentStr.length > MAX_CHARS && !isModal
   const displayContent = isLongText && !showFullText ? contentStr.slice(0, MAX_CHARS) + '...' : contentStr
 
-  // ... (fonctions toggleLike, deletePost, etc. inchangées) ...
   const toggleLike = async () => { try { const res = await postsApi.like(post.id); setLiked(res.liked); setLikesCount((c) => (res.liked ? c + 1 : Math.max(0, c - 1))) } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } }
   const deletePost = async () => { if (!confirm('Supprimer ce post ?')) return; try { await postsApi.remove(post.id); toast.success('Post supprimé'); onPostUpdated() } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } }
   const handleBlockAuthor = async () => { if (!post.author_id) return; if (!confirm(`Bloquer ${authorName(post)} ?`)) return; try { await blocksApi.block(post.author_id); toast.success('Bloqué'); onPostUpdated() } catch {} }
@@ -122,7 +124,6 @@ export default function PostCard({
   return (
     <>
       <article id={`post-${post.id}`} className={`rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden transition-all duration-500 ${isModal ? 'border-none shadow-none bg-transparent' : ''}`}>
-        {/* ... (Header, Media, etc. inchangés) ... */}
         <div className="flex items-start gap-3 p-4">
           <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
             {post.author?.avatar_url ? <img src={post.author.avatar_url} alt={authorName(post)} className="w-11 h-11 rounded-full object-cover" /> : <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold" style={{ background: ANKU.greenDark }}>{(post.author?.first_name?.[0] ?? '') + (post.author?.last_name?.[0] ?? '')}</div>}
@@ -166,6 +167,30 @@ export default function PostCard({
             </Link>
           </div>
         )}
+        
+        {/* 🆕 BLOC REEL PARTAGÉ (Anku Live) */}
+        {sharedReel && (
+          <div className="px-4 pb-3">
+            <div className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">
+              <div className="relative w-full sm:w-24 h-32 sm:h-24 shrink-0 rounded-lg overflow-hidden bg-black">
+                {sharedReel.media_type === 'video' ? (
+                  <video src={sharedReel.media_url} className="w-full h-full object-cover" muted />
+                ) : (
+                  <img src={sharedReel.media_url} alt="" className="w-full h-full object-cover" />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Video size={24} className="text-white" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0 w-full">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Video size={10} /> Anku Live partagé</p>
+                <p className="text-sm font-bold text-gray-900 truncate">@{sharedReel.author?.username}</p>
+                {sharedReel.caption && <p className="text-xs text-gray-500 truncate mt-1">{sharedReel.caption}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
         <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
         <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
           <span className="flex items-center gap-1"><Heart size={12} className={liked ? 'fill-red-500 text-red-500' : ''} />{likesCount}</span>
@@ -175,10 +200,19 @@ export default function PostCard({
         <div className="px-2 py-1 flex border-t border-gray-100">
           <button type="button" onClick={toggleLike} className={'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' + (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')}><Heart size={14} className={liked ? 'fill-red-500' : ''} /> J'aime</button>
           <button type="button" onClick={() => { if (!isModal && onSeeAllComments) onSeeAllComments() }} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><MessageCircle size={14} /> Commenter</button>
+          
+          {/* 🆕 BOUTON ANKU LIVE */}
+          <button 
+            type="button" 
+            onClick={() => setShowReelModal(true)} 
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
+          >
+            <Video size={14} /> Live
+          </button>
+
           <button type="button" onClick={() => setShareOpen(true)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><Share2 size={14} /> Partager</button>
         </div>
 
-        {/* 🆕 On passe le highlightCommentId */}
         <CommentsSection
           postId={post.id}
           currentUserId={currentUserId}
@@ -194,6 +228,14 @@ export default function PostCard({
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType={reportTargetType} targetId={reportTargetId} targetLabel={reportTargetLabel} />
       <ImageLightbox images={media} index={lightboxIndex} onClose={() => setLightboxIndex(-1)} onNavigate={setLightboxIndex} />
       {shareOpen && <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => { try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch (err: any) { toast.error('Erreur') } }} />}
+      
+      {/* 🆕 MODALE CREATE REEL DEPUIS UN POST */}
+      {showReelModal && (
+        <CreateReelModal 
+          onClose={() => setShowReelModal(false)} 
+          sharedPost={post} 
+        />
+      )}
     </>
   )
 }
