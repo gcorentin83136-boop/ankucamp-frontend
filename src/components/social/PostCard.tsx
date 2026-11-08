@@ -16,7 +16,7 @@ import type { ReportTargetType } from '../../types/report'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
 
-export function formatDate(iso: string) {
+export function formatDate(iso: string) { /* ... (inchangé) ... */ 
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return iso
@@ -31,50 +31,31 @@ export function formatDate(iso: string) {
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
   } catch { return iso }
 }
-
-export function authorName(p: Post): string {
-  if (!p.author) return 'Utilisateur'
-  return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username
-}
-
+export function authorName(p: Post): string { if (!p.author) return 'Utilisateur'; return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username }
 export function parseMedia(p: Post): string[] {
-  if (p.media && Array.isArray(p.media)) {
-    return p.media.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean)
-  }
+  if (p.media && Array.isArray(p.media)) return p.media.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean)
   const raw: any = (p as any).media_urls
   if (!raw) return []
   if (Array.isArray(raw)) return raw.filter(Boolean)
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw) } catch { return [] }
-  }
+  if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return [] } }
   return []
 }
-
-export function isVideoUrl(url: string): boolean {
-  return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov')
-}
+export function isVideoUrl(url: string): boolean { return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') }
 
 function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox: (i: number) => void }) {
+  // ... (inchangé) ...
   if (media.length === 0) return null
   const hasMoreThan4 = media.length > 4
   const visible = media.slice(0, 4)
   const remaining = media.length - 4
-
   if (media.length === 1) {
     const url = media[0]
     return (
       <div className="px-4 pb-3">
-        {isVideoUrl(url) ? (
-          <video src={url} className="w-full rounded-xl bg-black max-h-[500px] object-contain" controls preload="metadata" />
-        ) : (
-          <button type="button" onClick={() => onOpenLightbox(0)} className="w-full rounded-xl overflow-hidden cursor-zoom-in">
-            <img src={url} alt="" className="w-full max-h-[500px] object-cover hover:opacity-95 transition" loading="lazy" />
-          </button>
-        )}
+        {isVideoUrl(url) ? <video src={url} className="w-full rounded-xl bg-black max-h-[500px] object-contain" controls preload="metadata" /> : <button type="button" onClick={() => onOpenLightbox(0)} className="w-full rounded-xl overflow-hidden cursor-zoom-in"><img src={url} alt="" className="w-full max-h-[500px] object-cover hover:opacity-95 transition" loading="lazy" /></button>}
       </div>
     )
   }
-
   return (
     <div className="px-4 pb-3">
       <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden">
@@ -83,20 +64,8 @@ function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox:
           const isVideo = isVideoUrl(url)
           return (
             <button key={i} type="button" onClick={() => onOpenLightbox(i)} className="relative w-full aspect-square overflow-hidden bg-gray-100">
-              {isVideo ? (
-                <>
-                  <video src={url} className="w-full h-full object-cover" preload="metadata" muted />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30"><Play size={32} fill="#fff" className="text-white" strokeWidth={0} /></div>
-                </>
-              ) : (
-                <img src={url} alt="" className="w-full h-full object-cover hover:opacity-95 transition" loading="lazy" />
-              )}
-              {isLast && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-                  <span className="text-white font-extrabold text-2xl">+{remaining}</span>
-                  <span className="text-white/80 text-[10px] font-bold mt-0.5">Voir plus</span>
-                </div>
-              )}
+              {isVideo ? <><video src={url} className="w-full h-full object-cover" preload="metadata" muted /><div className="absolute inset-0 flex items-center justify-center bg-black/30"><Play size={32} fill="#fff" className="text-white" strokeWidth={0} /></div></> : <img src={url} alt="" className="w-full h-full object-cover hover:opacity-95 transition" loading="lazy" />}
+              {isLast && <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center"><span className="text-white font-extrabold text-2xl">+{remaining}</span><span className="text-white/80 text-[10px] font-bold mt-0.5">Voir plus</span></div>}
             </button>
           )
         })}
@@ -112,6 +81,7 @@ export default function PostCard({
   onChangeVisibility,
   isModal = false,
   onSeeAllComments,
+  highlightCommentId,
 }: {
   post: Post
   currentUserId: number | undefined
@@ -119,108 +89,58 @@ export default function PostCard({
   onChangeVisibility?: () => void
   isModal?: boolean
   onSeeAllComments?: () => void
+  highlightCommentId?: number | null
 }) {
+  // ... (état inchangé) ...
   const isOwn = post.author_id === currentUserId
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0)
   const [shareOpen, setShareOpen] = useState(false)
-  const [showFullText, setShowFullText] = useState(isModal) // Si c'est une popup, on affiche tout le texte
-
+  const [showFullText, setShowFullText] = useState(isModal)
   const [lightboxIndex, setLightboxIndex] = useState(-1)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportTargetType, setReportTargetType] = useState<ReportTargetType>('post')
   const [reportTargetId, setReportTargetId] = useState<number>(0)
   const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
-
+  
   const media = parseMedia(post)
   const sharedEvent = (post as any).shared_event
   const sharedArticle = (post as any).shared_article
-
   const MAX_CHARS = 300
   const contentStr = post.content || ''
   const isLongText = contentStr.length > MAX_CHARS && !isModal
   const displayContent = isLongText && !showFullText ? contentStr.slice(0, MAX_CHARS) + '...' : contentStr
 
-  const toggleLike = async () => {
-    try {
-      const res = await postsApi.like(post.id)
-      setLiked(res.liked)
-      setLikesCount((c) => (res.liked ? c + 1 : Math.max(0, c - 1)))
-    } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') }
-  }
-
-  const deletePost = async () => {
-    if (!confirm('Supprimer ce post ?')) return
-    try {
-      await postsApi.remove(post.id)
-      toast.success('Post supprimé')
-      onPostUpdated()
-    } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') }
-  }
-
-  const handleBlockAuthor = async () => {
-    if (!post.author_id) return
-    if (!confirm(`Bloquer ${authorName(post)} ?`)) return
-    try { await blocksApi.block(post.author_id); toast.success('Bloqué'); onPostUpdated() } catch {}
-  }
-
-  const handleRestrictAuthor = async () => {
-    if (!post.author_id) return
-    try { await blocksApi.restrict(post.author_id); toast.success('Restreint'); onPostUpdated() } catch {}
-  }
-
-  const openReportPost = () => {
-    setReportTargetType('post'); setReportTargetId(post.id); setReportTargetLabel('ce post'); setReportOpen(true)
-  }
-  const openReportComment = (commentId: number) => {
-    setReportTargetType('comment'); setReportTargetId(commentId); setReportTargetLabel('ce commentaire'); setReportOpen(true)
-  }
+  // ... (fonctions toggleLike, deletePost, etc. inchangées) ...
+  const toggleLike = async () => { try { const res = await postsApi.like(post.id); setLiked(res.liked); setLikesCount((c) => (res.liked ? c + 1 : Math.max(0, c - 1))) } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } }
+  const deletePost = async () => { if (!confirm('Supprimer ce post ?')) return; try { await postsApi.remove(post.id); toast.success('Post supprimé'); onPostUpdated() } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } }
+  const handleBlockAuthor = async () => { if (!post.author_id) return; if (!confirm(`Bloquer ${authorName(post)} ?`)) return; try { await blocksApi.block(post.author_id); toast.success('Bloqué'); onPostUpdated() } catch {} }
+  const handleRestrictAuthor = async () => { if (!post.author_id) return; try { await blocksApi.restrict(post.author_id); toast.success('Restreint'); onPostUpdated() } catch {} }
+  const openReportPost = () => { setReportTargetType('post'); setReportTargetId(post.id); setReportTargetLabel('ce post'); setReportOpen(true) }
+  const openReportComment = (commentId: number) => { setReportTargetType('comment'); setReportTargetId(commentId); setReportTargetLabel('ce commentaire'); setReportOpen(true) }
 
   return (
     <>
       <article id={`post-${post.id}`} className={`rounded-2xl border border-gray-200 bg-white/95 backdrop-blur shadow-sm overflow-hidden transition-all duration-500 ${isModal ? 'border-none shadow-none bg-transparent' : ''}`}>
+        {/* ... (Header, Media, etc. inchangés) ... */}
         <div className="flex items-start gap-3 p-4">
           <Link to={post.author?.username ? `/u/${post.author.username}` : '#'}>
-            {post.author?.avatar_url ? (
-              <img src={post.author.avatar_url} alt={authorName(post)} className="w-11 h-11 rounded-full object-cover" />
-            ) : (
-              <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold" style={{ background: ANKU.greenDark }}>
-                {(post.author?.first_name?.[0] ?? '') + (post.author?.last_name?.[0] ?? '')}
-              </div>
-            )}
+            {post.author?.avatar_url ? <img src={post.author.avatar_url} alt={authorName(post)} className="w-11 h-11 rounded-full object-cover" /> : <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold" style={{ background: ANKU.greenDark }}>{(post.author?.first_name?.[0] ?? '') + (post.author?.last_name?.[0] ?? '')}</div>}
           </Link>
           <div className="flex-1 min-w-0">
-            <Link to={post.author?.username ? `/u/${post.author.username}` : '#'} className="text-sm font-bold text-gray-900 hover:underline">
-              {authorName(post)}
-            </Link>
+            <Link to={post.author?.username ? `/u/${post.author.username}` : '#'} className="text-sm font-bold text-gray-900 hover:underline">{authorName(post)}</Link>
             <p className="text-xs text-gray-500">@{post.author?.username ?? 'utilisateur'} · {formatDate(post.created_at)}</p>
           </div>
-
-          {post.visibility === 'private' && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 flex items-center gap-1"><Lock size={9} /> Privé</span>
-          )}
-          {post.visibility === 'friends' && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">👥 Amis</span>
-          )}
-
-          <PostActionsMenu
-            isOwn={isOwn} onReport={openReportPost} onDelete={isOwn ? deletePost : undefined}
-            onBlock={!isOwn ? handleBlockAuthor : undefined} onRestrict={!isOwn ? handleRestrictAuthor : undefined}
-            onChangeVisibility={isOwn ? onChangeVisibility : undefined}
-          />
+          {post.visibility === 'private' && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 flex items-center gap-1"><Lock size={9} /> Privé</span>}
+          {post.visibility === 'friends' && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">👥 Amis</span>}
+          <PostActionsMenu isOwn={isOwn} onReport={openReportPost} onDelete={isOwn ? deletePost : undefined} onBlock={!isOwn ? handleBlockAuthor : undefined} onRestrict={!isOwn ? handleRestrictAuthor : undefined} onChangeVisibility={isOwn ? onChangeVisibility : undefined} />
         </div>
-
         {post.content && (
           <div className="px-4 pb-3">
             <p className="text-sm text-gray-800 whitespace-pre-line break-words">{displayContent}</p>
-            {isLongText && (
-              <button type="button" onClick={() => setShowFullText(true)} className="text-xs font-bold mt-1 hover:underline" style={{ color: ANKU.green }}>
-                Voir plus
-              </button>
-            )}
+            {isLongText && <button type="button" onClick={() => setShowFullText(true)} className="text-xs font-bold mt-1 hover:underline" style={{ color: ANKU.green }}>Voir plus</button>}
           </div>
         )}
-
         {sharedEvent && (
           <div className="px-4 pb-3">
             <Link to={`/events/${sharedEvent.id}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">
@@ -234,7 +154,6 @@ export default function PostCard({
             </Link>
           </div>
         )}
-
         {sharedArticle && (
           <div className="px-4 pb-3">
             <Link to={`/articles/${sharedArticle.slug}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">
@@ -247,28 +166,19 @@ export default function PostCard({
             </Link>
           </div>
         )}
-
         <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
-
         <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
           <span className="flex items-center gap-1"><Heart size={12} className={liked ? 'fill-red-500 text-red-500' : ''} />{likesCount}</span>
           <span className="flex items-center gap-1"><MessageCircle size={12} />{post.comments_count ?? 0}</span>
           <span className="flex items-center gap-1"><Share2 size={12} />{post.shares_count ?? 0}</span>
         </div>
-
         <div className="px-2 py-1 flex border-t border-gray-100">
-          <button type="button" onClick={toggleLike} className={'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' + (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')}>
-            <Heart size={14} className={liked ? 'fill-red-500' : ''} /> J'aime
-          </button>
-          <button type="button" onClick={() => { if (!isModal && onSeeAllComments) onSeeAllComments() }} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition">
-            <MessageCircle size={14} /> Commenter
-          </button>
-          <button type="button" onClick={() => setShareOpen(true)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition">
-            <Share2 size={14} /> Partager
-          </button>
+          <button type="button" onClick={toggleLike} className={'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' + (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')}><Heart size={14} className={liked ? 'fill-red-500' : ''} /> J'aime</button>
+          <button type="button" onClick={() => { if (!isModal && onSeeAllComments) onSeeAllComments() }} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><MessageCircle size={14} /> Commenter</button>
+          <button type="button" onClick={() => setShareOpen(true)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><Share2 size={14} /> Partager</button>
         </div>
 
-        {/* 🆕 La section commentaire est maintenant TOUJOURS visible */}
+        {/* 🆕 On passe le highlightCommentId */}
         <CommentsSection
           postId={post.id}
           currentUserId={currentUserId}
@@ -277,16 +187,13 @@ export default function PostCard({
           initialLimit={2}
           isModal={isModal}
           onSeeAll={onSeeAllComments}
+          highlightCommentId={highlightCommentId}
         />
       </article>
 
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType={reportTargetType} targetId={reportTargetId} targetLabel={reportTargetLabel} />
       <ImageLightbox images={media} index={lightboxIndex} onClose={() => setLightboxIndex(-1)} onNavigate={setLightboxIndex} />
-      {shareOpen && (
-        <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => {
-          try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch (err: any) { toast.error('Erreur') }
-        }} />
-      )}
+      {shareOpen && <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => { try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch (err: any) { toast.error('Erreur') } }} />}
     </>
   )
 }

@@ -16,6 +16,7 @@ export default function CommentsSection({
   showInput = true,
   isModal = false,
   onSeeAll,
+  highlightCommentId,
 }: {
   postId: number
   currentUserId: number | undefined
@@ -25,6 +26,7 @@ export default function CommentsSection({
   showInput?: boolean
   isModal?: boolean
   onSeeAll?: () => void
+  highlightCommentId?: number | null
 }) {
   const [comments, setComments] = useState<PostComment[]>([])
   const [loading, setLoading] = useState(false)
@@ -45,7 +47,26 @@ export default function CommentsSection({
     load()
   }, [load])
 
-  // 🆕 Si on est dans la popup, on affiche tout. Sinon, on limite.
+  // 🆕 GESTION DU SCROLL VERS LE COMMENTAIRE
+  useEffect(() => {
+    if (loading || comments.length === 0 || !highlightCommentId) return
+
+    // Petit délai pour être sûr que React a bien peint le DOM
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`comment-${highlightCommentId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Effet visuel de surbrillance
+        el.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-50', 'rounded-xl', 'p-2', 'transition-all', 'duration-500')
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-50', 'p-2')
+        }, 3000)
+      }
+    }, 400) // 400ms de marge
+
+    return () => clearTimeout(timer)
+  }, [loading, comments, highlightCommentId])
+
   const visible = isModal ? comments : comments.slice(0, initialLimit)
   const hasMore = comments.length > initialLimit && !isModal
 
@@ -72,7 +93,6 @@ export default function CommentsSection({
             />
           ))}
           
-          {/* 🆕 Le bouton ouvre la popup au lieu de dérouler */}
           {hasMore && onSeeAll && (
             <button
               type="button"

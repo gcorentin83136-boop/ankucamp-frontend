@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Users, MessageSquare, Calendar, Newspaper, Store, Star, Send, Loader, 
-  UserPlus, Globe, Lock, ChevronDown
+  UserPlus, Globe, Lock, ChevronDown, Plus, Camera
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
@@ -27,14 +27,32 @@ const SHORTCUTS = [
   { to: '/dashboard/user/reviews', label: 'Mes avis', icon: Star, color: '#f59e0b' },
 ]
 
-// 🆕 DONNÉES FICTIVES POUR LES STORIES/REELS
 const MOCK_REELS = [
-  { id: 1, name: 'Artisanat', image: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=400&q=80' },
-  { id: 2, name: 'Boissons', image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&q=80' },
-  { id: 3, name: 'Boulangerie', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&q=80' },
-  { id: 4, name: 'Café & Thé', image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=400&q=80' },
-  { id: 5, name: 'Épicerie', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80' },
+  { id: 1, name: 'Artisanat', image: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80' },
+  { id: 2, name: 'Boissons', image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80' },
+  { id: 3, name: 'Boulangerie', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80' },
+  { id: 4, name: 'Café & Thé', image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80' },
+  { id: 5, name: 'Épicerie', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80' },
 ]
+
+function CreateReelModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+            <Camera size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Créer un Anku Live</h3>
+          <p className="text-sm text-gray-500 mb-6">L'enregistrement de vidéos courtes arrive très bientôt sur ANKU ! 🌱</p>
+          <button onClick={onClose} className="w-full py-3 rounded-xl font-bold text-white transition" style={{ background: ANKU.green }}>
+            Compris
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function VisibilityDropdown({ value, onChange }: { value: PostVisibility, onChange: (v: PostVisibility) => void }) {
   const [open, setOpen] = useState(false)
@@ -45,13 +63,10 @@ function VisibilityDropdown({ value, onChange }: { value: PostVisibility, onChan
   ]
   const current = options.find((o) => o.value === value) ?? options[0]
   const Icon = current.icon
-
   return (
     <div className="relative">
       <button type="button" onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-bold text-gray-700 hover:bg-gray-100 transition">
-        <Icon size={14} style={{ color: current.color }} />
-        {current.label}
-        <ChevronDown size={10} />
+        <Icon size={14} style={{ color: current.color }} />{current.label}<ChevronDown size={10} />
       </button>
       {open && (
         <>
@@ -70,16 +85,12 @@ function VisibilityDropdown({ value, onChange }: { value: PostVisibility, onChan
 }
 
 function ProfileCard() {
-  const auth = useAuthStore()
-  const user = (auth as any)?.user
+  const auth = useAuthStore(); const user = (auth as any)?.user;
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
       <div className="flex items-center gap-3">
         {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover" /> : <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{ background: ANKU.greenDark }}>{(user?.first_name?.[0] ?? '') + (user?.last_name?.[0] ?? '')}</div>}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 truncate">{user?.first_name} {user?.last_name}</p>
-          <p className="text-xs text-gray-500 truncate">@{user?.username ?? 'utilisateur'}</p>
-        </div>
+        <div className="flex-1 min-w-0"><p className="text-sm font-bold text-gray-900 truncate">{user?.first_name} {user?.last_name}</p><p className="text-xs text-gray-500 truncate">@{user?.username ?? 'utilisateur'}</p></div>
       </div>
       <Link to={user?.username ? `/u/${user.username}` : '#'} className="mt-3 block text-center rounded-full py-2 text-xs font-bold transition border-2" style={{ background: '#ffffff', color: ANKU.greenDark, borderColor: ANKU.green }}>Voir mon profil</Link>
     </div>
@@ -87,13 +98,8 @@ function ProfileCard() {
 }
 
 function FriendsPreview() {
-  const [loading, setLoading] = useState(true)
-  const [friends, setFriends] = useState<any[]>([])
-  useEffect(() => {
-    ;(async () => {
-      try { const { data } = await httpClient.get<{ friends: any[] }>('/friends/me'); setFriends((data.friends ?? []).slice(0, 6)) } catch {} finally { setLoading(false) }
-    })()
-  }, [])
+  const [loading, setLoading] = useState(true); const [friends, setFriends] = useState<any[]>([]);
+  useEffect(() => { ;(async () => { try { const { data } = await httpClient.get<{ friends: any[] }>('/friends/me'); setFriends((data.friends ?? []).slice(0, 6)) } catch {} finally { setLoading(false) } })() }, [])
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between mb-3"><p className="text-sm font-bold text-gray-900 flex items-center gap-1.5"><Users size={14} style={{ color: ANKU.greenDark }} />Mes amis</p><Link to="/friends" className="text-[10px] font-bold hover:underline" style={{ color: ANKU.greenDark }}>Voir tous</Link></div>
@@ -112,17 +118,8 @@ function FriendsPreview() {
 }
 
 function MyShopPreview() {
-  const auth = useAuthStore()
-  const user = (auth as any)?.user
-  const [loading, setLoading] = useState(true)
-  const [shop, setShop] = useState<any>(null)
-  const isPro = user?.role === 'professionnel'
-  useEffect(() => {
-    if (!isPro) { setLoading(false); return }
-    ;(async () => {
-      try { const res = await httpClient.get<{ shops: any[] }>('/shops/mine').catch(() => ({ data: { shops: [] } })); setShop((res.data.shops ?? [])[0] ?? null) } catch {} finally { setLoading(false) }
-    })()
-  }, [isPro])
+  const auth = useAuthStore(); const user = (auth as any)?.user; const [loading, setLoading] = useState(true); const [shop, setShop] = useState<any>(null); const isPro = user?.role === 'professionnel';
+  useEffect(() => { if (!isPro) { setLoading(false); return } ;(async () => { try { const res = await httpClient.get<{ shops: any[] }>('/shops/mine').catch(() => ({ data: { shops: [] } })); setShop((res.data.shops ?? [])[0] ?? null) } catch {} finally { setLoading(false) } })() }, [isPro])
   if (!isPro) return null
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
@@ -155,83 +152,40 @@ function QuickLinks() {
   )
 }
 
-// ============================================================
-// PAGE FEED
-// ============================================================
 export default function Feed() {
-  const auth = useAuthStore()
-  const user = (auth as any)?.user
-  const [searchParams, setSearchParams] = useSearchParams()
-  
-  const [loading, setLoading] = useState(true)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [offset, setOffset] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const LIMIT = 10
-
-  const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState<PostVisibility>('public')
-  const [media, setMedia] = useState<MediaItem[]>([])
-  const [publishing, setPublishing] = useState(false)
-
-  // 🆕 État pour la modification de visibilité
+  const auth = useAuthStore(); const user = (auth as any)?.user;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loading, setLoading] = useState(true); const [posts, setPosts] = useState<Post[]>([]); const [offset, setOffset] = useState(0); const [hasMore, setHasMore] = useState(true); const LIMIT = 10;
+  const [content, setContent] = useState(''); const [visibility, setVisibility] = useState<PostVisibility>('public'); const [media, setMedia] = useState<MediaItem[]>([]); const [publishing, setPublishing] = useState(false);
   const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
-
-  // 🆕 État pour la POPUP de post
-  const [modalPostId, setModalPostId] = useState<number | null>(null)
-  const [modalCommentId, setModalCommentId] = useState<number | null>(null)
+  const [modalPostId, setModalPostId] = useState<number | null>(null); const [modalCommentId, setModalCommentId] = useState<number | null>(null)
+  const [showCreateReelModal, setShowCreateReelModal] = useState(false)
 
   const observerRef = useRef<IntersectionObserver | null>(null)
 
-  // 🆕 Gestion de l'ouverture de la popup via l'URL (Notifications)
   useEffect(() => {
-    const postParam = searchParams.get('post')
-    const commentParam = searchParams.get('comment')
-    
+    const postParam = searchParams.get('post'); const commentParam = searchParams.get('comment');
     if (postParam) {
-      setModalPostId(Number(postParam))
-      if (commentParam) setModalCommentId(Number(commentParam))
-      
-      // On nettoie l'URL pour ne pas rouvrir la popup au rafraîchissement
-      const newParams = new URLSearchParams(searchParams)
-      newParams.delete('post')
-      newParams.delete('comment')
-      setSearchParams(newParams, { replace: true })
+      setModalPostId(Number(postParam)); if (commentParam) setModalCommentId(Number(commentParam));
+      const newParams = new URLSearchParams(searchParams); newParams.delete('post'); newParams.delete('comment'); setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams])
 
-  const loadPosts = useCallback(
-    async (reset = false) => {
-      if (loading && !reset) return
-      if (reset) setLoading(true)
-      
-      const currentOffset = reset ? 0 : offset
-      try {
-        const res = await postsApi.feed({ limit: LIMIT, offset: currentOffset })
-        setPosts((prev) => (reset ? res.posts : [...prev, ...res.posts]))
-        setOffset(currentOffset + res.posts.length)
-        setHasMore(res.posts.length === LIMIT)
-      } catch (err: any) {
-        toast.error(err?.response?.data?.message || 'Erreur')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [offset, loading]
-  )
+  const loadPosts = useCallback(async (reset = false) => {
+    if (loading && !reset) return; if (reset) setLoading(true);
+    const currentOffset = reset ? 0 : offset;
+    try {
+      const res = await postsApi.feed({ limit: LIMIT, offset: currentOffset });
+      setPosts((prev) => (reset ? res.posts : [...prev, ...res.posts])); setOffset(currentOffset + res.posts.length); setHasMore(res.posts.length === LIMIT);
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } finally { setLoading(false) }
+  }, [offset, loading])
 
-  useEffect(() => {
-    loadPosts(true)
-  }, [])
+  useEffect(() => { loadPosts(true) }, [])
 
   useEffect(() => {
     if (loading || !hasMore) return
-    observerRef.current = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadPosts(false) },
-      { threshold: 0.1 }
-    )
-    const sentinel = document.getElementById('feed-sentinel')
-    if (sentinel) observerRef.current.observe(sentinel)
+    observerRef.current = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) loadPosts(false) }, { threshold: 0.1 })
+    const sentinel = document.getElementById('feed-sentinel'); if (sentinel) observerRef.current.observe(sentinel)
     return () => { if (observerRef.current) observerRef.current.disconnect() }
   }, [loading, hasMore, loadPosts])
 
@@ -240,20 +194,14 @@ export default function Feed() {
     setPublishing(true)
     try {
       await postsApi.create({ content: content.trim() || null, visibility, media_urls: media.map((m) => m.url) })
-      toast.success('Post publié ✅')
-      setContent('')
-      setMedia([])
-      await loadPosts(true)
+      toast.success('Post publié ✅'); setContent(''); setMedia([]); await loadPosts(true);
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } finally { setPublishing(false) }
   }
 
   const handleUpdateVisibility = async (newVis: PostVisibility) => {
     if (!editVisibilityPost) return
     try {
-      await postsApi.update(editVisibilityPost.id, { visibility: newVis })
-      toast.success('Visibilité mise à jour ✅')
-      setEditVisibilityPost(null)
-      await loadPosts(true)
+      await postsApi.update(editVisibilityPost.id, { visibility: newVis }); toast.success('Visibilité mise à jour ✅'); setEditVisibilityPost(null); await loadPosts(true);
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') }
   }
 
@@ -265,12 +213,7 @@ export default function Feed() {
       <div className="relative max-w-7xl mx-auto px-3 sm:px-5 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
           <aside className="hidden lg:block">
-            <div className="sticky top-20 space-y-4">
-              <QuickLinks />
-              <MyShopPreview />
-              <FriendsPreview />
-              <ProfileCard />
-            </div>
+            <div className="sticky top-20 space-y-4"><QuickLinks /><MyShopPreview /><FriendsPreview /><ProfileCard /></div>
           </aside>
 
           <main className="space-y-4 min-w-0">
@@ -285,17 +228,28 @@ export default function Feed() {
 
             {/* 🆕 RANGÉE DE STORIES / REELS */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              
+              {/* 🆕 BOUTON CRÉER UN ANKU LIVE (SANS TEXTE) */}
+              <button 
+                onClick={() => setShowCreateReelModal(true)}
+                className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-emerald-300 bg-emerald-50/50 shadow-sm flex items-center justify-center hover:bg-emerald-50 transition group"
+              >
+                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                  <Plus size={24} />
+                </div>
+              </button>
+
               {MOCK_REELS.map((reel) => (
                 <Link 
                   key={reel.id} 
-                  to={`/reels?id=${reel.id}`} // On fera la page reels plus tard
+                  to={`/reels?id=${reel.id}`}
                   className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm group"
                 >
                   <img src={reel.image} alt={reel.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 flex flex-col items-center gap-1.5">
-                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center border border-white/50 shadow-sm">
-                      <Store size={14} className="text-white" />
+                    <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden bg-gray-200">
+                      <img src={reel.avatar} alt="" className="w-full h-full object-cover" />
                     </div>
                     <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{reel.name}</span>
                   </div>
@@ -356,17 +310,10 @@ export default function Feed() {
         </div>
       </div>
 
-      {/* 🆕 POPUP DE POST */}
       {modalPostId && (
-        <PostModal 
-          postId={modalPostId} 
-          commentId={modalCommentId}
-          onClose={() => { setModalPostId(null); setModalCommentId(null) }} 
-          onPostUpdated={() => loadPosts(true)}
-        />
+        <PostModal postId={modalPostId} commentId={modalCommentId} onClose={() => { setModalPostId(null); setModalCommentId(null) }} onPostUpdated={() => loadPosts(true)} />
       )}
 
-      {/* MODAL DE MODIFICATION DE VISIBILITÉ */}
       {editVisibilityPost && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
@@ -383,6 +330,8 @@ export default function Feed() {
           </div>
         </div>
       )}
+
+      {showCreateReelModal && <CreateReelModal onClose={() => setShowCreateReelModal(false)} />}
     </div>
   )
 }
