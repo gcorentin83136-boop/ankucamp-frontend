@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { 
-  Store, MapPin, Phone, Star, Package, Users, Loader, 
-  MessageCircle, ShoppingCart, CheckCircle2, ArrowRight, UserCircle2 
+  MapPin, Phone, Package, Loader, ShoppingCart, CheckCircle2, ArrowRight 
 } from 'lucide-react'
 import shopsApi from '../../service/api/shops.api'
 import productsApi from '../../service/api/products.api'
@@ -67,7 +66,7 @@ export default function ShopDetail() {
       try {
         const res = await productsApi.listByShop(shopId)
         setProducts(res.products)
-      } catch (err) {
+      } catch {
         // Ignore
       } finally {
         setLoadingProducts(false)
