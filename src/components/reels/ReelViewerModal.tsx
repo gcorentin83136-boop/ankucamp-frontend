@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Heart, MessageCircle, Share2 } from 'lucide-react'
+import { X, Heart, MessageCircle, Send } from 'lucide-react'
 import reelsApi from '../../service/api/reels.api'
 import postsApi from '../../service/api/posts.api'
 import toast from 'react-hot-toast'
@@ -49,9 +49,8 @@ export default function ReelViewerModal({ initialReelId, onClose }: { initialRee
 
   return (
     <div className="fixed inset-0 z-[500] bg-black flex flex-col">
-      <button onClick={onClose} className="absolute top-4 left-4 z-50 text-white bg-black/50 p-2 rounded-full hover:bg-black/80 transition"><X size={24} /></button>
+      <button onClick={onClose} className="absolute top-4 left-4 z-50 text-white bg-black/50 p-2 rounded-full hover:bg-black/80"><X size={24} /></button>
       
-      {/* Média */}
       <div className="flex-1 relative flex items-center justify-center">
         {currentReel.media_type === 'video' ? (
           <video src={currentReel.media_url} className="w-full h-full object-contain" autoPlay loop controls playsInline />
@@ -60,8 +59,7 @@ export default function ReelViewerModal({ initialReelId, onClose }: { initialRee
         )}
       </div>
 
-      {/* Overlay Actions & Infos */}
-      <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex justify-between items-end">
+      <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black via-black/50 to-transparent flex justify-between items-end">
         <div className="flex-1 text-white pr-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden border border-white">
@@ -81,8 +79,12 @@ export default function ReelViewerModal({ initialReelId, onClose }: { initialRee
             <MessageCircle size={30} />
             <span className="text-xs font-bold">{currentReel.comments_count}</span>
           </button>
-          <button onClick={handleShareToFeed} disabled={sharing} className="flex flex-col items-center gap-1 hover:scale-110 transition">
-            <Share2 size={30} className={sharing ? 'opacity-50' : ''} />
+          
+          {/* 🆕 Bouton de partage sur le Feed mis en évidence */}
+          <button onClick={handleShareToFeed} disabled={sharing} className="flex flex-col items-center gap-1 hover:scale-110 transition group">
+            <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30">
+              <Send size={24} className={sharing ? 'opacity-50' : ''} />
+            </div>
             <span className="text-[10px] font-bold text-center">Feed</span>
           </button>
         </div>

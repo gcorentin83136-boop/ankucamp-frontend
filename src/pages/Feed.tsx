@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Users, MessageSquare, Calendar, Newspaper, Store, Star, Send, Loader, 
-  UserPlus, Globe, Lock, ChevronDown, Plus
+  UserPlus, Globe, Lock, ChevronDown, Plus, Upload
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
@@ -136,10 +136,11 @@ export default function Feed() {
   const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
   const [modalPostId, setModalPostId] = useState<number | null>(null); const [modalCommentId, setModalCommentId] = useState<number | null>(null)
   
-  // 🆕 ÉTATS POUR LES REELS
+  // ÉTATS POUR LES REELS
   const [reels, setReels] = useState<any[]>([])
   const [activeReelId, setActiveReelId] = useState<number | null>(null)
   const [showCreateReelModal, setShowCreateReelModal] = useState(false)
+  const [reelCreationMode, setReelCreationMode] = useState<'camera' | 'upload'>('camera') // 🆕
 
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -151,7 +152,6 @@ export default function Feed() {
     }
   }, [searchParams, setSearchParams])
 
-  // 🆕 CHARGEMENT DES REELS
   const loadReels = useCallback(() => {
     reelsApi.feed().then(res => setReels(res.reels)).catch(() => {})
   }, [])
@@ -216,14 +216,26 @@ export default function Feed() {
             {/* RANGÉE DE STORIES / REELS */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               
-              {/* BOUTON CRÉER UN ANKU LIVE */}
+              {/* BOUTON 1 : DIRECT (Caméra) */}
               <button 
-                onClick={() => setShowCreateReelModal(true)}
-                className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-emerald-300 bg-emerald-50/50 shadow-sm flex items-center justify-center hover:bg-emerald-50 transition group"
+                onClick={() => { setReelCreationMode('camera'); setShowCreateReelModal(true) }}
+                className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-emerald-300 bg-emerald-50/50 shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-emerald-50 transition group"
               >
                 <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
                   <Plus size={24} />
                 </div>
+                <span className="text-[10px] font-bold text-emerald-800">Direct</span>
+              </button>
+
+              {/* BOUTON 2 : PUBLIER (Upload) */}
+              <button 
+                onClick={() => { setReelCreationMode('upload'); setShowCreateReelModal(true) }}
+                className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-blue-300 bg-blue-50/50 shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-blue-50 transition group"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                  <Upload size={24} />
+                </div>
+                <span className="text-[10px] font-bold text-blue-800">Publier</span>
               </button>
 
               {/* LISTE DES REELS */}
@@ -327,12 +339,13 @@ export default function Feed() {
         </div>
       )}
 
-      {/* 🆕 MODALES REELS */}
       {showCreateReelModal && (
         <CreateReelModal 
+          initialMode={reelCreationMode} // 🆕
           onClose={() => { 
             setShowCreateReelModal(false); 
             loadReels(); 
+            loadPosts(true); // 🆕 On rafraichit le feed au cas où il a coché "partager sur le feed"
           }} 
         />
       )}
