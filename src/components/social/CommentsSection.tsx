@@ -14,6 +14,8 @@ export default function CommentsSection({
   onReport,
   initialLimit = 2,
   showInput = true,
+  isModal = false,
+  onSeeAll,
 }: {
   postId: number
   currentUserId: number | undefined
@@ -21,10 +23,11 @@ export default function CommentsSection({
   onReport?: (commentId: number) => void
   initialLimit?: number
   showInput?: boolean
+  isModal?: boolean
+  onSeeAll?: () => void
 }) {
   const [comments, setComments] = useState<PostComment[]>([])
   const [loading, setLoading] = useState(false)
-  const [expanded, setExpanded] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -42,11 +45,12 @@ export default function CommentsSection({
     load()
   }, [load])
 
-  const visible = expanded ? comments : comments.slice(0, initialLimit)
-  const hasMore = comments.length > initialLimit && !expanded
+  // 🆕 Si on est dans la popup, on affiche tout. Sinon, on limite.
+  const visible = isModal ? comments : comments.slice(0, initialLimit)
+  const hasMore = comments.length > initialLimit && !isModal
 
   return (
-    <div className="border-t border-gray-100 bg-gray-50/50 p-4 space-y-3">
+    <div className={isModal ? "space-y-4" : "border-t border-gray-100 bg-gray-50/50 p-4 space-y-3"}>
       {loading && comments.length === 0 ? (
         <Loader size={16} className="animate-spin text-gray-300 mx-auto" />
       ) : comments.length === 0 ? (
@@ -67,14 +71,16 @@ export default function CommentsSection({
               onReport={onReport}
             />
           ))}
-          {hasMore && (
+          
+          {/* 🆕 Le bouton ouvre la popup au lieu de dérouler */}
+          {hasMore && onSeeAll && (
             <button
               type="button"
-              onClick={() => setExpanded(true)}
+              onClick={onSeeAll}
               className="text-[11px] font-bold hover:underline"
               style={{ color: ANKU.green }}
             >
-              Voir les {comments.length - initialLimit} autres commentaires
+              Voir tous les {comments.length} commentaires
             </button>
           )}
         </div>
