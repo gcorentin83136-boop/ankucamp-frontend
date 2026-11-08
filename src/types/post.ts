@@ -37,14 +37,16 @@ export interface Post {
   is_mine?: boolean
   media?: PostMediaItem[]
 
-  // 🆕 Champs pour les partages
+  // Champs pour les partages
   shared_from_post_id?: number | null
   shared_event_id?: number | null
   shared_product_id?: number | null
   shared_article_id?: number | null
+  shared_reel_id?: number | null // 🆕 Ajouté
   share_comment?: string | null
   shared_event?: any | null
   shared_article?: any | null
+  shared_reel?: any | null // 🆕 Ajouté
   shared_from?: any | null
 }
 

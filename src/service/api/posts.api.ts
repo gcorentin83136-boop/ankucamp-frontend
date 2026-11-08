@@ -139,6 +139,18 @@ export const postsApi = {
     )
     return data
   },
+
+  // 🆕 PARTAGE D'UN REEL (ANKU LIVE) SUR LE FEED
+  shareReel: async (
+    reelId: number,
+    payload: SharePostPayload
+  ): Promise<PostResponse> => {
+    const { data } = await httpClient.post<PostResponse>(
+      `/posts/share-reel/${reelId}`,
+      payload
+    )
+    return data
+  },
 }
 
 export default postsApi
