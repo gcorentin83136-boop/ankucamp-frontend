@@ -3,20 +3,20 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Users, MessageSquare, Calendar, Newspaper, Store, Star, Send, Loader, 
-  UserPlus, Globe, Lock, ChevronDown, Plus, Upload
+  UserPlus, Globe, Lock, ChevronDown, Clock
 } from 'lucide-react'
 import { useAuthStore } from '../context/AuthContext'
 import postsApi from '../service/api/posts.api'
 import httpClient from '../service/api/httpClient'
-import reelsApi from '../service/api/reels.api'
+import storiesApi from '../service/api/stories.api'
 import AppHeader from '../components/layout/AppHeader'
 import AnimatedShopsBackground from '../components/shops/AnimatedShopsBackground'
 import PostCard from '../components/social/PostCard'
 import PostModal from '../components/social/PostModal'
 import MediaUploader, { type MediaItem } from '../components/common/MediaUploader'
 import EmojiPicker from '../components/common/EmojiPicker'
-import CreateReelModal from '../components/reels/CreateReelModal'
-import ReelViewerModal from '../components/reels/ReelViewerModal'
+import CreateStoryModal from '../components/stories/CreateStoryModal'
+import StoryViewerModal from '../components/stories/StoryViewerModal'
 import type { Post, PostVisibility } from '../types/post'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35', greenPale: '#f0f9e8' }
@@ -131,16 +131,15 @@ function QuickLinks() {
 export default function Feed() {
   const auth = useAuthStore(); const user = (auth as any)?.user;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true); const [posts, setPosts] = useState<Post[]>([]); const [offset, setOffset] = useState(0); const [hasMore, setHasMore] = useState(true); const LIMIT = 10;
+  const [loading, setLoading] = useState(true); const [posts, setPosts] = useState<Post[]>([]); const [cursor, setCursor] = useState<string | null>(null); const [hasMore, setHasMore] = useState(true); const LIMIT = 10;
   const [content, setContent] = useState(''); const [visibility, setVisibility] = useState<PostVisibility>('public'); const [media, setMedia] = useState<MediaItem[]>([]); const [publishing, setPublishing] = useState(false);
   const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
   const [modalPostId, setModalPostId] = useState<number | null>(null); const [modalCommentId, setModalCommentId] = useState<number | null>(null)
   
-  // ÉTATS POUR LES REELS
-  const [reels, setReels] = useState<any[]>([])
-  const [activeReelId, setActiveReelId] = useState<number | null>(null)
-  const [showCreateReelModal, setShowCreateReelModal] = useState(false)
-  const [reelCreationMode, setReelCreationMode] = useState<'camera' | 'upload'>('camera') // 🆕
+  // ÉTATS POUR LES STORIES
+  const [stories, setStories] = useState<any[]>([])
+  const [activeStoryId, setActiveStoryId] = useState<number | null>(null)
+  const [showCreateStoryModal, setShowCreateStoryModal] = useState(false)
 
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -152,20 +151,22 @@ export default function Feed() {
     }
   }, [searchParams, setSearchParams])
 
-  const loadReels = useCallback(() => {
-    reelsApi.feed().then(res => setReels(res.reels)).catch(() => {})
+  const loadStories = useCallback(() => {
+    storiesApi.feed().then((res: any) => setStories(res.stories)).catch(() => {}) // 🆕 res.stories
   }, [])
 
-  useEffect(() => { loadReels() }, [loadReels])
+  useEffect(() => { loadStories() }, [loadStories])
 
   const loadPosts = useCallback(async (reset = false) => {
-    if (loading && !reset) return; if (reset) setLoading(true);
-    const currentOffset = reset ? 0 : offset;
+    if (loading && !reset) return; 
+    if (reset) setLoading(true);
     try {
-      const res = await postsApi.feed({ limit: LIMIT, offset: currentOffset });
-      setPosts((prev) => (reset ? res.posts : [...prev, ...res.posts])); setOffset(currentOffset + res.posts.length); setHasMore(res.posts.length === LIMIT);
+      const res = await postsApi.feed({ limit: LIMIT, cursor: reset ? undefined : (cursor || undefined) });
+      setPosts((prev) => (reset ? res.posts : [...prev, ...res.posts])); 
+      setCursor(res.next_cursor ?? null); 
+      setHasMore(!!res.has_more && res.posts.length > 0);
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } finally { setLoading(false) }
-  }, [offset, loading])
+  }, [cursor, loading])
 
   useEffect(() => { loadPosts(true) }, [])
 
@@ -204,62 +205,41 @@ export default function Feed() {
           </aside>
 
           <main className="space-y-4 min-w-0">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
-              {SHORTCUTS.map((s) => (
-                <Link key={s.to} to={s.to} className="rounded-2xl border border-gray-200 bg-white p-3 flex flex-col items-center gap-2 hover:shadow-md transition">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ background: s.color }}><s.icon size={18} /></div>
-                  <p className="text-[11px] font-bold text-gray-800 text-center leading-tight">{s.label}</p>
-                </Link>
-              ))}
-            </div>
-
-            {/* RANGÉE DE STORIES / REELS */}
+            
+            {/* RANGÉE DE STORIES */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               
-              {/* BOUTON 1 : DIRECT (Caméra) */}
               <button 
-                onClick={() => { setReelCreationMode('camera'); setShowCreateReelModal(true) }}
+                onClick={() => setShowCreateStoryModal(true)}
                 className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-emerald-300 bg-emerald-50/50 shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-emerald-50 transition group"
               >
                 <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
-                  <Plus size={24} />
+                  <Clock size={24} />
                 </div>
-                <span className="text-[10px] font-bold text-emerald-800">Direct</span>
+                <span className="text-[10px] font-bold text-emerald-800">Story Anku</span>
               </button>
 
-              {/* BOUTON 2 : PUBLIER (Upload) */}
-              <button 
-                onClick={() => { setReelCreationMode('upload'); setShowCreateReelModal(true) }}
-                className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border-2 border-dashed border-blue-300 bg-blue-50/50 shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-blue-50 transition group"
-              >
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                  <Upload size={24} />
-                </div>
-                <span className="text-[10px] font-bold text-blue-800">Publier</span>
-              </button>
-
-              {/* LISTE DES REELS */}
-              {reels.map((reel) => (
+              {stories.map((story) => (
                 <button 
-                  key={reel.id} 
-                  onClick={() => setActiveReelId(reel.id)}
-                  className="relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden border border-gray-200 shadow-sm group text-left"
+                  key={story.id} 
+                  onClick={() => setActiveStoryId(story.id)}
+                  className={`relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden shadow-sm group text-left border-2 border-emerald-400`}
                 >
-                  {reel.media_type === 'video' ? (
-                    <video src={reel.media_url} className="absolute inset-0 w-full h-full object-cover" muted />
+                  {story.media_type === 'video' ? (
+                    <video src={story.media_url} className="absolute inset-0 w-full h-full object-cover" muted />
                   ) : (
-                    <img src={reel.media_url} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={story.media_url} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 flex flex-col items-center gap-1.5">
-                    <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden bg-gray-200">
-                      {reel.author?.avatar_url ? (
-                        <img src={reel.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                    <div className={`w-8 h-8 rounded-full border-2 shadow-sm overflow-hidden bg-gray-200 border-emerald-400`}>
+                      {story.author?.avatar_url ? (
+                        <img src={story.author.avatar_url} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full bg-emerald-600" />
                       )}
                     </div>
-                    <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{reel.author?.first_name}</span>
+                    <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{story.author?.first_name}</span>
                   </div>
                 </button>
               ))}
@@ -286,6 +266,15 @@ export default function Feed() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:hidden gap-3">
+              {SHORTCUTS.map((s) => (
+                <Link key={s.to} to={s.to} className="rounded-2xl border border-gray-200 bg-white p-3 flex flex-col items-center gap-2 hover:shadow-md transition">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ background: s.color }}><s.icon size={18} /></div>
+                  <p className="text-[11px] font-bold text-gray-800 text-center leading-tight">{s.label}</p>
+                </Link>
+              ))}
             </div>
 
             {loading && posts.length === 0 ? (
@@ -339,20 +328,18 @@ export default function Feed() {
         </div>
       )}
 
-      {showCreateReelModal && (
-        <CreateReelModal 
-          initialMode={reelCreationMode} // 🆕
+      {showCreateStoryModal && (
+        <CreateStoryModal 
           onClose={() => { 
-            setShowCreateReelModal(false); 
-            loadReels(); 
-            loadPosts(true); // 🆕 On rafraichit le feed au cas où il a coché "partager sur le feed"
+            setShowCreateStoryModal(false); 
+            loadStories(); 
           }} 
         />
       )}
-      {activeReelId && (
-        <ReelViewerModal 
-          initialReelId={activeReelId} 
-          onClose={() => setActiveReelId(null)} 
+      {activeStoryId && (
+        <StoryViewerModal 
+          initialStoryId={activeStoryId} 
+          onClose={() => { setActiveStoryId(null); loadStories(); }} 
         />
       )}
     </div>

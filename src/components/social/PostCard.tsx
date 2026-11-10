@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
-  Calendar, Newspaper, Heart, MessageCircle, Share2, MapPin, Lock, Play, Clock, Video
+  Calendar, Newspaper, Heart, MessageCircle, Share2, MapPin, Lock, Play, Clock
 } from 'lucide-react'
 import postsApi from '../../service/api/posts.api'
 import blocksApi from '../../service/api/blocks.api'
@@ -11,7 +11,6 @@ import ReportModal from '../common/ReportModal'
 import ImageLightbox from '../common/ImageLightbox'
 import CommentsSection from './CommentsSection'
 import ShareMenu from './ShareMenu'
-import CreateReelModal from '../reels/CreateReelModal'
 import type { Post } from '../../types/post'
 import type { ReportTargetType } from '../../types/report'
 
@@ -102,13 +101,9 @@ export default function PostCard({
   const [reportTargetId, setReportTargetId] = useState<number>(0)
   const [reportTargetLabel, setReportTargetLabel] = useState<string>('')
   
-  // 🆕 État pour la modale Live
-  const [showReelModal, setShowReelModal] = useState(false)
-
   const media = parseMedia(post)
   const sharedEvent = (post as any).shared_event
   const sharedArticle = (post as any).shared_article
-  const sharedReel = (post as any).shared_reel
   const MAX_CHARS = 300
   const contentStr = post.content || ''
   const isLongText = contentStr.length > MAX_CHARS && !isModal
@@ -167,30 +162,6 @@ export default function PostCard({
             </Link>
           </div>
         )}
-        
-        {/* 🆕 BLOC REEL PARTAGÉ (Anku Live) */}
-        {sharedReel && (
-          <div className="px-4 pb-3">
-            <div className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">
-              <div className="relative w-full sm:w-24 h-32 sm:h-24 shrink-0 rounded-lg overflow-hidden bg-black">
-                {sharedReel.media_type === 'video' ? (
-                  <video src={sharedReel.media_url} className="w-full h-full object-cover" muted />
-                ) : (
-                  <img src={sharedReel.media_url} alt="" className="w-full h-full object-cover" />
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                  <Video size={24} className="text-white" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0 w-full">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Video size={10} /> Anku Live partagé</p>
-                <p className="text-sm font-bold text-gray-900 truncate">@{sharedReel.author?.username}</p>
-                {sharedReel.caption && <p className="text-xs text-gray-500 truncate mt-1">{sharedReel.caption}</p>}
-              </div>
-            </div>
-          </div>
-        )}
-
         <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
         <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
           <span className="flex items-center gap-1"><Heart size={12} className={liked ? 'fill-red-500 text-red-500' : ''} />{likesCount}</span>
@@ -200,16 +171,6 @@ export default function PostCard({
         <div className="px-2 py-1 flex border-t border-gray-100">
           <button type="button" onClick={toggleLike} className={'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition ' + (liked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-50')}><Heart size={14} className={liked ? 'fill-red-500' : ''} /> J'aime</button>
           <button type="button" onClick={() => { if (!isModal && onSeeAllComments) onSeeAllComments() }} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><MessageCircle size={14} /> Commenter</button>
-          
-          {/* 🆕 BOUTON ANKU LIVE */}
-          <button 
-            type="button" 
-            onClick={() => setShowReelModal(true)} 
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"
-          >
-            <Video size={14} /> Live
-          </button>
-
           <button type="button" onClick={() => setShareOpen(true)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><Share2 size={14} /> Partager</button>
         </div>
 
@@ -228,14 +189,6 @@ export default function PostCard({
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType={reportTargetType} targetId={reportTargetId} targetLabel={reportTargetLabel} />
       <ImageLightbox images={media} index={lightboxIndex} onClose={() => setLightboxIndex(-1)} onNavigate={setLightboxIndex} />
       {shareOpen && <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => { try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch (err: any) { toast.error('Erreur') } }} />}
-      
-      {/* 🆕 MODALE CREATE REEL DEPUIS UN POST */}
-      {showReelModal && (
-        <CreateReelModal 
-          onClose={() => setShowReelModal(false)} 
-          sharedPost={post} 
-        />
-      )}
     </>
   )
 }

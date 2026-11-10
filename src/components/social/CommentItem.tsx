@@ -39,7 +39,6 @@ export default function CommentItem({
   const isMine = comment.author_id === currentUserId
   const [replyOpen, setReplyOpen] = useState(false)
 
-  // 🆕 Gestion des données venant soit de comment.author, soit des champs plats
   const author = comment.author || {
     first_name: (comment as any).author_first_name,
     last_name: (comment as any).author_last_name,
@@ -68,23 +67,14 @@ export default function CommentItem({
   }
 
   return (
-    <div>
+    // 🆕 AJOUT DE L'ID POUR LE SCROLL AUTOMATIQUE
+    <div id={`comment-${comment.id}`}>
       <div className="flex gap-2">
-        <Link
-          to={author?.username ? `/u/${author.username}` : '#'}
-          className="shrink-0"
-        >
+        <Link to={author?.username ? `/u/${author.username}` : '#'} className="shrink-0">
           {author?.avatar_url ? (
-            <img
-              src={author.avatar_url}
-              alt=""
-              className="w-8 h-8 rounded-full object-cover"
-            />
+            <img src={author.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
           ) : (
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: ANKU.greenDark }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: ANKU.greenDark }}>
               {(author?.first_name?.[0] ?? '') + (author?.last_name?.[0] ?? '')}
             </div>
           )}
@@ -92,10 +82,7 @@ export default function CommentItem({
         <div className="flex-1 min-w-0">
           <div className="bg-white rounded-2xl px-3 py-2 border border-gray-100">
             <div className="flex items-center justify-between gap-2">
-              <Link
-                to={author?.username ? `/u/${author.username}` : '#'}
-                className="text-xs font-bold text-gray-900 hover:underline truncate"
-              >
+              <Link to={author?.username ? `/u/${author.username}` : '#'} className="text-xs font-bold text-gray-900 hover:underline truncate">
                 {author?.first_name} {author?.last_name}
               </Link>
               <span className="text-[10px] text-gray-400 shrink-0">
@@ -106,72 +93,38 @@ export default function CommentItem({
               {comment.content}
             </p>
             {comment.media_url && (
-              <img
-                src={comment.media_url}
-                alt=""
-                className="mt-2 rounded-lg max-h-64 object-cover"
-                loading="lazy"
-              />
+              <img src={comment.media_url} alt="" className="mt-2 rounded-lg max-h-64 object-cover" loading="lazy" />
             )}
           </div>
           <div className="flex items-center gap-3 text-[10px] font-bold text-gray-500 mt-1 ml-1">
-            {/* 🆕 On enlève le !isReply pour pouvoir répondre aux réponses */}
-            <button
-              type="button"
-              onClick={() => setReplyOpen((v) => !v)}
-              className="hover:text-emerald-600 transition inline-flex items-center gap-1"
-            >
-              <CornerDownRight size={10} />
-              Répondre
+            <button type="button" onClick={() => setReplyOpen((v) => !v)} className="hover:text-emerald-600 transition inline-flex items-center gap-1">
+              <CornerDownRight size={10} /> Répondre
             </button>
             {isMine && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="hover:text-red-600 transition inline-flex items-center gap-1"
-              >
-                <Trash2 size={10} />
-                Supprimer
+              <button type="button" onClick={handleDelete} className="hover:text-red-600 transition inline-flex items-center gap-1">
+                <Trash2 size={10} /> Supprimer
               </button>
             )}
             {!isMine && onReport && (
-              <button
-                type="button"
-                onClick={() => onReport(comment.id)}
-                className="hover:text-amber-600 transition inline-flex items-center gap-1"
-              >
-                <Flag size={10} />
-                Signaler
+              <button type="button" onClick={() => onReport(comment.id)} className="hover:text-amber-600 transition inline-flex items-center gap-1">
+                <Flag size={10} /> Signaler
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Réponses imbriquées */}
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-10 mt-2 space-y-2">
           {comment.replies.map((r) => (
-            <CommentItem
-              key={r.id}
-              comment={r}
-              currentUserId={currentUserId}
-              onRefresh={onRefresh}
-              onReport={onReport}
-            />
+            <CommentItem key={r.id} comment={r} currentUserId={currentUserId} onRefresh={onRefresh} onReport={onReport} />
           ))}
         </div>
       )}
 
-      {/* Input réponse */}
       {replyOpen && (
         <div className="ml-10 mt-2">
-          <CommentInput
-            autoFocus
-            placeholder={`Répondre à ${author?.first_name ?? ''}…`}
-            onSubmit={handleSubmitReply}
-            onCancel={() => setReplyOpen(false)}
-          />
+          <CommentInput autoFocus placeholder={`Répondre à ${author?.first_name ?? ''}…`} onSubmit={handleSubmitReply} onCancel={() => setReplyOpen(false)} />
         </div>
       )}
     </div>

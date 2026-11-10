@@ -42,11 +42,9 @@ export interface Post {
   shared_event_id?: number | null
   shared_product_id?: number | null
   shared_article_id?: number | null
-  shared_reel_id?: number | null // 🆕 Ajouté
   share_comment?: string | null
   shared_event?: any | null
   shared_article?: any | null
-  shared_reel?: any | null // 🆕 Ajouté
   shared_from?: any | null
 }
 
@@ -84,6 +82,8 @@ export interface FeedResponse {
   count: number
   posts: Post[]
   events_from_friends: any[]
+  next_cursor?: string | null // 🆕 Ajouté
+  has_more?: boolean // 🆕 Ajouté
 }
 
 export interface PostResponse {
@@ -117,4 +117,5 @@ export interface LikeResponse {
 export interface ListPostsParams {
   limit?: number
   offset?: number
+  cursor?: string // 🆕 Ajouté
 }
