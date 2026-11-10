@@ -141,6 +141,7 @@ export default function Feed() {
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false)
 
   const observerRef = useRef<IntersectionObserver | null>(null)
+  const loadingRef = useRef(false) // 🆕 Empêche les appels multiples
 
   useEffect(() => {
     const postParam = searchParams.get('post'); const commentParam = searchParams.get('comment');
@@ -157,24 +158,41 @@ export default function Feed() {
   useEffect(() => { loadStories() }, [loadStories])
 
   const loadPosts = useCallback(async (reset = false) => {
-    if (loading && !reset) return; 
-    if (reset) setLoading(true);
+    if (loadingRef.current && !reset) return
+    loadingRef.current = true
+    if (reset) setLoading(true)
+    
     try {
-      const res = await postsApi.feed({ limit: LIMIT, cursor: reset ? undefined : (cursor || undefined) });
-      setPosts((prev) => (reset ? res.posts : [...prev, ...res.posts])); 
-      setCursor(res.next_cursor ?? null); 
-      setHasMore(!!res.has_more && res.posts.length > 0);
-    } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } finally { setLoading(false) }
-  }, [cursor, loading])
+      const res = await postsApi.feed({ limit: LIMIT, cursor: reset ? undefined : (cursor || undefined) })
+      setPosts((prev) => (reset ? res.posts : [...prev, ...res.posts]))
+      setCursor(res.next_cursor ?? null)
+      setHasMore(!!res.has_more && res.posts.length > 0)
+    } catch (err: any) { 
+      // 🆕 On ignore les erreurs 429 pour éviter la boucle infinie
+      if (err?.response?.status !== 429) {
+        toast.error(err?.response?.data?.message || 'Erreur') 
+      }
+    } finally { 
+      setLoading(false) 
+      loadingRef.current = false
+    }
+  }, [cursor])
 
-  useEffect(() => { loadPosts(true) }, [loadPosts]) // eslint-disable-line
+  // 🆕 Chargement initial
+  useEffect(() => {
+    loadPosts(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
+  // 🆕 Infinite Scroll
   useEffect(() => {
     if (loading || !hasMore) return
-    observerRef.current = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) loadPosts(false) }, { threshold: 0.1 })
+    observerRef.current = new IntersectionObserver((entries) => { 
+      if (entries[0].isIntersecting) loadPosts(false) 
+    }, { threshold: 0.1 })
     const sentinel = document.getElementById('feed-sentinel'); if (sentinel) observerRef.current.observe(sentinel)
     return () => { if (observerRef.current) observerRef.current.disconnect() }
-  }, [loading, hasMore, loadPosts]) // 🆕 Correction ici
+  }, [loading, hasMore, loadPosts])
 
   const handlePublish = async () => {
     if (!content.trim() && media.length === 0) { toast.error('Écris quelque chose ou ajoute un média'); return }

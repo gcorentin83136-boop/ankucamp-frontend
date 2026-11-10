@@ -23,6 +23,11 @@ export default function StoryViewerModal({ initialStoryId, onClose }: { initialS
 
   const currentStory = stories[currentIndex]
   const isOwn = currentStory?.author_id === user?.id
+  
+  let parsedElements: any[] = []
+  try {
+    if (currentStory?.elements) parsedElements = JSON.parse(currentStory.elements)
+  } catch (e) {}
 
   const handleDelete = async () => {
     if (!confirm("Supprimer cette Story ?")) return
@@ -55,7 +60,6 @@ export default function StoryViewerModal({ initialStoryId, onClose }: { initialS
           )}
         </div>
 
-        {/* 🆕 MENU 3 POINTS (Supprimer + Restreindre) */}
         {showMenu && (
           <div className="absolute top-16 right-4 z-50 bg-white rounded-xl shadow-xl overflow-hidden w-56">
             <button onClick={handleDelete} className="w-full text-left px-4 py-3 text-sm text-red-600 font-bold hover:bg-red-50 flex items-center gap-2"><Trash2 size={16}/> Supprimer</button>
@@ -63,7 +67,6 @@ export default function StoryViewerModal({ initialStoryId, onClose }: { initialS
               <span className="flex items-center gap-2"><Lock size={16}/> Restreindre</span>
             </button>
             
-            {/* Sous-menu de visibilité */}
             {showVisibilityMenu && (
               <div className="bg-gray-50 border-t border-gray-100 py-1">
                 <button onClick={() => handleChangeVisibility('public')} className={`w-full text-left px-8 py-2 text-xs font-semibold hover:bg-gray-100 flex items-center gap-2 ${currentStory.visibility === 'public' ? 'text-blue-600' : 'text-gray-700'}`}><Globe size={12}/> Public</button>
@@ -79,6 +82,20 @@ export default function StoryViewerModal({ initialStoryId, onClose }: { initialS
         ) : (
           <img src={currentStory.media_url} className="w-full h-full object-cover" />
         )}
+
+        {parsedElements.map(el => (
+          <div
+            key={el.id}
+            style={{ left: `${el.x}%`, top: `${el.y}%`, transform: 'translate(-50%, -50%)' }}
+            className={`absolute select-none z-40 drop-shadow-xl ${
+              el.type === 'text' 
+                ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` 
+                : 'text-5xl'
+            }`}
+          >
+            {el.content}
+          </div>
+        ))}
 
         <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent text-white">
           <div className="flex items-center gap-2 mb-1">

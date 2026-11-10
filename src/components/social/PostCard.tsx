@@ -16,8 +16,7 @@ import type { ReportTargetType } from '../../types/report'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
 
-// 🆕 Enlevé le 'export' pour corriger l'erreur Fast Refresh
-function formatDate(iso: string) {
+export function formatDate(iso: string) {
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return iso
@@ -32,10 +31,8 @@ function formatDate(iso: string) {
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
   } catch { return iso }
 }
-
-function authorName(p: Post): string { if (!p.author) return 'Utilisateur'; return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username }
-
-function parseMedia(p: Post): string[] {
+export function authorName(p: Post): string { if (!p.author) return 'Utilisateur'; return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username }
+export function parseMedia(p: Post): string[] {
   if (p.media && Array.isArray(p.media)) return p.media.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean)
   const raw: any = (p as any).media_urls
   if (!raw) return []
@@ -43,8 +40,7 @@ function parseMedia(p: Post): string[] {
   if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return [] } }
   return []
 }
-
-function isVideoUrl(url: string): boolean { return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') }
+export function isVideoUrl(url: string): boolean { return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') }
 
 function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox: (i: number) => void }) {
   if (media.length === 0) return null
@@ -78,21 +74,9 @@ function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox:
 }
 
 export default function PostCard({
-  post,
-  currentUserId,
-  onPostUpdated,
-  onChangeVisibility,
-  isModal = false,
-  onSeeAllComments,
-  highlightCommentId,
+  post, currentUserId, onPostUpdated, onChangeVisibility, isModal = false, onSeeAllComments, highlightCommentId,
 }: {
-  post: Post
-  currentUserId: number | undefined
-  onPostUpdated: () => void
-  onChangeVisibility?: () => void
-  isModal?: boolean
-  onSeeAllComments?: () => void
-  highlightCommentId?: number | null
+  post: Post; currentUserId: number | undefined; onPostUpdated: () => void; onChangeVisibility?: () => void; isModal?: boolean; onSeeAllComments?: () => void; highlightCommentId?: number | null
 }) {
   const isOwn = post.author_id === currentUserId
   const [liked, setLiked] = useState(!!post.is_liked_by_me)
@@ -108,6 +92,8 @@ export default function PostCard({
   const media = parseMedia(post)
   const sharedEvent = (post as any).shared_event
   const sharedArticle = (post as any).shared_article
+  const sharedFrom = (post as any).shared_from // 🆕 On récupère le post partagé
+  
   const MAX_CHARS = 300
   const contentStr = post.content || ''
   const isLongText = contentStr.length > MAX_CHARS && !isModal
@@ -141,32 +127,45 @@ export default function PostCard({
             {isLongText && <button type="button" onClick={() => setShowFullText(true)} className="text-xs font-bold mt-1 hover:underline" style={{ color: ANKU.green }}>Voir plus</button>}
           </div>
         )}
-        {sharedEvent && (
+
+        {/* 🆕 AFFICHAGE DU POST PARTAGÉ (shared_from) */}
+        {sharedFrom && (
           <div className="px-4 pb-3">
-            <Link to={`/events/${sharedEvent.id}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">
-              {sharedEvent.cover_url && <img src={sharedEvent.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />}
-              <div className="flex-1 min-w-0 w-full">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Calendar size={10} /> Événement partagé</p>
-                <p className="text-sm font-bold text-gray-900 truncate">{sharedEvent.title}</p>
-                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Clock size={12} /> {new Date(sharedEvent.start_at).toLocaleDateString('fr-FR')}</p>
-                <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={12} /> {sharedEvent.city || 'Lieu non précisé'}</p>
+            <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 hover:bg-gray-100 transition cursor-pointer" onClick={() => { /* Optionnel: ouvrir le post original */ }}>
+              <div className="p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  {sharedFrom.author?.avatar_url ? (
+                    <img src={sharedFrom.author.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-emerald-600" />
+                  )}
+                  <span className="text-xs font-bold text-gray-900">{sharedFrom.author?.first_name} {sharedFrom.author?.last_name}</span>
+                  <span className="text-[10px] text-gray-500">{formatDate(sharedFrom.created_at)}</span>
+                </div>
+                {sharedFrom.content && <p className="text-sm text-gray-700 whitespace-pre-line break-words">{sharedFrom.content}</p>}
               </div>
-            </Link>
+              {sharedFrom.media_urls && sharedFrom.media_urls.length > 0 && (
+                <div className="px-3 pb-3">
+                  {isVideoUrl(sharedFrom.media_urls[0]) ? (
+                     <video src={sharedFrom.media_urls[0]} className="w-full rounded-lg max-h-64 object-cover bg-black" controls />
+                  ) : (
+                     <img src={sharedFrom.media_urls[0]} alt="" className="w-full rounded-lg max-h-64 object-cover" />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
-        {sharedArticle && (
-          <div className="px-4 pb-3">
-            <Link to={`/articles/${sharedArticle.slug}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">
-              {sharedArticle.cover_url && <img src={sharedArticle.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />}
-              <div className="flex-1 min-w-0 w-full">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Newspaper size={10} /> Article partagé</p>
-                <p className="text-sm font-bold text-gray-900 truncate">{sharedArticle.title}</p>
-                {sharedArticle.excerpt && <p className="text-xs text-gray-500 truncate mt-1">{sharedArticle.excerpt}</p>}
-              </div>
-            </Link>
-          </div>
+
+        {sharedEvent && ( /* ... inchangé ... */ 
+          <div className="px-4 pb-3"><Link to={`/events/${sharedEvent.id}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">{sharedEvent.cover_url && <img src={sharedEvent.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />}<div className="flex-1 min-w-0 w-full"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Calendar size={10} /> Événement partagé</p><p className="text-sm font-bold text-gray-900 truncate">{sharedEvent.title}</p><p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Clock size={12} /> {new Date(sharedEvent.start_at).toLocaleDateString('fr-FR')}</p><p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={12} /> {sharedEvent.city || 'Lieu non précisé'}</p></div></Link></div>
         )}
+        {sharedArticle && ( /* ... inchangé ... */ 
+          <div className="px-4 pb-3"><Link to={`/articles/${sharedArticle.slug}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">{sharedArticle.cover_url && <img src={sharedArticle.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />}<div className="flex-1 min-w-0 w-full"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Newspaper size={10} /> Article partagé</p><p className="text-sm font-bold text-gray-900 truncate">{sharedArticle.title}</p>{sharedArticle.excerpt && <p className="text-xs text-gray-500 truncate mt-1">{sharedArticle.excerpt}</p>}</div></Link></div>
+        )}
+        
         <MediaGrid media={media} onOpenLightbox={setLightboxIndex} />
+        
         <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100">
           <span className="flex items-center gap-1"><Heart size={12} className={liked ? 'fill-red-500 text-red-500' : ''} />{likesCount}</span>
           <span className="flex items-center gap-1"><MessageCircle size={12} />{post.comments_count ?? 0}</span>
@@ -178,21 +177,30 @@ export default function PostCard({
           <button type="button" onClick={() => setShareOpen(true)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition"><Share2 size={14} /> Partager</button>
         </div>
 
-        <CommentsSection
-          postId={post.id}
-          currentUserId={currentUserId}
-          onCommentAdded={onPostUpdated}
-          onReport={openReportComment}
-          initialLimit={2}
-          isModal={isModal}
-          onSeeAll={onSeeAllComments}
-          highlightCommentId={highlightCommentId}
-        />
+        <CommentsSection postId={post.id} currentUserId={currentUserId} onCommentAdded={onPostUpdated} onReport={openReportComment} initialLimit={2} isModal={isModal} onSeeAll={onSeeAllComments} highlightCommentId={highlightCommentId} />
       </article>
 
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType={reportTargetType} targetId={reportTargetId} targetLabel={reportTargetLabel} />
       <ImageLightbox images={media} index={lightboxIndex} onClose={() => setLightboxIndex(-1)} onNavigate={setLightboxIndex} />
-      {shareOpen && <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => { try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch { toast.error('Erreur') } }} />}
+      
+      {shareOpen && (
+        <ShareMenu 
+          postId={post.id} 
+          shareText={post.content?.slice(0, 100) ?? ''} 
+          onClose={() => setShareOpen(false)} 
+          onShareToAnku={async () => { 
+            try { 
+              await postsApi.share(post.id, { share_comment: "J'ai partagé ce post", visibility: 'public' }); 
+              toast.success('Partagé sur ton feed ! 🎉'); 
+              setShareOpen(false);
+              onPostUpdated() 
+            } catch (err: any) { 
+              console.error("ERREUR SHARE:", err);
+              toast.error(err?.response?.data?.message || 'Erreur de partage') 
+            } 
+          }} 
+        />
+      )}
     </>
   )
 }
