@@ -16,7 +16,8 @@ import type { ReportTargetType } from '../../types/report'
 
 const ANKU = { green: '#6aa84f', greenDark: '#4a7a35' }
 
-export function formatDate(iso: string) {
+// 🆕 Enlevé le 'export' pour corriger l'erreur Fast Refresh
+function formatDate(iso: string) {
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return iso
@@ -31,8 +32,10 @@ export function formatDate(iso: string) {
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
   } catch { return iso }
 }
-export function authorName(p: Post): string { if (!p.author) return 'Utilisateur'; return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username }
-export function parseMedia(p: Post): string[] {
+
+function authorName(p: Post): string { if (!p.author) return 'Utilisateur'; return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username }
+
+function parseMedia(p: Post): string[] {
   if (p.media && Array.isArray(p.media)) return p.media.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean)
   const raw: any = (p as any).media_urls
   if (!raw) return []
@@ -40,7 +43,8 @@ export function parseMedia(p: Post): string[] {
   if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return [] } }
   return []
 }
-export function isVideoUrl(url: string): boolean { return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') }
+
+function isVideoUrl(url: string): boolean { return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') }
 
 function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox: (i: number) => void }) {
   if (media.length === 0) return null
@@ -188,7 +192,7 @@ export default function PostCard({
 
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType={reportTargetType} targetId={reportTargetId} targetLabel={reportTargetLabel} />
       <ImageLightbox images={media} index={lightboxIndex} onClose={() => setLightboxIndex(-1)} onNavigate={setLightboxIndex} />
-      {shareOpen && <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => { try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch (err: any) { toast.error('Erreur') } }} />}
+      {shareOpen && <ShareMenu postId={post.id} shareText={post.content?.slice(0, 100) ?? ''} onClose={() => setShareOpen(false)} onShareToAnku={async () => { try { await postsApi.share(post.id, { share_comment: null, visibility: 'public' }); toast.success('Partagé ! 🎉'); onPostUpdated() } catch { toast.error('Erreur') } }} />}
     </>
   )
 }

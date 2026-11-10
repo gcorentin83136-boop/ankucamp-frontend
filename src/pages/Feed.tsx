@@ -136,7 +136,6 @@ export default function Feed() {
   const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
   const [modalPostId, setModalPostId] = useState<number | null>(null); const [modalCommentId, setModalCommentId] = useState<number | null>(null)
   
-  // ÉTATS POUR LES STORIES
   const [stories, setStories] = useState<any[]>([])
   const [activeStoryId, setActiveStoryId] = useState<number | null>(null)
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false)
@@ -152,7 +151,7 @@ export default function Feed() {
   }, [searchParams, setSearchParams])
 
   const loadStories = useCallback(() => {
-    storiesApi.feed().then((res: any) => setStories(res.stories)).catch(() => {}) // 🆕 res.stories
+    storiesApi.feed().then((res: any) => setStories(res.stories)).catch(() => {})
   }, [])
 
   useEffect(() => { loadStories() }, [loadStories])
@@ -168,14 +167,14 @@ export default function Feed() {
     } catch (err: any) { toast.error(err?.response?.data?.message || 'Erreur') } finally { setLoading(false) }
   }, [cursor, loading])
 
-  useEffect(() => { loadPosts(true) }, [])
+  useEffect(() => { loadPosts(true) }, [loadPosts]) // eslint-disable-line
 
   useEffect(() => {
     if (loading || !hasMore) return
     observerRef.current = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) loadPosts(false) }, { threshold: 0.1 })
     const sentinel = document.getElementById('feed-sentinel'); if (sentinel) observerRef.current.observe(sentinel)
     return () => { if (observerRef.current) observerRef.current.disconnect() }
-  }, [loading, hasMore, loadPosts])
+  }, [loading, hasMore, loadPosts]) // 🆕 Correction ici
 
   const handlePublish = async () => {
     if (!content.trim() && media.length === 0) { toast.error('Écris quelque chose ou ajoute un média'); return }
@@ -206,7 +205,6 @@ export default function Feed() {
 
           <main className="space-y-4 min-w-0">
             
-            {/* RANGÉE DE STORIES */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               
               <button 
