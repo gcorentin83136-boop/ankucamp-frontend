@@ -136,12 +136,14 @@ export default function Feed() {
   const [editVisibilityPost, setEditVisibilityPost] = useState<Post | null>(null)
   const [modalPostId, setModalPostId] = useState<number | null>(null); const [modalCommentId, setModalCommentId] = useState<number | null>(null)
   
+  // 🆕 NOUVEAUX ÉTATS POUR LES STORIES GROUPÉES
   const [stories, setStories] = useState<any[]>([])
-  const [activeStoryId, setActiveStoryId] = useState<number | null>(null)
+  const [activeStoryGroup, setActiveStoryGroup] = useState<any>(null)
+  const [activeStoryIndex, setActiveStoryIndex] = useState(0)
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false)
 
   const observerRef = useRef<IntersectionObserver | null>(null)
-  const loadingRef = useRef(false) // 🆕 Empêche les appels multiples
+  const loadingRef = useRef(false) 
 
   useEffect(() => {
     const postParam = searchParams.get('post'); const commentParam = searchParams.get('comment');
@@ -168,23 +170,15 @@ export default function Feed() {
       setCursor(res.next_cursor ?? null)
       setHasMore(!!res.has_more && res.posts.length > 0)
     } catch (err: any) { 
-      // 🆕 On ignore les erreurs 429 pour éviter la boucle infinie
-      if (err?.response?.status !== 429) {
-        toast.error(err?.response?.data?.message || 'Erreur') 
-      }
+      if (err?.response?.status !== 429) { toast.error(err?.response?.data?.message || 'Erreur') }
     } finally { 
       setLoading(false) 
       loadingRef.current = false
     }
   }, [cursor])
 
-  // 🆕 Chargement initial
-  useEffect(() => {
-    loadPosts(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(() => { loadPosts(true) }, [])
 
-  // 🆕 Infinite Scroll
   useEffect(() => {
     if (loading || !hasMore) return
     observerRef.current = new IntersectionObserver((entries) => { 
@@ -235,27 +229,30 @@ export default function Feed() {
                 <span className="text-[10px] font-bold text-emerald-800">Story Anku</span>
               </button>
 
-              {stories.map((story) => (
+              {stories.map((group) => (
                 <button 
-                  key={story.id} 
-                  onClick={() => setActiveStoryId(story.id)}
+                  key={group.author.id} 
+                  onClick={() => {
+                    setActiveStoryGroup(group)
+                    setActiveStoryIndex(0)
+                  }}
                   className={`relative w-28 h-40 shrink-0 rounded-2xl overflow-hidden shadow-sm group text-left border-2 border-emerald-400`}
                 >
-                  {story.media_type === 'video' ? (
-                    <video src={story.media_url} className="absolute inset-0 w-full h-full object-cover" muted />
+                  {group.stories[0].media_type === 'video' ? (
+                    <video src={group.stories[0].media_url} className="absolute inset-0 w-full h-full object-cover" muted playsInline />
                   ) : (
-                    <img src={story.media_url} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={group.stories[0].media_url} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2 flex flex-col items-center gap-1.5">
                     <div className={`w-8 h-8 rounded-full border-2 shadow-sm overflow-hidden bg-gray-200 border-emerald-400`}>
-                      {story.author?.avatar_url ? (
-                        <img src={story.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                      {group.author?.avatar_url ? (
+                        <img src={group.author.avatar_url} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full bg-emerald-600" />
                       )}
                     </div>
-                    <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{story.author?.first_name}</span>
+                    <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{group.author?.first_name}</span>
                   </div>
                 </button>
               ))}
@@ -352,10 +349,15 @@ export default function Feed() {
           }} 
         />
       )}
-      {activeStoryId && (
+
+      {activeStoryGroup && (
         <StoryViewerModal 
-          initialStoryId={activeStoryId} 
-          onClose={() => { setActiveStoryId(null); loadStories(); }} 
+          group={activeStoryGroup} 
+          initialIndex={activeStoryIndex}
+          onClose={() => { 
+            setActiveStoryGroup(null); 
+            loadStories(); 
+          }} 
         />
       )}
     </div>

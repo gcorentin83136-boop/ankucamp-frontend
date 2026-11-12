@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send } from 'lucide-react'
+import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import uploadsApi from '../../service/api/uploads.api'
 import storiesApi from '../../service/api/stories.api'
@@ -7,18 +7,27 @@ import postsApi from '../../service/api/posts.api'
 
 const ANKU_EMOJIS = ['🌱', '🌿', '🍀', '🌳', '🌻', '🌺', '🍎', '🍇', '🥕', '🍞', '🐝', '🦋', '☀️', '🌙', '🌍', '💚']
 const FONTS = ['font-sans', 'font-serif', 'font-mono', 'font-bold', 'font-black']
-const BG_COLORS = ['bg-transparent', 'bg-black/60', 'bg-white', 'bg-blue-500', 'bg-green-500', 'bg-red-500', 'bg-yellow-400']
-const TEXT_COLORS = ['text-white', 'text-black', 'text-blue-500', 'text-green-500', 'text-red-500', 'text-yellow-400']
+
+const TEXT_COLORS = [
+  { name: 'white', hex: '#FFFFFF', class: 'text-white' },
+  { name: 'black', hex: '#000000', class: 'text-black' },
+  { name: 'blue', hex: '#3B82F6', class: 'text-blue-500' },
+  { name: 'green', hex: '#10B981', class: 'text-emerald-500' },
+  { name: 'red', hex: '#EF4444', class: 'text-red-500' },
+  { name: 'yellow', hex: '#FACC15', class: 'text-yellow-400' }
+]
+const BG_COLORS = [
+  { name: 'transparent', hex: 'transparent', class: 'bg-transparent border-gray-500' },
+  { name: 'black', hex: 'rgba(0,0,0,0.6)', class: 'bg-black/60' },
+  { name: 'white', hex: '#FFFFFF', class: 'bg-white' },
+  { name: 'blue', hex: '#3B82F6', class: 'bg-blue-500' },
+  { name: 'green', hex: '#10B981', class: 'bg-emerald-500' },
+  { name: 'red', hex: '#EF4444', class: 'bg-red-500' }
+]
 
 type StoryElement = {
-  id: string
-  type: 'text' | 'emoji'
-  content: string
-  x: number
-  y: number
-  font?: string
-  bgColor?: string
-  textColor?: string
+  id: string; type: 'text' | 'emoji'; content: string; x: number; y: number;
+  font?: string; bgColor?: string; textColor?: string;
 }
 
 export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
@@ -26,9 +35,14 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<'video' | 'image'>('video')
   const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public')
-  const [shareToFeed, setShareToFeed] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [uploading, setUploading] = useState(false)
+  
+  // 🆕 On stocke l'URL Cloudinary séparément
+  const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null)
+
+  const [showSharePrompt, setShowSharePrompt] = useState(false)
+  const [publishedStoryData, setPublishedStoryData] = useState<any>(null)
 
   const [elements, setElements] = useState<StoryElement[]>([])
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -52,29 +66,35 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
         .catch(() => { toast.error("Caméra inaccessible."); })
     }
     return () => { if (stream) stream.getTracks().forEach(t => t.stop()) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaUrl])
 
   const startRecording = () => {
     if (!stream) return
     chunksRef.current = []
-    const recorder = new MediaRecorder(stream)
+    
+    let options = { mimeType: 'video/webm;codecs=vp9' }
+    if (!MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+      options = { mimeType: 'video/webm' }
+    }
+    
+    const recorder = new MediaRecorder(stream, options)
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    
     recorder.onstop = async () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-      const file = new File([blob], 'story-video.webm', { type: 'video/webm' })
+      const blob = new Blob(chunksRef.current, { type: 'video/mp4' })
+      const file = new File([blob], `story-video-${Date.now()}.mp4`, { type: 'video/mp4' })
+      
       if (stream) stream.getTracks().forEach(t => t.stop())
       await handleUpload(file, 'video')
     }
+    
     recorder.start()
     mediaRecorderRef.current = recorder
     setIsRecording(true)
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop()
     setIsRecording(false)
   }
 
@@ -96,16 +116,27 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
 
   const handleUpload = async (file: File, type: 'video' | 'image') => {
     setUploading(true)
-    try {
-      const res = type === 'video' ? await uploadsApi.uploadPostVideo(file) : await uploadsApi.uploadPostMedia(file)
-      setMediaUrl(res.url)
-      setMediaType(type)
-    } catch { toast.error("Erreur d'upload") } finally { setUploading(false) }
-  }
+    
+    // 🆕 1. On crée l'URL locale pour un aperçu INSTANTANÉ (0ms)
+    const localPreviewUrl = URL.createObjectURL(file)
+    setMediaUrl(localPreviewUrl)
+    setMediaType(type)
+    setCloudinaryUrl(null) // Reset l'URL Cloudinary en attendant
 
-  const handlePointerDown = (e: React.PointerEvent, id: string) => {
-    e.stopPropagation()
-    setDraggingId(id)
+    try {
+      // 2. On upload vers Cloudinary en arrière-plan
+      const res = type === 'video' ? await uploadsApi.uploadPostVideo(file) : await uploadsApi.uploadPostMedia(file)
+      
+      // 3. On stocke l'URL Cloudinary pour la publication (sans changer l'aperçu)
+      setCloudinaryUrl(res.url)
+      
+    } catch (err) { 
+      console.error("❌ Erreur d'upload:", err);
+      toast.error("Erreur d'upload, vérifie le terminal backend.") 
+      setMediaUrl(null)
+    } finally { 
+      setUploading(false) 
+    }
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -121,8 +152,8 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     const newElement: StoryElement = { id: Date.now().toString(), type, content, x: 50, y: 50 }
     if (type === 'text') {
       newElement.font = selectedFont
-      newElement.bgColor = selectedBg
-      newElement.textColor = selectedTextColor
+      newElement.bgColor = selectedBg.class
+      newElement.textColor = selectedTextColor.class
     }
     setElements([...elements, newElement])
     setActiveTool(null)
@@ -130,11 +161,13 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handlePublish = async () => {
-    if (!mediaUrl) return toast.error("Ajoute un média d'abord")
+    // 🆕 On utilise l'URL Cloudinary, pas l'URL locale !
+    if (!cloudinaryUrl) return toast.error("L'upload de la vidéo n'est pas encore terminé, attends 2 secondes...")
+    
     setUploading(true)
     try {
-      await storiesApi.create({
-        media_url: mediaUrl,
+      const res = await storiesApi.create({
+        media_url: cloudinaryUrl,
         media_type: mediaType,
         caption: '', 
         visibility,
@@ -142,24 +175,29 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
         expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000),
         elements: JSON.stringify(elements),
       })
+      setPublishedStoryData(res)
+      setShowSharePrompt(true)
+    } catch { 
+      toast.error("Erreur de publication") 
+    } finally { 
+      setUploading(false) 
+    }
+  }
 
-      if (shareToFeed) {
-        try {
-          await postsApi.create({
-            content: "J'ai publié une nouvelle Story ! 🌿",
-            media_urls: [mediaUrl],
-            visibility: 'public'
-          })
-          toast.success("Story publiée et partagée sur le feed !")
-        } catch (err) {
-          console.error("Erreur partage feed:", err)
-          toast.error("Story publiée, mais erreur de partage sur le feed.")
-        }
-      } else {
-        toast.success("Story publiée !")
-      }
+  const handleShareToFeed = async () => {
+    try {
+      await postsApi.create({
+        content: "J'ai publié une nouvelle Story ! 🌿",
+        media_urls: [publishedStoryData.media_url],
+        visibility: 'public'
+      })
+      toast.success("Story partagée sur ton feed !")
+    } catch {
+      toast.error("Erreur lors du partage sur le feed.")
+    } finally {
+      setShowSharePrompt(false)
       onClose()
-    } catch { toast.error("Erreur de publication") } finally { setUploading(false) }
+    }
   }
 
   const isToolOpen = activeTool === 'text' || activeTool === 'emoji'
@@ -168,16 +206,20 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[500] bg-black flex flex-col sm:items-center sm:justify-center">
       <div 
         className="w-full h-full sm:h-[90vh] sm:max-h-[850px] sm:w-[420px] bg-gray-900 sm:rounded-3xl overflow-hidden flex flex-col relative shadow-2xl"
-        ref={containerRef}
-        onPointerMove={handlePointerMove}
-        onPointerUp={() => setDraggingId(null)}
-        onPointerLeave={() => setDraggingId(null)}
-        style={{ touchAction: 'none' }}
+        ref={containerRef} onPointerMove={handlePointerMove} onPointerUp={() => setDraggingId(null)} onPointerLeave={() => setDraggingId(null)} style={{ touchAction: 'none' }}
       >
         <div className="absolute inset-0 z-0">
           {mediaUrl ? (
             mediaType === 'video' ? (
-              <video src={mediaUrl} controls autoPlay loop className="w-full h-full object-cover" />
+              <video 
+                src={mediaUrl} 
+                controls 
+                autoPlay 
+                loop 
+                playsInline 
+                muted // 🆕 Obligatoire pour l'aperçu local
+                className="w-full h-full object-contain bg-black"
+              />
             ) : (
               <img src={mediaUrl} className="w-full h-full object-cover" />
             )
@@ -194,21 +236,14 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {mediaUrl && elements.map(el => (
-          <div
-            key={el.id}
-            onPointerDown={(e) => handlePointerDown(e, el.id)}
+          <div key={el.id} onPointerDown={(e) => { e.stopPropagation(); setDraggingId(el.id); }}
             style={{ left: `${el.x}%`, top: `${el.y}%`, transform: 'translate(-50%, -50%)', touchAction: 'none' }}
-            className={`absolute cursor-move select-none z-40 drop-shadow-xl ${
-              el.type === 'text' 
-                ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` 
-                : 'text-5xl'
-            }`}
+            className={`absolute cursor-move select-none z-40 drop-shadow-xl ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` : 'text-5xl'}`}
           >
             {el.content}
           </div>
         ))}
 
-        {/* OUTILS (Texte / Emoji) */}
         {activeTool === 'text' && (
           <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-5 rounded-t-3xl border-t border-gray-800 flex flex-col max-h-[80vh]">
             <div className="flex justify-between items-center mb-4 shrink-0">
@@ -216,12 +251,8 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20}/></button>
             </div>
             
-            <input
-              autoFocus
-              value={textInput}
-              onChange={e => setTextInput(e.target.value)}
-              placeholder="Écris quelque chose..."
-              className={`w-full bg-[#2a2a2a] text-white text-center text-xl outline-none mb-5 p-4 rounded-xl border border-gray-700 shrink-0 ${selectedTextColor} ${selectedFont}`}
+            <input autoFocus value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Écris quelque chose..."
+              className={`w-full bg-[#2a2a2a] text-white text-center text-xl outline-none mb-5 p-4 rounded-xl border border-gray-700 shrink-0 ${selectedTextColor.class} ${selectedFont}`}
               onKeyDown={e => e.key === 'Enter' && addElement('text', textInput)}
             />
             
@@ -238,7 +269,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
                 <p className="text-xs text-gray-400 mb-2">Couleur</p>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {TEXT_COLORS.map(c => (
-                    <button key={c} onClick={() => setSelectedTextColor(c)} className={`shrink-0 w-9 h-9 rounded-full border-2 ${c} ${selectedTextColor === c ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
+                    <button key={c.name} onClick={() => setSelectedTextColor(c)} style={{ backgroundColor: c.hex }} className={`shrink-0 w-9 h-9 rounded-full border-2 ${selectedTextColor.name === c.name ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
                   ))}
                 </div>
               </div>
@@ -246,15 +277,12 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
                 <p className="text-xs text-gray-400 mb-2">Fond</p>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {BG_COLORS.map(bg => (
-                    <button key={bg} onClick={() => setSelectedBg(bg)} className={`shrink-0 w-9 h-9 rounded-full border-2 ${bg === 'bg-transparent' ? 'bg-[#2a2a2a]' : bg} ${selectedBg === bg ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
+                    <button key={bg.name} onClick={() => setSelectedBg(bg)} style={{ backgroundColor: bg.hex }} className={`shrink-0 w-9 h-9 rounded-full border-2 ${selectedBg.name === bg.name ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
                   ))}
                 </div>
               </div>
             </div>
-
-            <button onClick={() => addElement('text', textInput)} className="w-full bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shrink-0">
-              Ajouter le texte
-            </button>
+            <button onClick={() => addElement('text', textInput)} className="w-full bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shrink-0">Ajouter le texte</button>
           </div>
         )}
 
@@ -272,7 +300,6 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* MENU VISIBILITÉ */}
         {activeTool === 'visibility' && (
           <div className="absolute top-16 right-4 z-50 bg-white rounded-xl shadow-xl overflow-hidden w-48">
             <button onClick={() => { setVisibility('public'); setActiveTool(null); }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'public' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Globe size={16}/> Public</button>
@@ -281,51 +308,45 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* BARRE DU BAS */}
         {!mediaUrl && (
           <div className="absolute bottom-10 inset-x-0 flex justify-center items-center gap-8 z-20">
-            <button onClick={() => fileInputRef.current?.click()} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/40 transition">
-              <Upload size={20} className="text-white" />
-            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/40 transition"><Upload size={20} className="text-white" /></button>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="video/*,image/*" className="hidden" />
-
             <button onClick={isRecording ? stopRecording : startRecording} className={`w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-all shadow-xl ${isRecording ? 'bg-red-500/80 scale-110' : 'bg-transparent'}`}>
               <div className={`bg-white transition-all ${isRecording ? 'w-8 h-8 rounded-md' : 'w-16 h-16 rounded-full'}`} />
             </button>
-
-            <button onClick={takePhoto} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/40 transition">
-              <Camera size={20} className="text-white" />
-            </button>
+            <button onClick={takePhoto} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/40 transition"><Camera size={20} className="text-white" /></button>
           </div>
         )}
 
         {mediaUrl && !isToolOpen && (
           <div className="absolute bottom-0 inset-x-0 z-40">
             <div className="flex justify-around items-center px-4 mb-4">
-              <button onClick={() => setActiveTool('text')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg">
-                <Type size={20} />
-              </button>
-              <button onClick={() => setActiveTool('emoji')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg">
-                <Smile size={20} />
-              </button>
+              <button onClick={() => setActiveTool('text')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Type size={20} /></button>
+              <button onClick={() => setActiveTool('emoji')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Smile size={20} /></button>
               <button onClick={() => setActiveTool('visibility')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg">
                 {visibility === 'public' ? <Globe size={20} /> : visibility === 'friends' ? <Users size={20} /> : <Lock size={20} />}
               </button>
             </div>
-
-            <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center gap-3">
-              <button onClick={() => { setMediaUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition">
-                <X size={20} />
+            <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center justify-between gap-3">
+              <button onClick={() => { setMediaUrl(null); setCloudinaryUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
+              <button onClick={handlePublish} disabled={uploading || !cloudinaryUrl} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
+                {uploading ? <Loader className="animate-spin" size={20} /> : <><Send size={20} /> Publier</>}
               </button>
-              
-              <label className="flex-1 flex items-center gap-2 cursor-pointer bg-white/5 px-4 py-3 rounded-xl border border-white/10">
-                <input type="checkbox" checked={shareToFeed} onChange={e => setShareToFeed(e.target.checked)} className="w-5 h-5 accent-blue-500 rounded" />
-                <span className="text-sm text-white font-medium">Publier sur mon Feed</span>
-              </label>
+            </div>
+          </div>
+        )}
 
-              <button onClick={handlePublish} disabled={uploading} className="w-12 h-12 flex items-center justify-center bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition shadow-lg">
-                {uploading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
-              </button>
+        {showSharePrompt && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-6">
+            <div className="bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm text-center border border-gray-800 shadow-2xl">
+              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="text-emerald-500" size={32} /></div>
+              <h3 className="text-white font-bold text-xl mb-2">Story publiée !</h3>
+              <p className="text-gray-400 text-sm mb-6">Veux-tu aussi la partager sur ton fil d'actualité ?</p>
+              <div className="flex flex-col gap-3">
+                <button onClick={handleShareToFeed} className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition">Oui, partager sur mon Feed</button>
+                <button onClick={() => { setShowSharePrompt(false); onClose(); }} className="w-full bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition">Non merci</button>
+              </div>
             </div>
           </div>
         )}

@@ -88,7 +88,8 @@ export default function UserMenu() {
   useEffect(() => {
     if (!open) return
     const updatePosition = (e?: Event) => {
-      if (e && e.target && menuRef.current?.contains(e.target as Node)) return
+      // 🆕 Vérification que e.target est un Node valide
+      if (e && e.target && e.target instanceof Node && menuRef.current?.contains(e.target)) return
       setMenuStyle(computeMenuPosition(buttonRef.current))
     }
     window.addEventListener('resize', updatePosition)
@@ -160,10 +161,8 @@ export default function UserMenu() {
     navigate('/')
   }
 
-  // 🆕 Réorganisation de l'ordre des sections
   const sections: { title: string; items: MenuItem[] }[] = []
 
-  // 1. Admin en premier
   if (isAdmin) {
     sections.push({
       title: 'Administration',
@@ -171,7 +170,6 @@ export default function UserMenu() {
     })
   }
 
-  // 2. Espace Pro (Seller) en premier pour les pros
   if (isPro) {
     sections.push({
       title: 'Espace Pro',
@@ -179,7 +177,6 @@ export default function UserMenu() {
     })
   }
 
-  // 3. Mon espace (client) - toujours présent
   sections.push({
     title: 'Mon espace',
     items: [
@@ -190,7 +187,6 @@ export default function UserMenu() {
     ],
   })
 
-  // 4. Devenir Pro (pour les non-pros)
   if (!isPro) {
     sections.push({
       title: 'Professionnel',
@@ -198,7 +194,6 @@ export default function UserMenu() {
     })
   }
 
-  // 5. Vérification (pour les pros non-admins)
   if (isPro && !isAdmin) {
     sections.push({
       title: 'Vérification',
