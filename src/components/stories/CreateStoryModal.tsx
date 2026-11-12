@@ -38,9 +38,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const [isRecording, setIsRecording] = useState(false)
   const [uploading, setUploading] = useState(false)
   
-  // 🆕 On stocke l'URL Cloudinary séparément
   const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null)
-
   const [showSharePrompt, setShowSharePrompt] = useState(false)
   const [publishedStoryData, setPublishedStoryData] = useState<any>(null)
 
@@ -59,6 +57,8 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const [videoKey, setVideoKey] = useState(0)
+
   useEffect(() => {
     if (!mediaUrl) {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', aspectRatio: 9/16 }, audio: true })
@@ -72,17 +72,21 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     if (!stream) return
     chunksRef.current = []
     
-    let options = { mimeType: 'video/webm;codecs=vp9' }
-    if (!MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-      options = { mimeType: 'video/webm' }
+    let options = { mimeType: 'video/mp4' }
+    if (!MediaRecorder.isTypeSupported('video/mp4')) {
+      options = { mimeType: 'video/webm;codecs=vp9' }
+      if (!MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        options = { mimeType: 'video/webm' }
+      }
     }
     
     const recorder = new MediaRecorder(stream, options)
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     
     recorder.onstop = async () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/mp4' })
-      const file = new File([blob], `story-video-${Date.now()}.mp4`, { type: 'video/mp4' })
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+      const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm'
+      const file = new File([blob], `story-${Date.now()}.${ext}`, { type: recorder.mimeType })
       
       if (stream) stream.getTracks().forEach(t => t.stop())
       await handleUpload(file, 'video')
@@ -117,23 +121,19 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const handleUpload = async (file: File, type: 'video' | 'image') => {
     setUploading(true)
     
-    // 🆕 1. On crée l'URL locale pour un aperçu INSTANTANÉ (0ms)
     const localPreviewUrl = URL.createObjectURL(file)
     setMediaUrl(localPreviewUrl)
     setMediaType(type)
-    setCloudinaryUrl(null) // Reset l'URL Cloudinary en attendant
-
+    setVideoKey(prev => prev + 1)
+    
     try {
-      // 2. On upload vers Cloudinary en arrière-plan
       const res = type === 'video' ? await uploadsApi.uploadPostVideo(file) : await uploadsApi.uploadPostMedia(file)
-      
-      // 3. On stocke l'URL Cloudinary pour la publication (sans changer l'aperçu)
       setCloudinaryUrl(res.url)
-      
+      toast.success("Média prêt !")
     } catch (err) { 
       console.error("❌ Erreur d'upload:", err);
-      toast.error("Erreur d'upload, vérifie le terminal backend.") 
-      setMediaUrl(null)
+      setCloudinaryUrl(localPreviewUrl) // Fallback sur l'URL locale
+      toast.error("Upload échoué. Utilisation de l'URL locale.")
     } finally { 
       setUploading(false) 
     }
@@ -161,8 +161,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handlePublish = async () => {
-    // 🆕 On utilise l'URL Cloudinary, pas l'URL locale !
-    if (!cloudinaryUrl) return toast.error("L'upload de la vidéo n'est pas encore terminé, attends 2 secondes...")
+    if (!cloudinaryUrl) return toast.error("Ajoute un média d'abord")
     
     setUploading(true)
     try {
@@ -185,10 +184,26 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handleShareToFeed = async () => {
+    // 🆕 Sécurité anti-crash
+    const url = publishedStoryData?.media_url
+    if (!url || typeof url !== 'string') {
+      toast.error("Impossible de partager sur le feed : URL manquante.")
+      setShowSharePrompt(false)
+      onClose()
+      return
+    }
+    
+    if (url.startsWith('blob:')) {
+      toast.error("Impossible de partager : la vidéo n'est pas sauvegardée sur le serveur.")
+      setShowSharePrompt(false)
+      onClose()
+      return
+    }
+
     try {
       await postsApi.create({
         content: "J'ai publié une nouvelle Story ! 🌿",
-        media_urls: [publishedStoryData.media_url],
+        media_urls: [url],
         visibility: 'public'
       })
       toast.success("Story partagée sur ton feed !")
@@ -212,13 +227,19 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
           {mediaUrl ? (
             mediaType === 'video' ? (
               <video 
+                key={videoKey}
                 src={mediaUrl} 
                 controls 
                 autoPlay 
                 loop 
                 playsInline 
-                muted // 🆕 Obligatoire pour l'aperçu local
+                muted
+                crossOrigin="anonymous"
                 className="w-full h-full object-contain bg-black"
+                onError={(e) => {
+                  console.error("Erreur lecture vidéo locale:", e);
+                  toast.error("Format vidéo non supporté par le navigateur.");
+                }}
               />
             ) : (
               <img src={mediaUrl} className="w-full h-full object-cover" />
@@ -330,7 +351,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center justify-between gap-3">
               <button onClick={() => { setMediaUrl(null); setCloudinaryUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
-              <button onClick={handlePublish} disabled={uploading || !cloudinaryUrl} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
+              <button onClick={handlePublish} disabled={uploading} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
                 {uploading ? <Loader className="animate-spin" size={20} /> : <><Send size={20} /> Publier</>}
               </button>
             </div>
