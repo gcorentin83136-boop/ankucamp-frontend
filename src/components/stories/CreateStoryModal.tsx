@@ -40,7 +40,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   
   const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null)
   const [showSharePrompt, setShowSharePrompt] = useState(false)
-  const [shareText, setShareText] = useState('') // 🆕 Texte pour le feed
+  const [shareText, setShareText] = useState('')
   const [publishedStoryData, setPublishedStoryData] = useState<any>(null)
 
   const [elements, setElements] = useState<StoryElement[]>([])
@@ -122,13 +122,17 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const handleUpload = async (file: File, type: 'video' | 'image') => {
     setUploading(true)
     
+    // 1. On affiche l'aperçu local instantané
     const localPreviewUrl = URL.createObjectURL(file)
     setMediaUrl(localPreviewUrl)
     setMediaType(type)
     setVideoKey(prev => prev + 1)
     
     try {
+      // 2. On upload vers le backend (qui sauvegarde dans /public/uploads/videos)
       const res = type === 'video' ? await uploadsApi.uploadPostVideo(file) : await uploadsApi.uploadPostMedia(file)
+      
+      // 3. On récupère l'URL du serveur (ex: http://localhost:3001/uploads/videos/xxx.mp4)
       setCloudinaryUrl(res.url)
       toast.success("Média sauvegardé sur le serveur !")
     } catch (err) { 
@@ -162,7 +166,10 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handlePublish = async () => {
-    if (!cloudinaryUrl) return toast.error("La vidéo n'a pas pu être sauvegardée sur le serveur.")
+    // On vérifie que l'URL est bien celle du serveur (pas un blob)
+    if (!cloudinaryUrl || cloudinaryUrl.startsWith('blob:')) {
+      return toast.error("La vidéo n'a pas pu être sauvegardée sur le serveur.")
+    }
     
     setUploading(true)
     try {
@@ -194,7 +201,6 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     }
 
     try {
-      // 🆕 On utilise le texte saisi par l'utilisateur
       await postsApi.create({
         content: shareText.trim() || "J'ai publié une nouvelle Story ! 🌿",
         media_urls: [url],
@@ -359,7 +365,6 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               <h3 className="text-white font-bold text-xl mb-2 text-center">Story publiée !</h3>
               <p className="text-gray-400 text-sm mb-6 text-center">Veux-tu aussi la partager sur ton fil d'actualité ?</p>
               
-              {/* 🆕 Champ de texte */}
               <textarea
                 value={shareText}
                 onChange={(e) => setShareText(e.target.value)}
