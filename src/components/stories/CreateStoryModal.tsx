@@ -40,6 +40,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   
   const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null)
   const [showSharePrompt, setShowSharePrompt] = useState(false)
+  const [shareText, setShareText] = useState('') // 🆕 Texte pour le feed
   const [publishedStoryData, setPublishedStoryData] = useState<any>(null)
 
   const [elements, setElements] = useState<StoryElement[]>([])
@@ -129,11 +130,11 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     try {
       const res = type === 'video' ? await uploadsApi.uploadPostVideo(file) : await uploadsApi.uploadPostMedia(file)
       setCloudinaryUrl(res.url)
-      toast.success("Média prêt !")
+      toast.success("Média sauvegardé sur le serveur !")
     } catch (err) { 
       console.error("❌ Erreur d'upload:", err);
-      setCloudinaryUrl(localPreviewUrl) // Fallback sur l'URL locale
-      toast.error("Upload échoué. Utilisation de l'URL locale.")
+      setCloudinaryUrl(null)
+      toast.error("Impossible de sauvegarder sur le serveur.")
     } finally { 
       setUploading(false) 
     }
@@ -161,7 +162,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handlePublish = async () => {
-    if (!cloudinaryUrl) return toast.error("Ajoute un média d'abord")
+    if (!cloudinaryUrl) return toast.error("La vidéo n'a pas pu être sauvegardée sur le serveur.")
     
     setUploading(true)
     try {
@@ -184,25 +185,18 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handleShareToFeed = async () => {
-    // 🆕 Sécurité anti-crash
     const url = publishedStoryData?.media_url
-    if (!url || typeof url !== 'string') {
-      toast.error("Impossible de partager sur le feed : URL manquante.")
-      setShowSharePrompt(false)
-      onClose()
-      return
-    }
-    
-    if (url.startsWith('blob:')) {
-      toast.error("Impossible de partager : la vidéo n'est pas sauvegardée sur le serveur.")
+    if (!url || typeof url !== 'string' || url.startsWith('blob:')) {
+      toast.error("Impossible de partager sur le feed : la vidéo n'est pas hébergée sur le serveur.")
       setShowSharePrompt(false)
       onClose()
       return
     }
 
     try {
+      // 🆕 On utilise le texte saisi par l'utilisateur
       await postsApi.create({
-        content: "J'ai publié une nouvelle Story ! 🌿",
+        content: shareText.trim() || "J'ai publié une nouvelle Story ! 🌿",
         media_urls: [url],
         visibility: 'public'
       })
@@ -351,7 +345,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center justify-between gap-3">
               <button onClick={() => { setMediaUrl(null); setCloudinaryUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
-              <button onClick={handlePublish} disabled={uploading} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
+              <button onClick={handlePublish} disabled={uploading || !cloudinaryUrl} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
                 {uploading ? <Loader className="animate-spin" size={20} /> : <><Send size={20} /> Publier</>}
               </button>
             </div>
@@ -360,12 +354,21 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
 
         {showSharePrompt && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-6">
-            <div className="bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm text-center border border-gray-800 shadow-2xl">
+            <div className="bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm border border-gray-800 shadow-2xl">
               <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="text-emerald-500" size={32} /></div>
-              <h3 className="text-white font-bold text-xl mb-2">Story publiée !</h3>
-              <p className="text-gray-400 text-sm mb-6">Veux-tu aussi la partager sur ton fil d'actualité ?</p>
+              <h3 className="text-white font-bold text-xl mb-2 text-center">Story publiée !</h3>
+              <p className="text-gray-400 text-sm mb-6 text-center">Veux-tu aussi la partager sur ton fil d'actualité ?</p>
+              
+              {/* 🆕 Champ de texte */}
+              <textarea
+                value={shareText}
+                onChange={(e) => setShareText(e.target.value)}
+                placeholder="Écris une légende pour ton feed..."
+                className="w-full bg-[#2a2a2a] text-white rounded-xl p-3 text-sm border border-gray-700 focus:border-blue-500 outline-none resize-none h-24 mb-4"
+              />
+
               <div className="flex flex-col gap-3">
-                <button onClick={handleShareToFeed} className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition">Oui, partager sur mon Feed</button>
+                <button onClick={handleShareToFeed} className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition">Partager sur mon Feed</button>
                 <button onClick={() => { setShowSharePrompt(false); onClose(); }} className="w-full bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition">Non merci</button>
               </div>
             </div>
