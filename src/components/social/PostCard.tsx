@@ -32,9 +32,9 @@ export function formatDate(iso: string) {
   } catch { return iso }
 }
 
-export function authorName(p: Post): string { 
-  if (!p.author) return 'Utilisateur'; 
-  return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username 
+export function authorName(p: Post): string {
+  if (!p.author) return 'Utilisateur'
+  return `${p.author.first_name} ${p.author.last_name}`.trim() || p.author.username
 }
 
 export function parseMedia(p: Post): string[] {
@@ -46,8 +46,8 @@ export function parseMedia(p: Post): string[] {
   return []
 }
 
-export function isVideoUrl(url: string): boolean { 
-  return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov') 
+export function isVideoUrl(url: string): boolean {
+  return url.includes('/video/') || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov')
 }
 
 function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox: (i: number) => void }) {
@@ -82,9 +82,7 @@ function MediaGrid({ media, onOpenLightbox }: { media: string[], onOpenLightbox:
               {isVideo ? (
                 <>
                   <video src={url} className="w-full h-full object-cover" preload="metadata" muted playsInline />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                    <Play size={32} fill="#fff" className="text-white" strokeWidth={0} />
-                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30"><Play size={32} fill="#fff" className="text-white" strokeWidth={0} /></div>
                 </>
               ) : (
                 <img src={url} alt="" className="w-full h-full object-cover hover:opacity-95 transition" loading="lazy" />
@@ -159,24 +157,18 @@ export default function PostCard({
           </div>
         )}
 
-        {/* 🆕 AFFICHAGE DU POST PARTAGÉ AVEC GESTION MULTI-MÉDIAS */}
         {sharedFrom && (
           <div className="px-4 pb-3">
             <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
               <div className="p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  {sharedFrom.author?.avatar_url ? (
-                    <img src={sharedFrom.author.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-emerald-600" />
-                  )}
+                  {sharedFrom.author?.avatar_url ? <img src={sharedFrom.author.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" /> : <div className="w-6 h-6 rounded-full bg-emerald-600" />}
                   <span className="text-xs font-bold text-gray-900">{sharedFrom.author?.first_name} {sharedFrom.author?.last_name}</span>
                   <span className="text-[10px] text-gray-500">{formatDate(sharedFrom.created_at)}</span>
                 </div>
                 {sharedFrom.content && <p className="text-sm text-gray-700 whitespace-pre-line break-words">{sharedFrom.content}</p>}
               </div>
               
-              {/* Gestion de 1 à 4 médias dans le post partagé */}
               {sharedFrom.media_urls && sharedFrom.media_urls.length > 0 && (
                 <div className="px-3 pb-3">
                   {sharedFrom.media_urls.length === 1 ? (
@@ -189,16 +181,8 @@ export default function PostCard({
                     <div className="grid grid-cols-2 gap-1 rounded-lg overflow-hidden">
                       {sharedFrom.media_urls.slice(0, 4).map((url: string, idx: number) => (
                         <div key={idx} className="relative w-full aspect-square bg-gray-200">
-                          {isVideoUrl(url) ? (
-                            <video src={url} className="w-full h-full object-cover" controls playsInline />
-                          ) : (
-                            <img src={url} alt="" className="w-full h-full object-cover" />
-                          )}
-                          {idx === 3 && sharedFrom.media_urls.length > 4 && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-xl">
-                              +{sharedFrom.media_urls.length - 4}
-                            </div>
-                          )}
+                          {isVideoUrl(url) ? <video src={url} className="w-full h-full object-cover" controls playsInline /> : <img src={url} alt="" className="w-full h-full object-cover" />}
+                          {idx === 3 && sharedFrom.media_urls.length > 4 && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-xl">+{sharedFrom.media_urls.length - 4}</div>}
                         </div>
                       ))}
                     </div>
@@ -209,10 +193,10 @@ export default function PostCard({
           </div>
         )}
 
-        {sharedEvent && ( 
+        {sharedEvent && (
           <div className="px-4 pb-3"><Link to={`/events/${sharedEvent.id}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">{sharedEvent.cover_url && <img src={sharedEvent.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />}<div className="flex-1 min-w-0 w-full"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Calendar size={10} /> Événement partagé</p><p className="text-sm font-bold text-gray-900 truncate">{sharedEvent.title}</p><p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Clock size={12} /> {new Date(sharedEvent.start_at).toLocaleDateString('fr-FR')}</p><p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={12} /> {sharedEvent.city || 'Lieu non précisé'}</p></div></Link></div>
         )}
-        {sharedArticle && ( 
+        {sharedArticle && (
           <div className="px-4 pb-3"><Link to={`/articles/${sharedArticle.slug}`} className="flex flex-col sm:flex-row items-center gap-3 rounded-xl border border-gray-200 overflow-hidden hover:bg-gray-50 transition p-3 bg-gray-50/50">{sharedArticle.cover_url && <img src={sharedArticle.cover_url} alt="" className="w-full sm:w-24 h-32 sm:h-24 object-cover rounded-lg shrink-0" />}<div className="flex-1 min-w-0 w-full"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1 flex items-center gap-1"><Newspaper size={10} /> Article partagé</p><p className="text-sm font-bold text-gray-900 truncate">{sharedArticle.title}</p>{sharedArticle.excerpt && <p className="text-xs text-gray-500 truncate mt-1">{sharedArticle.excerpt}</p>}</div></Link></div>
         )}
         

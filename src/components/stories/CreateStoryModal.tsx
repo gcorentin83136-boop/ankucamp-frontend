@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send, CheckCircle2 } from 'lucide-react'
+import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import uploadsApi from '../../service/api/uploads.api'
 import storiesApi from '../../service/api/stories.api'
-import postsApi from '../../service/api/posts.api'
 
 const ANKU_EMOJIS = ['🌱', '🌿', '🍀', '🌳', '🌻', '🌺', '🍎', '🍇', '🥕', '🍞', '🐝', '🦋', '☀️', '🌙', '🌍', '💚']
 const FONTS = ['font-sans', 'font-serif', 'font-mono', 'font-bold', 'font-black']
@@ -37,11 +36,6 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public')
   const [isRecording, setIsRecording] = useState(false)
   const [uploading, setUploading] = useState(false)
-  
-  const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null)
-  const [showSharePrompt, setShowSharePrompt] = useState(false)
-  const [shareText, setShareText] = useState('')
-  const [publishedStoryData, setPublishedStoryData] = useState<any>(null)
 
   const [elements, setElements] = useState<StoryElement[]>([])
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -72,27 +66,19 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const startRecording = () => {
     if (!stream) return
     chunksRef.current = []
-    
     let options = { mimeType: 'video/mp4' }
     if (!MediaRecorder.isTypeSupported('video/mp4')) {
       options = { mimeType: 'video/webm;codecs=vp9' }
-      if (!MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-        options = { mimeType: 'video/webm' }
-      }
     }
-    
     const recorder = new MediaRecorder(stream, options)
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-    
     recorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
       const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm'
       const file = new File([blob], `story-${Date.now()}.${ext}`, { type: recorder.mimeType })
-      
       if (stream) stream.getTracks().forEach(t => t.stop())
       await handleUpload(file, 'video')
     }
-    
     recorder.start()
     mediaRecorderRef.current = recorder
     setIsRecording(true)
@@ -121,24 +107,14 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
 
   const handleUpload = async (file: File, type: 'video' | 'image') => {
     setUploading(true)
-    
-    // 1. On affiche l'aperçu local instantané
-    const localPreviewUrl = URL.createObjectURL(file)
-    setMediaUrl(localPreviewUrl)
-    setMediaType(type)
-    setVideoKey(prev => prev + 1)
-    
     try {
-      // 2. On upload vers le backend (qui sauvegarde dans /public/uploads/videos)
       const res = type === 'video' ? await uploadsApi.uploadPostVideo(file) : await uploadsApi.uploadPostMedia(file)
-      
-      // 3. On récupère l'URL du serveur (ex: http://localhost:3001/uploads/videos/xxx.mp4)
-      setCloudinaryUrl(res.url)
-      toast.success("Média sauvegardé sur le serveur !")
+      setMediaUrl(res.url)
+      setMediaType(type)
+      setVideoKey(prev => prev + 1)
     } catch (err) { 
       console.error("❌ Erreur d'upload:", err);
-      setCloudinaryUrl(null)
-      toast.error("Impossible de sauvegarder sur le serveur.")
+      toast.error("Erreur d'upload") 
     } finally { 
       setUploading(false) 
     }
@@ -166,15 +142,11 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   }
 
   const handlePublish = async () => {
-    // On vérifie que l'URL est bien celle du serveur (pas un blob)
-    if (!cloudinaryUrl || cloudinaryUrl.startsWith('blob:')) {
-      return toast.error("La vidéo n'a pas pu être sauvegardée sur le serveur.")
-    }
-    
+    if (!mediaUrl) return toast.error("Ajoute un média d'abord")
     setUploading(true)
     try {
-      const res = await storiesApi.create({
-        media_url: cloudinaryUrl,
+      await storiesApi.create({
+        media_url: mediaUrl,
         media_type: mediaType,
         caption: '', 
         visibility,
@@ -182,36 +154,12 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
         expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000),
         elements: JSON.stringify(elements),
       })
-      setPublishedStoryData(res)
-      setShowSharePrompt(true)
+      toast.success("Story publiée !")
+      onClose()
     } catch { 
       toast.error("Erreur de publication") 
     } finally { 
       setUploading(false) 
-    }
-  }
-
-  const handleShareToFeed = async () => {
-    const url = publishedStoryData?.media_url
-    if (!url || typeof url !== 'string' || url.startsWith('blob:')) {
-      toast.error("Impossible de partager sur le feed : la vidéo n'est pas hébergée sur le serveur.")
-      setShowSharePrompt(false)
-      onClose()
-      return
-    }
-
-    try {
-      await postsApi.create({
-        content: shareText.trim() || "J'ai publié une nouvelle Story ! 🌿",
-        media_urls: [url],
-        visibility: 'public'
-      })
-      toast.success("Story partagée sur ton feed !")
-    } catch {
-      toast.error("Erreur lors du partage sur le feed.")
-    } finally {
-      setShowSharePrompt(false)
-      onClose()
     }
   }
 
@@ -234,12 +182,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
                 loop 
                 playsInline 
                 muted
-                crossOrigin="anonymous"
                 className="w-full h-full object-contain bg-black"
-                onError={(e) => {
-                  console.error("Erreur lecture vidéo locale:", e);
-                  toast.error("Format vidéo non supporté par le navigateur.");
-                }}
               />
             ) : (
               <img src={mediaUrl} className="w-full h-full object-cover" />
@@ -350,32 +293,10 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               </button>
             </div>
             <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center justify-between gap-3">
-              <button onClick={() => { setMediaUrl(null); setCloudinaryUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
-              <button onClick={handlePublish} disabled={uploading || !cloudinaryUrl} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
+              <button onClick={() => { setMediaUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
+              <button onClick={handlePublish} disabled={uploading} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
                 {uploading ? <Loader className="animate-spin" size={20} /> : <><Send size={20} /> Publier</>}
               </button>
-            </div>
-          </div>
-        )}
-
-        {showSharePrompt && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-6">
-            <div className="bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm border border-gray-800 shadow-2xl">
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="text-emerald-500" size={32} /></div>
-              <h3 className="text-white font-bold text-xl mb-2 text-center">Story publiée !</h3>
-              <p className="text-gray-400 text-sm mb-6 text-center">Veux-tu aussi la partager sur ton fil d'actualité ?</p>
-              
-              <textarea
-                value={shareText}
-                onChange={(e) => setShareText(e.target.value)}
-                placeholder="Écris une légende pour ton feed..."
-                className="w-full bg-[#2a2a2a] text-white rounded-xl p-3 text-sm border border-gray-700 focus:border-blue-500 outline-none resize-none h-24 mb-4"
-              />
-
-              <div className="flex flex-col gap-3">
-                <button onClick={handleShareToFeed} className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition">Partager sur mon Feed</button>
-                <button onClick={() => { setShowSharePrompt(false); onClose(); }} className="w-full bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition">Non merci</button>
-              </div>
             </div>
           </div>
         )}
