@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send, Film } from 'lucide-react'
-import data from '@emoji-mart/data'
-import Picker from '@emoji-mart/react'
+import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send, Film, Music, Play, Pause } from 'lucide-react'
+import EmojiPicker from 'emoji-picker-react' // 👈 Nouvel import propre
 import toast from 'react-hot-toast'
 import uploadsApi from '../../service/api/uploads.api'
 import storiesApi from '../../service/api/stories.api'
@@ -24,6 +23,12 @@ const BG_COLORS = [
   { name: 'blue', hex: '#3B82F6', class: 'bg-blue-500' },
   { name: 'green', hex: '#10B981', class: 'bg-emerald-500' },
   { name: 'red', hex: '#EF4444', class: 'bg-red-500' }
+]
+
+const MOCK_TRACKS = [
+  { id: '1', title: 'Chill Vibes (Lo-Fi)', artist: 'Free Music', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+  { id: '2', title: 'Upbeat Pop', artist: 'Free Music', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+  { id: '3', title: 'Cinematic Sunset', artist: 'Free Music', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' }
 ]
 
 type StoryElement = {
@@ -50,7 +55,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [resizingId, setResizingId] = useState<string | null>(null)
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
-  const [activeTool, setActiveTool] = useState<'text' | 'emoji' | 'gif' | 'visibility' | null>(null)
+  const [activeTool, setActiveTool] = useState<'text' | 'emoji' | 'gif' | 'music' | 'visibility' | null>(null)
 
   const [textInput, setTextInput] = useState('')
   const [selectedFont, setSelectedFont] = useState(FONTS[0])
@@ -60,6 +65,10 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const [gifSearch, setGifSearch] = useState('')
   const [gifResults, setGifResults] = useState<any[]>([])
   const [searchingGif, setSearchingGif] = useState(false)
+
+  const [selectedMusic, setSelectedMusic] = useState<{ title: string, artist: string, url: string } | null>(null)
+  const [playingPreview, setPlayingPreview] = useState<string | null>(null)
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -83,12 +92,24 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     return () => { if (stream) stream.getTracks().forEach(t => t.stop()) }
   }, [mediaUrl])
 
-  // Charger les stickers tendances à l'ouverture de l'outil GIF
   useEffect(() => {
     if (activeTool === 'gif' && gifResults.length === 0) {
       fetchTrendingStickers()
     }
   }, [activeTool])
+
+  useEffect(() => {
+    if (playingPreview) {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.src = playingPreview;
+        audioPreviewRef.current.play();
+      }
+    } else {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+      }
+    }
+  }, [playingPreview])
 
   const startRecording = () => {
     if (!stream) return
@@ -189,19 +210,13 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const handleResizeStart = (e: React.PointerEvent, el: StoryElement) => {
     e.stopPropagation()
     e.preventDefault()
-
     if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     const elCenterX = rect.left + (el.x / 100) * rect.width
     const elCenterY = rect.top + (el.y / 100) * rect.height
-
     const startDist = Math.hypot(e.clientX - elCenterX, e.clientY - elCenterY)
-
     setResizingId(el.id)
-    resizeStartRef.current = {
-      startDist,
-      startScale: el.scale || 1
-    }
+    resizeStartRef.current = { startDist, startScale: el.scale || 1 }
   }
 
   const addElement = (type: 'text' | 'emoji', content: string) => {
@@ -221,12 +236,9 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
   const fetchTrendingStickers = async () => {
     const apiKey = import.meta.env.VITE_GIPHY_API_KEY
     if (!apiKey) return
-
     setSearchingGif(true)
     try {
-      const res = await fetch(
-        `https://api.giphy.com/v1/stickers/trending?api_key=${apiKey}&limit=20&rating=g`
-      )
+      const res = await fetch(`https://api.giphy.com/v1/stickers/trending?api_key=${apiKey}&limit=20&rating=g`)
       const json = await res.json()
       setGifResults(json.data || [])
     } catch (err) {
@@ -243,14 +255,12 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     }
     const apiKey = import.meta.env.VITE_GIPHY_API_KEY
     if (!apiKey) {
-      toast.error("Clé API Giphy manquante (VITE_GIPHY_API_KEY)")
+      toast.error("Clé API Giphy manquante")
       return
     }
     setSearchingGif(true)
     try {
-      const res = await fetch(
-        `https://api.giphy.com/v1/stickers/search?api_key=${apiKey}&q=${encodeURIComponent(gifSearch)}&limit=20&rating=g`
-      )
+      const res = await fetch(`https://api.giphy.com/v1/stickers/search?api_key=${apiKey}&q=${encodeURIComponent(gifSearch)}&limit=20&rating=g`)
       const json = await res.json()
       setGifResults(json.data || [])
     } catch (err) {
@@ -259,6 +269,16 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     } finally {
       setSearchingGif(false)
     }
+  }
+
+  const handleSelectMusic = (track: any) => {
+    setSelectedMusic({ title: track.title, artist: track.artist, url: track.url })
+    setPlayingPreview(null)
+    setActiveTool(null)
+  }
+
+  const handleRemoveMusic = () => {
+    setSelectedMusic(null)
   }
 
   const handlePublish = async () => {
@@ -273,6 +293,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
         type: 'story',
         expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000),
         elements: JSON.stringify(elements),
+        music: selectedMusic ? JSON.stringify(selectedMusic) : null,
       })
       toast.success("Story publiée !")
       onClose()
@@ -283,10 +304,12 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const isToolOpen = activeTool === 'text' || activeTool === 'emoji' || activeTool === 'gif'
+  const isToolOpen = activeTool === 'text' || activeTool === 'emoji' || activeTool === 'gif' || activeTool === 'music'
 
   return (
     <div className="fixed inset-0 z-[500] bg-black flex flex-col sm:items-center sm:justify-center">
+      <audio ref={audioPreviewRef} onEnded={() => setPlayingPreview(null)} />
+
       <div
         className="w-full h-full sm:h-[90vh] sm:max-h-[850px] sm:w-[420px] bg-gray-900 sm:rounded-3xl overflow-hidden flex flex-col relative shadow-2xl"
         ref={containerRef}
@@ -313,27 +336,27 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-white bg-black/30 backdrop-blur-md p-2.5 rounded-full hover:bg-black/50 transition pointer-events-auto">
             <X size={20} />
           </button>
-          <span className="text-white font-bold text-sm bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-full">Nouvelle Story</span>
+          
+          {selectedMusic ? (
+            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 pointer-events-auto">
+              <Music size={14} className="text-blue-400 animate-pulse" />
+              <span className="text-white text-xs font-bold truncate max-w-[120px]">{selectedMusic.title}</span>
+              <button onClick={handleRemoveMusic} className="text-gray-400 hover:text-white ml-1"><X size={14} /></button>
+            </div>
+          ) : (
+            <span className="text-white font-bold text-sm bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-full">Nouvelle Story</span>
+          )}
+          
           <div className="w-10" />
         </div>
 
-        {/* ÉLÉMENTS SUPERPOSÉS (Sans bordures visibles) */}
         {mediaUrl && elements.map(el => {
           const isSelected = selectedElementId === el.id;
           return (
             <div
               key={el.id}
-              onPointerDown={(e) => { 
-                e.stopPropagation(); 
-                setDraggingId(el.id); 
-                setSelectedElementId(el.id);
-              }}
-              style={{ 
-                left: `${el.x}%`, 
-                top: `${el.y}%`, 
-                transform: `translate(-50%, -50%) scale(${el.scale || 1})`,
-                touchAction: 'none',
-              }}
+              onPointerDown={(e) => { e.stopPropagation(); setDraggingId(el.id); setSelectedElementId(el.id); }}
+              style={{ left: `${el.x}%`, top: `${el.y}%`, transform: `translate(-50%, -50%) scale(${el.scale || 1})`, touchAction: 'none' }}
               className={`absolute cursor-move select-none z-40 drop-shadow-xl rounded-md ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 text-xl` : ''}`}
             >
               {el.content.startsWith('http') ? (
@@ -341,17 +364,46 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               ) : (
                 el.content
               )}
-
-              {/* POIGNÉE INVISIBLE (Coin bas-droit) */}
               {isSelected && (
-                <div
-                  onPointerDown={(e) => handleResizeStart(e, el)}
-                  className="absolute -bottom-4 -right-4 w-10 h-10 bg-transparent cursor-nwse-resize z-50 pointer-events-auto"
-                />
+                <div onPointerDown={(e) => handleResizeStart(e, el)} className="absolute -bottom-4 -right-4 w-10 h-10 bg-transparent cursor-nwse-resize z-50 pointer-events-auto" />
               )}
             </div>
           )
         })}
+
+        {activeTool === 'music' && (
+          <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-4 rounded-t-3xl border-t border-gray-800 max-h-[60vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4 shrink-0">
+              <span className="text-white font-bold flex items-center gap-2"><Music size={18}/> Ajouter une musique</span>
+              <button onClick={() => { setActiveTool(null); setPlayingPreview(null); }} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
+            </div>
+            
+            <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] space-y-2">
+              {MOCK_TRACKS.map((track) => (
+                <div key={track.id} className="flex items-center justify-between bg-[#2a2a2a] p-3 rounded-xl border border-gray-700">
+                  <div>
+                    <p className="text-white font-bold text-sm">{track.title}</p>
+                    <p className="text-gray-400 text-xs">{track.artist}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setPlayingPreview(playingPreview === track.url ? null : track.url)}
+                      className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center hover:bg-blue-500/40 transition"
+                    >
+                      {playingPreview === track.url ? <Pause size={18} /> : <Play size={18} className="ml-1" />}
+                    </button>
+                    <button 
+                      onClick={() => handleSelectMusic(track)}
+                      className="px-4 py-2 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition"
+                    >
+                      Choisir
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {activeTool === 'text' && (
           <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-5 rounded-t-3xl border-t border-gray-800 flex flex-col max-h-[80vh]">
@@ -359,16 +411,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               <span className="text-white font-bold">Ajouter du texte</span>
               <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
             </div>
-
-            <input
-              autoFocus
-              value={textInput}
-              onChange={e => setTextInput(e.target.value)}
-              placeholder="Écris quelque chose..."
-              className={`w-full bg-[#2a2a2a] text-white text-center text-xl outline-none mb-5 p-4 rounded-xl border border-gray-700 shrink-0 ${selectedTextColor.class} ${selectedFont}`}
-              onKeyDown={e => e.key === 'Enter' && addElement('text', textInput)}
-            />
-
+            <input autoFocus value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Écris quelque chose..." className={`w-full bg-[#2a2a2a] text-white text-center text-xl outline-none mb-5 p-4 rounded-xl border border-gray-700 shrink-0 ${selectedTextColor.class} ${selectedFont}`} onKeyDown={e => e.key === 'Enter' && addElement('text', textInput)} />
             <div className="space-y-4 mb-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-1">
               <div>
                 <p className="text-xs text-gray-400 mb-2">Police</p>
@@ -399,14 +442,21 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* 👇 NOUVEAU PICKER D'EMOJIS PROPRE */}
         {activeTool === 'emoji' && (
           <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-2 rounded-t-3xl border-t border-gray-800 max-h-[60vh] flex flex-col">
             <div className="flex justify-between items-center mb-2 px-2 shrink-0">
               <span className="text-white font-bold">Emojis</span>
               <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
             </div>
-            <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ height: 350 }}>
-              <Picker data={data} onEmojiSelect={(emoji: any) => addElement('emoji', emoji.native)} theme="dark" previewPosition="none" skinTonePosition="none" />
+            <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex justify-center" style={{ height: 350 }}>
+              <EmojiPicker 
+                onEmojiClick={(emojiData) => addElement('emoji', emojiData.emoji)} 
+                theme="dark" 
+                lazyLoadEmojis={true}
+                width="100%"
+                height="100%"
+              />
             </div>
           </div>
         )}
@@ -418,19 +468,11 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
             </div>
             <div className="flex gap-2 mb-4">
-              <input 
-                type="text" 
-                value={gifSearch} 
-                onChange={(e) => setGifSearch(e.target.value)} 
-                onKeyDown={(e) => e.key === 'Enter' && searchGifs()} 
-                placeholder="Rechercher des Stickers..." 
-                className="flex-1 bg-[#2a2a2a] text-white rounded-xl p-3 text-sm border border-gray-700 focus:border-blue-500 outline-none" 
-              />
+              <input type="text" value={gifSearch} onChange={(e) => setGifSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchGifs()} placeholder="Rechercher des Stickers..." className="flex-1 bg-[#2a2a2a] text-white rounded-xl p-3 text-sm border border-gray-700 focus:border-blue-500 outline-none" />
               <button onClick={searchGifs} disabled={searchingGif} className="bg-blue-500 text-white px-4 rounded-xl font-bold disabled:opacity-50">
                 {searchingGif ? <Loader size={16} className="animate-spin" /> : 'Go'}
               </button>
             </div>
-            {/* ICI LA BARRE DE SCROLL EST MASQUÉE */}
             <div className="grid grid-cols-2 gap-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {gifResults.map((gif) => (
                 <img key={gif.id} src={gif.images.fixed_height_small.url} alt={gif.title} className="w-full rounded-lg cursor-pointer hover:opacity-80 transition bg-black/20" onClick={() => { addElement('emoji', gif.images.original.url); setActiveTool(null); }} />
@@ -464,12 +506,13 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               <button onClick={() => setActiveTool('text')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Type size={20} /></button>
               <button onClick={() => setActiveTool('emoji')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Smile size={20} /></button>
               <button onClick={() => setActiveTool('gif')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Film size={20} /></button>
+              <button onClick={() => setActiveTool('music')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Music size={20} /></button>
               <button onClick={() => setActiveTool('visibility')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg">
                 {visibility === 'public' ? <Globe size={20} /> : visibility === 'friends' ? <Users size={20} /> : <Lock size={20} />}
               </button>
             </div>
             <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center justify-between gap-3">
-              <button onClick={() => { setMediaUrl(null); setElements([]) }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
+              <button onClick={() => { setMediaUrl(null); setElements([]); setSelectedMusic(null); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
               <button onClick={handlePublish} disabled={uploading} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
                 {uploading ? <Loader className="animate-spin" size={20} /> : <><Send size={20} /> Publier</>}
               </button>
