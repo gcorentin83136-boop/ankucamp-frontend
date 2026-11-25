@@ -32,3 +32,4 @@ dist-ssr
 *.bak
 *.bak2
 *.bak*
+.env

@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send } from 'lucide-react'
+import { Camera, Upload, X, Loader, Type, Smile, Globe, Users, Lock, Send, Film } from 'lucide-react'
+import data from '@emoji-mart/data'
+import Picker from '@emoji-mart/react'
 import toast from 'react-hot-toast'
 import uploadsApi from '../../service/api/uploads.api'
 import storiesApi from '../../service/api/stories.api'
 
-const ANKU_EMOJIS = ['🌱', '🌿', '🍀', '🌳', '🌻', '🌺', '🍎', '🍇', '🥕', '🍞', '🐝', '🦋', '☀️', '🌙', '🌍', '💚']
 const FONTS = ['font-sans', 'font-serif', 'font-mono', 'font-bold', 'font-black']
 
 const TEXT_COLORS = [
@@ -15,6 +16,7 @@ const TEXT_COLORS = [
   { name: 'red', hex: '#EF4444', class: 'text-red-500' },
   { name: 'yellow', hex: '#FACC15', class: 'text-yellow-400' }
 ]
+
 const BG_COLORS = [
   { name: 'transparent', hex: 'transparent', class: 'bg-transparent border-gray-500' },
   { name: 'black', hex: 'rgba(0,0,0,0.6)', class: 'bg-black/60' },
@@ -25,8 +27,15 @@ const BG_COLORS = [
 ]
 
 type StoryElement = {
-  id: string; type: 'text' | 'emoji'; content: string; x: number; y: number;
-  font?: string; bgColor?: string; textColor?: string;
+  id: string
+  type: 'text' | 'emoji'
+  content: string
+  x: number
+  y: number
+  scale?: number
+  font?: string
+  bgColor?: string
+  textColor?: string
 }
 
 export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
@@ -39,34 +48,52 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
 
   const [elements, setElements] = useState<StoryElement[]>([])
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [activeTool, setActiveTool] = useState<'text' | 'emoji' | 'visibility' | null>(null)
-  
+  const [resizingId, setResizingId] = useState<string | null>(null)
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  const [activeTool, setActiveTool] = useState<'text' | 'emoji' | 'gif' | 'visibility' | null>(null)
+
   const [textInput, setTextInput] = useState('')
   const [selectedFont, setSelectedFont] = useState(FONTS[0])
   const [selectedBg, setSelectedBg] = useState(BG_COLORS[1])
   const [selectedTextColor, setSelectedTextColor] = useState(TEXT_COLORS[0])
+
+  const [gifSearch, setGifSearch] = useState('')
+  const [gifResults, setGifResults] = useState<any[]>([])
+  const [searchingGif, setSearchingGif] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  
+  const resizeStartRef = useRef<{ startDist: number, startScale: number } | null>(null)
 
   const [videoKey, setVideoKey] = useState(0)
 
   useEffect(() => {
     if (!mediaUrl) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', aspectRatio: 9/16 }, audio: true })
-        .then((s) => { setStream(s); if (videoRef.current) videoRef.current.srcObject = s })
-        .catch(() => { toast.error("Caméra inaccessible."); })
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', aspectRatio: 9 / 16 }, audio: true })
+        .then((s) => {
+          setStream(s)
+          if (videoRef.current) videoRef.current.srcObject = s
+        })
+        .catch(() => { toast.error('Caméra inaccessible.') })
     }
     return () => { if (stream) stream.getTracks().forEach(t => t.stop()) }
   }, [mediaUrl])
 
+  // Charger les stickers tendances à l'ouverture de l'outil GIF
+  useEffect(() => {
+    if (activeTool === 'gif' && gifResults.length === 0) {
+      fetchTrendingStickers()
+    }
+  }, [activeTool])
+
   const startRecording = () => {
     if (!stream) return
     chunksRef.current = []
-    let options = { mimeType: 'video/mp4' }
+    let options: MediaRecorderOptions = { mimeType: 'video/mp4' }
     if (!MediaRecorder.isTypeSupported('video/mp4')) {
       options = { mimeType: 'video/webm;codecs=vp9' }
     }
@@ -112,25 +139,74 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
       setMediaUrl(res.url)
       setMediaType(type)
       setVideoKey(prev => prev + 1)
-    } catch (err) { 
-      console.error("❌ Erreur d'upload:", err);
-      toast.error("Erreur d'upload") 
-    } finally { 
-      setUploading(false) 
+    } catch (err) {
+      console.error("❌ Erreur d'upload:", err)
+      toast.error("Erreur d'upload")
+    } finally {
+      setUploading(false)
     }
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!draggingId || !containerRef.current) return
+    if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
-    const x = Math.max(10, Math.min(90, ((e.clientX - rect.left) / rect.width) * 100))
-    const y = Math.max(10, Math.min(90, ((e.clientY - rect.top) / rect.height) * 100))
-    setElements(prev => prev.map(el => el.id === draggingId ? { ...el, x, y } : el))
+
+    if (resizingId && resizeStartRef.current) {
+      const el = elements.find(item => item.id === resizingId)
+      if (!el) return
+
+      const elCenterX = rect.left + (el.x / 100) * rect.width
+      const elCenterY = rect.top + (el.y / 100) * rect.height
+
+      const currentDist = Math.hypot(e.clientX - elCenterX, e.clientY - elCenterY)
+      const scaleFactor = currentDist / Math.max(resizeStartRef.current.startDist, 1)
+      
+      const newScale = Math.max(0.2, Math.min(5, resizeStartRef.current.startScale * scaleFactor))
+
+      setElements(prev => prev.map(item => item.id === resizingId ? { ...item, scale: newScale } : item))
+      return
+    }
+
+    if (draggingId) {
+      const x = Math.max(10, Math.min(90, ((e.clientX - rect.left) / rect.width) * 100))
+      const y = Math.max(10, Math.min(90, ((e.clientY - rect.top) / rect.height) * 100))
+      setElements(prev => prev.map(el => el.id === draggingId ? { ...el, x, y } : el))
+    }
+  }
+
+  const handlePointerUp = () => {
+    setDraggingId(null)
+    setResizingId(null)
+    resizeStartRef.current = null
+  }
+
+  const handleContainerClick = (e: React.PointerEvent) => {
+    if (e.target === containerRef.current || (e.target as HTMLElement).tagName === 'VIDEO' || (e.target as HTMLElement).tagName === 'IMG') {
+      setSelectedElementId(null)
+    }
+  }
+
+  const handleResizeStart = (e: React.PointerEvent, el: StoryElement) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const elCenterX = rect.left + (el.x / 100) * rect.width
+    const elCenterY = rect.top + (el.y / 100) * rect.height
+
+    const startDist = Math.hypot(e.clientX - elCenterX, e.clientY - elCenterY)
+
+    setResizingId(el.id)
+    resizeStartRef.current = {
+      startDist,
+      startScale: el.scale || 1
+    }
   }
 
   const addElement = (type: 'text' | 'emoji', content: string) => {
     if (!content.trim()) return
-    const newElement: StoryElement = { id: Date.now().toString(), type, content, x: 50, y: 50 }
+    const newElement: StoryElement = { id: Date.now().toString(), type, content, x: 50, y: 50, scale: 1 }
     if (type === 'text') {
       newElement.font = selectedFont
       newElement.bgColor = selectedBg.class
@@ -139,6 +215,50 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     setElements([...elements, newElement])
     setActiveTool(null)
     setTextInput('')
+    setSelectedElementId(newElement.id)
+  }
+
+  const fetchTrendingStickers = async () => {
+    const apiKey = import.meta.env.VITE_GIPHY_API_KEY
+    if (!apiKey) return
+
+    setSearchingGif(true)
+    try {
+      const res = await fetch(
+        `https://api.giphy.com/v1/stickers/trending?api_key=${apiKey}&limit=20&rating=g`
+      )
+      const json = await res.json()
+      setGifResults(json.data || [])
+    } catch (err) {
+      console.error("Erreur tendances:", err)
+    } finally {
+      setSearchingGif(false)
+    }
+  }
+
+  const searchGifs = async () => {
+    if (!gifSearch.trim()) {
+      fetchTrendingStickers()
+      return
+    }
+    const apiKey = import.meta.env.VITE_GIPHY_API_KEY
+    if (!apiKey) {
+      toast.error("Clé API Giphy manquante (VITE_GIPHY_API_KEY)")
+      return
+    }
+    setSearchingGif(true)
+    try {
+      const res = await fetch(
+        `https://api.giphy.com/v1/stickers/search?api_key=${apiKey}&q=${encodeURIComponent(gifSearch)}&limit=20&rating=g`
+      )
+      const json = await res.json()
+      setGifResults(json.data || [])
+    } catch (err) {
+      console.error(err)
+      toast.error("Erreur de recherche de stickers")
+    } finally {
+      setSearchingGif(false)
+    }
   }
 
   const handlePublish = async () => {
@@ -148,7 +268,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
       await storiesApi.create({
         media_url: mediaUrl,
         media_type: mediaType,
-        caption: '', 
+        caption: '',
         visibility,
         type: 'story',
         expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000),
@@ -156,74 +276,103 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
       })
       toast.success("Story publiée !")
       onClose()
-    } catch { 
-      toast.error("Erreur de publication") 
-    } finally { 
-      setUploading(false) 
+    } catch {
+      toast.error("Erreur de publication")
+    } finally {
+      setUploading(false)
     }
   }
 
-  const isToolOpen = activeTool === 'text' || activeTool === 'emoji'
+  const isToolOpen = activeTool === 'text' || activeTool === 'emoji' || activeTool === 'gif'
 
   return (
     <div className="fixed inset-0 z-[500] bg-black flex flex-col sm:items-center sm:justify-center">
-      <div 
+      <div
         className="w-full h-full sm:h-[90vh] sm:max-h-[850px] sm:w-[420px] bg-gray-900 sm:rounded-3xl overflow-hidden flex flex-col relative shadow-2xl"
-        ref={containerRef} onPointerMove={handlePointerMove} onPointerUp={() => setDraggingId(null)} onPointerLeave={() => setDraggingId(null)} style={{ touchAction: 'none' }}
+        ref={containerRef}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onPointerDown={handleContainerClick}
+        style={{ touchAction: 'none' }}
       >
         <div className="absolute inset-0 z-0">
           {mediaUrl ? (
             mediaType === 'video' ? (
-              <video 
-                key={videoKey}
-                src={mediaUrl} 
-                controls 
-                autoPlay 
-                loop 
-                playsInline 
-                muted
-                className="w-full h-full object-contain bg-black"
-              />
+              <video key={videoKey} src={mediaUrl} controls autoPlay loop playsInline muted className="w-full h-full object-contain bg-black" />
             ) : (
-              <img src={mediaUrl} className="w-full h-full object-cover" />
+              <img src={mediaUrl} className="w-full h-full object-cover" alt="Story media" />
             )
           ) : (
-            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover mirror" style={{ transform: 'scaleX(-1)' }} />
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
         </div>
 
         <div className="absolute top-0 inset-x-0 p-4 flex justify-between items-center z-50 pointer-events-none">
-          <button onClick={onClose} className="text-white bg-black/30 backdrop-blur-md p-2.5 rounded-full hover:bg-black/50 transition pointer-events-auto"><X size={20} /></button>
+          <button onClick={onClose} className="text-white bg-black/30 backdrop-blur-md p-2.5 rounded-full hover:bg-black/50 transition pointer-events-auto">
+            <X size={20} />
+          </button>
           <span className="text-white font-bold text-sm bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-full">Nouvelle Story</span>
           <div className="w-10" />
         </div>
 
-        {mediaUrl && elements.map(el => (
-          <div key={el.id} onPointerDown={(e) => { e.stopPropagation(); setDraggingId(el.id); }}
-            style={{ left: `${el.x}%`, top: `${el.y}%`, transform: 'translate(-50%, -50%)', touchAction: 'none' }}
-            className={`absolute cursor-move select-none z-40 drop-shadow-xl ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` : 'text-5xl'}`}
-          >
-            {el.content}
-          </div>
-        ))}
+        {/* ÉLÉMENTS SUPERPOSÉS (Sans bordures visibles) */}
+        {mediaUrl && elements.map(el => {
+          const isSelected = selectedElementId === el.id;
+          return (
+            <div
+              key={el.id}
+              onPointerDown={(e) => { 
+                e.stopPropagation(); 
+                setDraggingId(el.id); 
+                setSelectedElementId(el.id);
+              }}
+              style={{ 
+                left: `${el.x}%`, 
+                top: `${el.y}%`, 
+                transform: `translate(-50%, -50%) scale(${el.scale || 1})`,
+                touchAction: 'none',
+              }}
+              className={`absolute cursor-move select-none z-40 drop-shadow-xl rounded-md ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 text-xl` : ''}`}
+            >
+              {el.content.startsWith('http') ? (
+                <img src={el.content} alt="Sticker" className="w-32 h-auto object-contain pointer-events-none" />
+              ) : (
+                el.content
+              )}
+
+              {/* POIGNÉE INVISIBLE (Coin bas-droit) */}
+              {isSelected && (
+                <div
+                  onPointerDown={(e) => handleResizeStart(e, el)}
+                  className="absolute -bottom-4 -right-4 w-10 h-10 bg-transparent cursor-nwse-resize z-50 pointer-events-auto"
+                />
+              )}
+            </div>
+          )
+        })}
 
         {activeTool === 'text' && (
           <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-5 rounded-t-3xl border-t border-gray-800 flex flex-col max-h-[80vh]">
             <div className="flex justify-between items-center mb-4 shrink-0">
               <span className="text-white font-bold">Ajouter du texte</span>
-              <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20}/></button>
+              <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
             </div>
-            
-            <input autoFocus value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Écris quelque chose..."
+
+            <input
+              autoFocus
+              value={textInput}
+              onChange={e => setTextInput(e.target.value)}
+              placeholder="Écris quelque chose..."
               className={`w-full bg-[#2a2a2a] text-white text-center text-xl outline-none mb-5 p-4 rounded-xl border border-gray-700 shrink-0 ${selectedTextColor.class} ${selectedFont}`}
               onKeyDown={e => e.key === 'Enter' && addElement('text', textInput)}
             />
-            
-            <div className="space-y-4 mb-6 overflow-y-auto flex-1 scrollbar-hide px-1">
+
+            <div className="space-y-4 mb-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-1">
               <div>
                 <p className="text-xs text-gray-400 mb-2">Police</p>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {FONTS.map(f => (
                     <button key={f} onClick={() => setSelectedFont(f)} className={`min-w-[50px] h-10 rounded-lg flex items-center justify-center border border-gray-700 ${selectedFont === f ? 'bg-white text-black' : 'bg-[#2a2a2a] text-white'} ${f}`}>Aa</button>
                   ))}
@@ -231,7 +380,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-2">Couleur</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {TEXT_COLORS.map(c => (
                     <button key={c.name} onClick={() => setSelectedTextColor(c)} style={{ backgroundColor: c.hex }} className={`shrink-0 w-9 h-9 rounded-full border-2 ${selectedTextColor.name === c.name ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
                   ))}
@@ -239,7 +388,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-2">Fond</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {BG_COLORS.map(bg => (
                     <button key={bg.name} onClick={() => setSelectedBg(bg)} style={{ backgroundColor: bg.hex }} className={`shrink-0 w-9 h-9 rounded-full border-2 ${selectedBg.name === bg.name ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
                   ))}
@@ -251,14 +400,40 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
         )}
 
         {activeTool === 'emoji' && (
-          <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-5 rounded-t-3xl border-t border-gray-800 max-h-[60vh] flex flex-col">
-             <div className="flex justify-between items-center mb-4 shrink-0">
+          <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-2 rounded-t-3xl border-t border-gray-800 max-h-[60vh] flex flex-col">
+            <div className="flex justify-between items-center mb-2 px-2 shrink-0">
               <span className="text-white font-bold">Emojis</span>
-              <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20}/></button>
+              <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
             </div>
-            <div className="grid grid-cols-5 gap-3 overflow-y-auto pb-4 scrollbar-hide">
-              {ANKU_EMOJIS.map(emoji => (
-                <button key={emoji} onClick={() => addElement('emoji', emoji)} className="text-3xl hover:scale-125 transition-transform p-2 bg-[#2a2a2a] rounded-xl flex items-center justify-center aspect-square">{emoji}</button>
+            <div className="overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ height: 350 }}>
+              <Picker data={data} onEmojiSelect={(emoji: any) => addElement('emoji', emoji.native)} theme="dark" previewPosition="none" skinTonePosition="none" />
+            </div>
+          </div>
+        )}
+
+        {activeTool === 'gif' && (
+          <div className="absolute bottom-0 inset-x-0 z-50 bg-[#1a1a1a] p-4 rounded-t-3xl border-t border-gray-800 max-h-[60vh] flex flex-col">
+            <div className="flex justify-between items-center mb-2 shrink-0">
+              <span className="text-white font-bold">Rechercher un Sticker</span>
+              <button onClick={() => setActiveTool(null)} className="text-gray-400 hover:text-white p-2"><X size={20} /></button>
+            </div>
+            <div className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                value={gifSearch} 
+                onChange={(e) => setGifSearch(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && searchGifs()} 
+                placeholder="Rechercher des Stickers..." 
+                className="flex-1 bg-[#2a2a2a] text-white rounded-xl p-3 text-sm border border-gray-700 focus:border-blue-500 outline-none" 
+              />
+              <button onClick={searchGifs} disabled={searchingGif} className="bg-blue-500 text-white px-4 rounded-xl font-bold disabled:opacity-50">
+                {searchingGif ? <Loader size={16} className="animate-spin" /> : 'Go'}
+              </button>
+            </div>
+            {/* ICI LA BARRE DE SCROLL EST MASQUÉE */}
+            <div className="grid grid-cols-2 gap-2 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {gifResults.map((gif) => (
+                <img key={gif.id} src={gif.images.fixed_height_small.url} alt={gif.title} className="w-full rounded-lg cursor-pointer hover:opacity-80 transition bg-black/20" onClick={() => { addElement('emoji', gif.images.original.url); setActiveTool(null); }} />
               ))}
             </div>
           </div>
@@ -266,9 +441,9 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
 
         {activeTool === 'visibility' && (
           <div className="absolute top-16 right-4 z-50 bg-white rounded-xl shadow-xl overflow-hidden w-48">
-            <button onClick={() => { setVisibility('public'); setActiveTool(null); }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'public' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Globe size={16}/> Public</button>
-            <button onClick={() => { setVisibility('friends'); setActiveTool(null); }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'friends' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Users size={16}/> Amis</button>
-            <button onClick={() => { setVisibility('private'); setActiveTool(null); }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'private' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Lock size={16}/> Privé</button>
+            <button onClick={() => { setVisibility('public'); setActiveTool(null) }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'public' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Globe size={16} /> Public</button>
+            <button onClick={() => { setVisibility('friends'); setActiveTool(null) }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'friends' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Users size={16} /> Amis</button>
+            <button onClick={() => { setVisibility('private'); setActiveTool(null) }} className={`w-full text-left px-4 py-3 text-sm font-bold flex items-center gap-2 ${visibility === 'private' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-gray-50'}`}><Lock size={16} /> Privé</button>
           </div>
         )}
 
@@ -288,12 +463,13 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
             <div className="flex justify-around items-center px-4 mb-4">
               <button onClick={() => setActiveTool('text')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Type size={20} /></button>
               <button onClick={() => setActiveTool('emoji')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Smile size={20} /></button>
+              <button onClick={() => setActiveTool('gif')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg"><Film size={20} /></button>
               <button onClick={() => setActiveTool('visibility')} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex flex-col items-center justify-center text-white hover:bg-black/60 transition shadow-lg">
                 {visibility === 'public' ? <Globe size={20} /> : visibility === 'friends' ? <Users size={20} /> : <Lock size={20} />}
               </button>
             </div>
             <div className="bg-black/60 backdrop-blur-xl p-4 pb-6 rounded-t-3xl border-t border-white/10 flex items-center justify-between gap-3">
-              <button onClick={() => { setMediaUrl(null); setElements([]); }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
+              <button onClick={() => { setMediaUrl(null); setElements([]) }} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition"><X size={20} /></button>
               <button onClick={handlePublish} disabled={uploading} className="flex-1 bg-blue-500 text-white font-bold py-3.5 rounded-xl hover:bg-blue-600 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
                 {uploading ? <Loader className="animate-spin" size={20} /> : <><Send size={20} /> Publier</>}
               </button>

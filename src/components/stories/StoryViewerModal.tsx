@@ -78,14 +78,12 @@ export default function StoryViewerModal({
     } catch { toast.error("Erreur") }
   }
 
-  // 🆕 Ouvrir la popup de partage
   const handleOpenShareModal = () => {
     setShowMenu(false)
     setShareText('')
     setShowShareModal(true)
   }
 
-  // 🆕 Partager effectivement
   const handleShareToFeed = async () => {
     setSharing(true)
     try {
@@ -139,7 +137,7 @@ export default function StoryViewerModal({
 
       <div className="w-full h-full sm:h-[90vh] sm:w-[420px] relative bg-gray-900 sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col">
         
-        {/* Header - au-dessus de tout, ne ferme pas la story */}
+        {/* Header */}
         <div 
           className="absolute top-0 inset-x-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-[100] flex justify-between items-start"
           onClick={(e) => e.stopPropagation()}
@@ -171,7 +169,6 @@ export default function StoryViewerModal({
                 className="absolute top-12 right-0 bg-white rounded-xl shadow-xl overflow-hidden w-56 z-[110]"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* 🆕 Bouton qui ouvre la popup */}
                 <button onClick={handleOpenShareModal} className="w-full text-left px-4 py-3 text-sm text-blue-600 font-bold hover:bg-blue-50 flex items-center gap-2">
                   <Send size={16}/> Partager sur le feed
                 </button>
@@ -214,7 +211,7 @@ export default function StoryViewerModal({
           ))}
         </div>
 
-        {/* Média */}
+        {/* Média principal */}
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
           {currentStory.media_type === 'video' ? (
             <>
@@ -253,16 +250,31 @@ export default function StoryViewerModal({
           )}
         </div>
 
-        {/* Éléments superposés */}
+        {/* 🆕 Éléments superposés (Texte, Emojis, Stickers) - CORRIGÉ */}
         {currentStory.elements?.map((el: any) => (
-          <div key={el.id} style={{ left: `${el.x}%`, top: `${el.y}%`, transform: 'translate(-50%, -50%)' }}
-            className={`absolute z-20 pointer-events-none drop-shadow-xl ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` : 'text-5xl'}`}
+          <div 
+            key={el.id} 
+            style={{ 
+              left: `${el.x}%`, 
+              top: `${el.y}%`, 
+              transform: `translate(-50%, -50%) scale(${el.scale || 1})` // 👈 Prise en compte de la taille
+            }}
+            className={`absolute z-20 pointer-events-none drop-shadow-xl ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` : ''}`}
           >
-            {el.content}
+            {/* 👇 Vérification de l'URL pour afficher l'image au lieu du texte */}
+            {el.content.startsWith('http') ? (
+              <img 
+                src={el.content} 
+                alt="Sticker" 
+                className="w-32 h-auto object-contain" 
+              />
+            ) : (
+              el.content
+            )}
           </div>
         ))}
 
-        {/* Zones de clic - seulement si pas de menu ouvert */}
+        {/* Zones de clic */}
         <div className="absolute inset-0 z-20 flex">
           <div className={`w-1/3 h-full ${!showMenu && !showShareModal ? 'cursor-pointer' : ''}`} onClick={handlePrev} />
           <div className={`w-2/3 h-full ${!showMenu && !showShareModal ? 'cursor-pointer' : ''}`} onClick={handleNext} />
