@@ -292,19 +292,12 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // 🆕 RECHERCHE D'UTILISATEURS (Corrigée)
   const searchUsers = async (query: string) => {
     if (!query.trim()) return
     setSearchingTag(true)
     try {
-      // Utilisation de la route /users/search avec le paramètre 'search'
       const res = await api.get(`/users/search?search=${encodeURIComponent(query)}`)
-      
-      // Le backend renvoie { success: true, count: X, users: [...] }
-      const usersList = Array.isArray(res.data) 
-        ? res.data 
-        : (res.data?.users || [])
-        
+      const usersList = Array.isArray(res.data) ? res.data : (res.data?.users || [])
       setTagResults(usersList)
     } catch (err) {
       console.error("Erreur recherche utilisateur:", err)
@@ -493,15 +486,15 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-4 mb-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-1">
               <div>
                 <p className="text-xs text-gray-400 mb-2">Police</p>
-                <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="flex flex-wrap gap-2">
                   {FONTS.map(f => (
-                    <button key={f} onClick={() => setSelectedFont(f)} className={`min-w-[50px] h-10 rounded-lg flex items-center justify-center border border-gray-700 ${selectedFont === f ? 'bg-white text-black' : 'bg-[#2a2a2a] text-white'} ${f}`}>Aa</button>
+                    <button key={f} onClick={() => setSelectedFont(f)} className={`min-w-[60px] h-10 rounded-lg flex items-center justify-center border border-gray-700 ${selectedFont === f ? 'bg-white text-black' : 'bg-[#2a2a2a] text-white'} ${f}`}>Aa</button>
                   ))}
                 </div>
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-2">Couleur</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="flex flex-wrap gap-3">
                   {TEXT_COLORS.map(c => (
                     <button key={c.name} onClick={() => setSelectedTextColor(c)} style={{ backgroundColor: c.hex }} className={`shrink-0 w-9 h-9 rounded-full border-2 ${selectedTextColor.name === c.name ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
                   ))}
@@ -509,7 +502,7 @@ export default function CreateStoryModal({ onClose }: { onClose: () => void }) {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-2">Fond</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="flex flex-wrap gap-3">
                   {BG_COLORS.map(bg => (
                     <button key={bg.name} onClick={() => setSelectedBg(bg)} style={{ backgroundColor: bg.hex }} className={`shrink-0 w-9 h-9 rounded-full border-2 ${selectedBg.name === bg.name ? 'border-blue-500 scale-110' : 'border-gray-600'}`} />
                   ))}
