@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, MoreVertical, EyeOff, AlertTriangle, ChevronRight, ChevronLeft, Trash2, Lock, Users, Globe, Send, Loader } from 'lucide-react'
+import { X, MoreVertical, EyeOff, AlertTriangle, ChevronRight, ChevronLeft, Trash2, Lock, Users, Globe, Send, Loader, Heart } from 'lucide-react'
 import storiesApi from '../../service/api/stories.api'
 import postsApi from '../../service/api/posts.api'
 import api from '../../service/api/httpClient'
@@ -27,6 +27,10 @@ export default function StoryViewerModal({
   const [shareText, setShareText] = useState('')
   const [sharing, setSharing] = useState(false)
 
+  // 🆕 État pour la réaction
+  const [hasReacted, setHasReacted] = useState(false)
+  const [reacting, setReacting] = useState(false)
+
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const currentStory = group?.stories[currentIndex]
@@ -34,6 +38,7 @@ export default function StoryViewerModal({
 
   useEffect(() => {
     setVideoError(false)
+    setHasReacted(false) // Reset la réaction quand on change de story
     if (videoRef.current) {
       videoRef.current.load()
     }
@@ -125,6 +130,26 @@ export default function StoryViewerModal({
     } catch (err: any) { 
       console.error(err)
       toast.error("Erreur de signalement") 
+    }
+  }
+
+  // 🆕 Fonction pour réagir
+  const handleReact = async () => {
+    if (reacting) return
+    setReacting(true)
+    try {
+      const res = await api.post(`/stories/${currentStory.id}/react`, { emoji: '❤️' })
+      if (res.data.reacted) {
+        setHasReacted(true)
+        toast.success("Réaction envoyée !")
+      } else {
+        setHasReacted(false)
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Erreur lors de la réaction")
+    } finally {
+      setReacting(false)
     }
   }
 
@@ -250,18 +275,17 @@ export default function StoryViewerModal({
           )}
         </div>
 
-        {/* 🆕 Éléments superposés (Texte, Emojis, Stickers) - CORRIGÉ */}
+        {/* Éléments superposés */}
         {currentStory.elements?.map((el: any) => (
           <div 
             key={el.id} 
             style={{ 
               left: `${el.x}%`, 
               top: `${el.y}%`, 
-              transform: `translate(-50%, -50%) scale(${el.scale || 1})` // 👈 Prise en compte de la taille
+              transform: `translate(-50%, -50%) scale(${el.scale || 1})`
             }}
             className={`absolute z-20 pointer-events-none drop-shadow-xl ${el.type === 'text' ? `${el.bgColor || 'bg-black/60'} ${el.textColor || 'text-white'} ${el.font || 'font-bold'} backdrop-blur-md px-4 py-2 rounded-xl text-xl border border-white/20` : ''}`}
           >
-            {/* 👇 Vérification de l'URL pour afficher l'image au lieu du texte */}
             {el.content.startsWith('http') ? (
               <img 
                 src={el.content} 
@@ -279,6 +303,27 @@ export default function StoryViewerModal({
           <div className={`w-1/3 h-full ${!showMenu && !showShareModal ? 'cursor-pointer' : ''}`} onClick={handlePrev} />
           <div className={`w-2/3 h-full ${!showMenu && !showShareModal ? 'cursor-pointer' : ''}`} onClick={handleNext} />
         </div>
+
+        {/* 🆕 BOUTON DE RÉACTION (en bas à droite) */}
+        {!isOwn && (
+          <div className="absolute bottom-6 right-6 z-[100]">
+            <button
+              onClick={(e) => { e.stopPropagation(); handleReact(); }}
+              disabled={reacting}
+              className={`p-3 rounded-full backdrop-blur-md transition-all shadow-xl ${
+                hasReacted 
+                  ? 'bg-red-500/90 text-white scale-110' 
+                  : 'bg-black/50 text-white hover:bg-black/70'
+              }`}
+            >
+              {reacting ? (
+                <Loader size={24} className="animate-spin" />
+              ) : (
+                <Heart size={24} fill={hasReacted ? 'currentColor' : 'none'} />
+              )}
+            </button>
+          </div>
+        )}
 
         {/* POPUP DE PARTAGE */}
         {showShareModal && (
